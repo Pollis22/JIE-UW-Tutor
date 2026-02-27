@@ -13,6 +13,13 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import uwLogo from "@/assets/uw-madison-logo.png";
 
+// Campus & Bucky photos
+import bascomHall from "@/assets/campus/bascom-hall.png";
+import buckyTeaching from "@/assets/campus/bucky-teaching.png";
+import buckyBasketball from "@/assets/campus/bucky-basketball.png";
+import buckyLecture from "@/assets/campus/bucky-lecture.png";
+import buckyFootball from "@/assets/campus/bucky-football.png";
+
 const loginSchema = z.object({
   email: z.string().min(1, "Email is required"),
   password: z.string().min(1, "Password is required"),
@@ -32,6 +39,126 @@ const registerSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>;
 type RegisterForm = z.infer<typeof registerSchema>;
+
+/* ─── Campus Life Photo Collage ─── */
+function CampusPhotoCollage() {
+  return (
+    <section className="py-16 px-6 md:px-12 max-w-7xl mx-auto overflow-hidden" style={{ background: "#FFFFFF" }}>
+      <div className="text-center mb-12">
+        <p style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 13, fontWeight: 700, color: "#C5050C", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>
+          Campus Life
+        </p>
+        <h2 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 800, color: "#282728", lineHeight: 1.15, marginBottom: 8 }}>
+          Where Bucky studies hard & plays harder
+        </h2>
+        <p style={{ fontSize: 17, color: "#646569", maxWidth: 520, margin: "0 auto", lineHeight: 1.6 }}>
+          From lecture halls to game days — Badgers bring that energy everywhere. Now your AI tutor keeps up too.
+        </p>
+      </div>
+
+      <div className="relative mx-auto" style={{ maxWidth: 920, minHeight: 500 }}>
+        {/* Hero: Bascom Hall */}
+        <div
+          className="relative z-10 rounded-2xl overflow-hidden shadow-2xl transition-transform duration-500 hover:scale-[1.02]"
+          style={{
+            transform: "rotate(-2.5deg)",
+            width: "60%",
+            aspectRatio: "4/3",
+            border: "5px solid white",
+            boxShadow: "0 25px 60px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.05)",
+          }}
+        >
+          <img src={bascomHall} alt="Bascom Hall, University of Wisconsin-Madison" className="w-full h-full object-cover" />
+          <div className="absolute bottom-0 left-0 right-0" style={{ height: 5, background: "#C5050C" }} />
+        </div>
+
+        {/* Top-right: Bucky teaching physics */}
+        <div
+          className="absolute z-20 rounded-xl overflow-hidden shadow-xl transition-transform duration-500 hover:scale-[1.05] hover:z-30"
+          style={{
+            transform: "rotate(3deg)",
+            width: "40%",
+            aspectRatio: "3/2.2",
+            top: "-15px",
+            right: "0%",
+            border: "4px solid white",
+            boxShadow: "0 18px 45px rgba(0,0,0,0.14)",
+          }}
+        >
+          <img src={buckyTeaching} alt="Bucky Badger teaching Physics of Motion" className="w-full h-full object-cover" />
+        </div>
+
+        {/* Bottom-left: Bucky basketball dunk */}
+        <div
+          className="absolute z-20 rounded-xl overflow-hidden shadow-xl transition-transform duration-500 hover:scale-[1.05] hover:z-30"
+          style={{
+            transform: "rotate(2deg)",
+            width: "32%",
+            aspectRatio: "3/2.5",
+            bottom: "-25px",
+            left: "5%",
+            border: "4px solid white",
+            boxShadow: "0 15px 40px rgba(0,0,0,0.13)",
+          }}
+        >
+          <img src={buckyBasketball} alt="Bucky Badger dunking at Kohl Center" className="w-full h-full object-cover" />
+        </div>
+
+        {/* Bottom-center: Bucky football touchdown */}
+        <div
+          className="absolute z-20 rounded-xl overflow-hidden shadow-xl transition-transform duration-500 hover:scale-[1.05] hover:z-30 hidden md:block"
+          style={{
+            transform: "rotate(-1.5deg)",
+            width: "30%",
+            aspectRatio: "3/2",
+            bottom: "-10px",
+            left: "35%",
+            border: "4px solid white",
+            boxShadow: "0 15px 40px rgba(0,0,0,0.13)",
+          }}
+        >
+          <img src={buckyFootball} alt="Bucky Badger scoring a touchdown at Camp Randall" className="w-full h-full object-cover" />
+        </div>
+
+        {/* Bottom-right: Bucky in lecture hall */}
+        <div
+          className="absolute z-20 rounded-xl overflow-hidden shadow-xl transition-transform duration-500 hover:scale-[1.05] hover:z-30"
+          style={{
+            transform: "rotate(2.5deg)",
+            width: "33%",
+            aspectRatio: "3/2.2",
+            bottom: "20px",
+            right: "-1%",
+            border: "4px solid white",
+            boxShadow: "0 15px 40px rgba(0,0,0,0.13)",
+          }}
+        >
+          <img src={buckyLecture} alt="Bucky Badger in a lecture hall with students" className="w-full h-full object-cover" />
+        </div>
+
+        {/* Floating quote card */}
+        <div
+          className="absolute z-30 px-5 py-3.5 rounded-xl shadow-lg hidden md:block"
+          style={{
+            background: "rgba(255,255,255,0.95)",
+            backdropFilter: "blur(12px)",
+            border: "1px solid rgba(197,5,12,0.12)",
+            bottom: "80px",
+            left: "-25px",
+            maxWidth: 260,
+            transform: "rotate(-1.5deg)",
+          }}
+        >
+          <div style={{ width: 3, height: "100%", background: "#C5050C", position: "absolute", left: 0, top: 0, borderRadius: "3px 0 0 3px" }} />
+          <p style={{ fontFamily: "'Red Hat Text', sans-serif", fontSize: 14, fontStyle: "italic", color: "#282728", lineHeight: 1.5, fontWeight: 500 }}>
+            "Like having a tutor available 24/7 — right from my dorm room."
+          </p>
+          <p style={{ fontSize: 12, color: "#646569", marginTop: 6, fontWeight: 600 }}>— UW Junior, Biology</p>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
@@ -206,6 +333,9 @@ export default function AuthPage() {
           ))}
         </div>
       </section>
+
+      {/* Campus Life Photo Collage */}
+      <CampusPhotoCollage />
 
       {/* Auth */}
       <section id="auth-section" className="py-20 px-6 md:px-12 max-w-7xl mx-auto" style={{ background: "#FFFFFF" }}>

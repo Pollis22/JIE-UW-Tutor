@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import uwLogo from '@/assets/uw-madison-logo.png';
 import tutorHero from "@/assets/tutor-hero.png";
+import buckyClassroom from "@/assets/campus/bucky-classroom.png";
 
 interface ProgressData {
   lastLevel?: string;
@@ -654,7 +655,7 @@ export default function TutorPage() {
                   data-testid="img-uw-logo"
                 />
                 <h1 id="page-title" className="text-2xl font-bold text-foreground">
-                  UW AI Tutor Tutor — Multi-Agent
+                  UW AI Tutor
                 </h1>
               </div>
               <div className="flex-1 flex justify-end items-center gap-2">
@@ -744,6 +745,37 @@ export default function TutorPage() {
             </Card>
           )}
 
+          {/* Motivational Student Photo — warm, tilted frame */}
+          {!mounted && (
+            <div className="relative overflow-hidden rounded-xl" style={{ 
+              border: "3px solid white", 
+              boxShadow: "0 8px 30px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)",
+              transform: "rotate(-1.2deg)",
+              maxWidth: 360,
+              margin: "0 auto",
+            }}>
+              <img src={buckyClassroom} alt="Bucky Badger with students in classroom" className="w-full object-cover" style={{ aspectRatio: "16/9" }} />
+              {/* Cardinal red accent at bottom */}
+              <div style={{ height: 3, background: "#C5050C" }} />
+              {/* Floating caption */}
+              <div style={{ 
+                position: "absolute", 
+                bottom: 12, 
+                left: 12, 
+                right: 12,
+                background: "rgba(255,255,255,0.92)", 
+                backdropFilter: "blur(8px)",
+                borderRadius: 8, 
+                padding: "8px 12px",
+                transform: "rotate(1.2deg)",
+              }}>
+                <p style={{ fontSize: 12, fontStyle: "italic", color: "#282728", fontFamily: "'Red Hat Text', sans-serif", fontWeight: 500, lineHeight: 1.4 }}>
+                  "Study smarter, not harder." 🦡
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Getting Started Instructions - Collapsible, Hidden during active session */}
           {!mounted && (
           <>
@@ -757,7 +789,7 @@ export default function TutorPage() {
               <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors">
                 <h3 className="font-bold text-blue-900 dark:text-blue-100 flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-blue-600" />
-                  How to Use UW AI Tutor Tutor
+                  How to Use UW AI Tutor
                 </h3>
                 <ChevronDown className="h-5 w-5 text-blue-600 transition-transform duration-200 group-data-[state=open]:rotate-180" />
               </div>
