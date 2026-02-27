@@ -7,18 +7,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Mic, Brain, Clock, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Mic, Brain, Clock, ArrowRight, GraduationCap, BookOpen, FlaskConical, PenTool } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import uwLogo from "@/assets/uw-madison-logo.png";
 
 // Campus & Bucky photos
+import buckyGraduation from "@/assets/campus/bucky-graduation.png";
 import bascomHall from "@/assets/campus/bascom-hall.png";
 import buckyTeaching from "@/assets/campus/bucky-teaching.png";
 import buckyBasketball from "@/assets/campus/bucky-basketball.png";
 import buckyLecture from "@/assets/campus/bucky-lecture.png";
 import buckyFootball from "@/assets/campus/bucky-football.png";
+import buckyClassroom from "@/assets/campus/bucky-classroom.png";
 
 const loginSchema = z.object({
   email: z.string().min(1, "Email is required"),
@@ -40,14 +42,11 @@ const registerSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 type RegisterForm = z.infer<typeof registerSchema>;
 
-/* ─── Campus Life Photo Collage ─── */
-function CampusPhotoCollage() {
+/* ─── Photo Collage Section ─── */
+function PhotoCollage() {
   return (
     <section className="py-16 px-6 md:px-12 max-w-7xl mx-auto overflow-hidden" style={{ background: "#FFFFFF" }}>
       <div className="text-center mb-12">
-        <p style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 13, fontWeight: 700, color: "#C5050C", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>
-          Campus Life
-        </p>
         <h2 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 800, color: "#282728", lineHeight: 1.15, marginBottom: 8 }}>
           Where Bucky studies hard & plays harder
         </h2>
@@ -58,97 +57,39 @@ function CampusPhotoCollage() {
 
       <div className="relative mx-auto" style={{ maxWidth: 920, minHeight: 500 }}>
         {/* Hero: Bascom Hall */}
-        <div
-          className="relative z-10 rounded-2xl overflow-hidden shadow-2xl transition-transform duration-500 hover:scale-[1.02]"
-          style={{
-            transform: "rotate(-2.5deg)",
-            width: "60%",
-            aspectRatio: "4/3",
-            border: "5px solid white",
-            boxShadow: "0 25px 60px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.05)",
-          }}
-        >
+        <div className="relative z-10 rounded-2xl overflow-hidden shadow-2xl transition-transform duration-500 hover:scale-[1.02]"
+          style={{ transform: "rotate(-2.5deg)", width: "60%", aspectRatio: "4/3", border: "5px solid white", boxShadow: "0 25px 60px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.05)" }}>
           <img src={bascomHall} alt="Bascom Hall, University of Wisconsin-Madison" className="w-full h-full object-cover" />
           <div className="absolute bottom-0 left-0 right-0" style={{ height: 5, background: "#C5050C" }} />
         </div>
 
-        {/* Top-right: Bucky teaching physics */}
-        <div
-          className="absolute z-20 rounded-xl overflow-hidden shadow-xl transition-transform duration-500 hover:scale-[1.05] hover:z-30"
-          style={{
-            transform: "rotate(3deg)",
-            width: "40%",
-            aspectRatio: "3/2.2",
-            top: "-15px",
-            right: "0%",
-            border: "4px solid white",
-            boxShadow: "0 18px 45px rgba(0,0,0,0.14)",
-          }}
-        >
-          <img src={buckyTeaching} alt="Bucky Badger teaching Physics of Motion" className="w-full h-full object-cover" />
+        {/* Top-right: Bucky classroom */}
+        <div className="absolute z-20 rounded-xl overflow-hidden shadow-xl transition-transform duration-500 hover:scale-[1.05] hover:z-30"
+          style={{ transform: "rotate(3deg)", width: "40%", aspectRatio: "3/2.2", top: "-15px", right: "0%", border: "4px solid white", boxShadow: "0 18px 45px rgba(0,0,0,0.14)" }}>
+          <img src={buckyClassroom} alt="Bucky Badger with students in classroom" className="w-full h-full object-cover" />
         </div>
 
-        {/* Bottom-left: Bucky basketball dunk */}
-        <div
-          className="absolute z-20 rounded-xl overflow-hidden shadow-xl transition-transform duration-500 hover:scale-[1.05] hover:z-30"
-          style={{
-            transform: "rotate(2deg)",
-            width: "32%",
-            aspectRatio: "3/2.5",
-            bottom: "-25px",
-            left: "5%",
-            border: "4px solid white",
-            boxShadow: "0 15px 40px rgba(0,0,0,0.13)",
-          }}
-        >
+        {/* Bottom-left: Bucky basketball */}
+        <div className="absolute z-20 rounded-xl overflow-hidden shadow-xl transition-transform duration-500 hover:scale-[1.05] hover:z-30"
+          style={{ transform: "rotate(2deg)", width: "32%", aspectRatio: "3/2.5", bottom: "-25px", left: "5%", border: "4px solid white", boxShadow: "0 15px 40px rgba(0,0,0,0.13)" }}>
           <img src={buckyBasketball} alt="Bucky Badger dunking at Kohl Center" className="w-full h-full object-cover" />
         </div>
 
-        {/* Bottom-center: Bucky football touchdown */}
-        <div
-          className="absolute z-20 rounded-xl overflow-hidden shadow-xl transition-transform duration-500 hover:scale-[1.05] hover:z-30 hidden md:block"
-          style={{
-            transform: "rotate(-1.5deg)",
-            width: "30%",
-            aspectRatio: "3/2",
-            bottom: "-10px",
-            left: "35%",
-            border: "4px solid white",
-            boxShadow: "0 15px 40px rgba(0,0,0,0.13)",
-          }}
-        >
-          <img src={buckyFootball} alt="Bucky Badger scoring a touchdown at Camp Randall" className="w-full h-full object-cover" />
+        {/* Bottom-center: Bucky football */}
+        <div className="absolute z-20 rounded-xl overflow-hidden shadow-xl transition-transform duration-500 hover:scale-[1.05] hover:z-30 hidden md:block"
+          style={{ transform: "rotate(-1.5deg)", width: "30%", aspectRatio: "3/2", bottom: "-10px", left: "35%", border: "4px solid white", boxShadow: "0 15px 40px rgba(0,0,0,0.13)" }}>
+          <img src={buckyFootball} alt="Bucky Badger scoring a touchdown" className="w-full h-full object-cover" />
         </div>
 
-        {/* Bottom-right: Bucky in lecture hall */}
-        <div
-          className="absolute z-20 rounded-xl overflow-hidden shadow-xl transition-transform duration-500 hover:scale-[1.05] hover:z-30"
-          style={{
-            transform: "rotate(2.5deg)",
-            width: "33%",
-            aspectRatio: "3/2.2",
-            bottom: "20px",
-            right: "-1%",
-            border: "4px solid white",
-            boxShadow: "0 15px 40px rgba(0,0,0,0.13)",
-          }}
-        >
-          <img src={buckyLecture} alt="Bucky Badger in a lecture hall with students" className="w-full h-full object-cover" />
+        {/* Bottom-right: Bucky lecture hall */}
+        <div className="absolute z-20 rounded-xl overflow-hidden shadow-xl transition-transform duration-500 hover:scale-[1.05] hover:z-30"
+          style={{ transform: "rotate(2.5deg)", width: "33%", aspectRatio: "3/2.2", bottom: "20px", right: "-1%", border: "4px solid white", boxShadow: "0 15px 40px rgba(0,0,0,0.13)" }}>
+          <img src={buckyLecture} alt="Bucky in a lecture hall with students" className="w-full h-full object-cover" />
         </div>
 
-        {/* Floating quote card */}
-        <div
-          className="absolute z-30 px-5 py-3.5 rounded-xl shadow-lg hidden md:block"
-          style={{
-            background: "rgba(255,255,255,0.95)",
-            backdropFilter: "blur(12px)",
-            border: "1px solid rgba(197,5,12,0.12)",
-            bottom: "80px",
-            left: "-25px",
-            maxWidth: 260,
-            transform: "rotate(-1.5deg)",
-          }}
-        >
+        {/* Floating quote */}
+        <div className="absolute z-30 px-5 py-3.5 rounded-xl shadow-lg hidden md:block"
+          style={{ background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", border: "1px solid rgba(197,5,12,0.12)", bottom: "80px", left: "-25px", maxWidth: 260, transform: "rotate(-1.5deg)" }}>
           <div style={{ width: 3, height: "100%", background: "#C5050C", position: "absolute", left: 0, top: 0, borderRadius: "3px 0 0 3px" }} />
           <p style={{ fontFamily: "'Red Hat Text', sans-serif", fontSize: 14, fontStyle: "italic", color: "#282728", lineHeight: 1.5, fontWeight: 500 }}>
             "Like having a tutor available 24/7 — right from my dorm room."
@@ -275,9 +216,9 @@ export default function AuthPage() {
         </div>
       </nav>
 
-      {/* Hero */}
+      {/* Hero — Graduation photo replaces orb */}
       <section className="relative" style={{ paddingTop: 130, paddingBottom: 80, background: "#FFFFFF" }}>
-        <div className="max-w-7xl mx-auto px-6 md:px-12 grid md:grid-cols-2 gap-16 items-center">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 grid md:grid-cols-2 gap-12 items-center">
           <div style={{ animation: "fadeInUp 0.8s ease" }}>
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-8" style={{ background: "rgba(197,5,12,0.08)", border: "1px solid rgba(197,5,12,0.15)" }}>
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#28A745" }} />
@@ -289,53 +230,58 @@ export default function AuthPage() {
             <p style={{ fontSize: 19, lineHeight: 1.65, color: "#646569", marginBottom: 40, maxWidth: 480 }}>
               Voice-powered tutoring that adapts to how you learn. Get instant help with coursework across every subject — explained the way you need to hear it.
             </p>
-            <div className="flex flex-wrap gap-4 items-center">
-              <Button onClick={() => { setActiveTab("register"); document.getElementById("auth-section")?.scrollIntoView({ behavior: "smooth" }); }}
-                className="text-white font-semibold px-8 py-3 rounded-lg text-base flex items-center gap-2"
-                style={{ background: "#C5050C", boxShadow: "0 4px 20px rgba(197,5,12,0.3)" }}>
-                Start Tutoring <ArrowRight className="w-4 h-4" />
-              </Button>
-              <span style={{ fontSize: 14, color: "#646569" }}>Free for all UW students</span>
-            </div>
+            <Button onClick={() => { setActiveTab("register"); document.getElementById("auth-section")?.scrollIntoView({ behavior: "smooth" }); }}
+              className="text-white font-semibold px-8 py-3 rounded-lg text-base flex items-center gap-2"
+              style={{ background: "#C5050C", boxShadow: "0 4px 20px rgba(197,5,12,0.3)" }}>
+              Start Tutoring <ArrowRight className="w-4 h-4" />
+            </Button>
           </div>
+
+          {/* Graduation photo — replaces the animated orb */}
           <div className="hidden md:flex justify-center items-center">
-            <div className="relative" style={{ width: 340, height: 340 }}>
-              {[280, 320, 340].map((sz, i) => (
-                <div key={i} className="absolute top-1/2 left-1/2 rounded-full" style={{ width: sz, height: sz, border: `1px solid rgba(197,5,12,${i === 0 ? 0.12 : 0.06})`, transform: "translate(-50%, -50%)", animation: `pulseRing 3s ease-in-out ${i * 0.5}s infinite` }} />
-              ))}
-              <div className="absolute top-1/2 left-1/2 rounded-full flex items-center justify-center" style={{ width: 180, height: 180, transform: "translate(-50%, -50%)", background: "radial-gradient(circle at 40% 40%, #E23D28, #C5050C, #9B0000)", boxShadow: "0 20px 60px rgba(197,5,12,0.35)", animation: "breathe 4s ease-in-out infinite" }}>
-                <div className="flex gap-1 items-center" style={{ height: 40 }}>
-                  {[0,1,2,3,4,5,6].map(i => <div key={i} className="rounded-full" style={{ width: 3, background: "rgba(255,255,255,0.8)", animation: `waveform 1.2s ease-in-out ${i * 0.12}s infinite` }} />)}
-                </div>
+            <div className="relative">
+              <div className="rounded-2xl overflow-hidden shadow-2xl transition-transform duration-500 hover:scale-[1.02]"
+                style={{ transform: "rotate(2deg)", border: "5px solid white", boxShadow: "0 25px 60px rgba(0,0,0,0.15)" }}>
+                <img src={buckyGraduation} alt="Bucky Badger celebrating with graduates at UW-Madison" className="w-full h-auto" style={{ maxWidth: 480 }} />
               </div>
-              {[{ label: "Chemistry", top: "8%", left: "-5%", delay: 0 }, { label: "Calculus", top: "15%", right: "-8%", delay: 0.8 }, { label: "Physics", bottom: "18%", left: "-10%", delay: 1.6 }, { label: "History", bottom: "5%", right: "-3%", delay: 2.4 }].map((item, i) => {
-                const { label, delay, ...pos } = item;
-                return <div key={i} className="absolute px-3.5 py-1.5 rounded-full text-sm font-semibold shadow-md" style={{ ...pos as any, background: "#FFFFFF", color: "#3E3D3F", animation: `float 3s ease-in-out ${delay}s infinite`, fontSize: 13, border: "1px solid #E8E8E8" }}>{label}</div>;
-              })}
+              {/* Floating accent — Bucky teaching, small tilted thumbnail */}
+              <div className="absolute rounded-lg overflow-hidden shadow-xl"
+                style={{ width: 140, bottom: -20, left: -30, transform: "rotate(-4deg)", border: "3px solid white", boxShadow: "0 12px 30px rgba(0,0,0,0.15)" }}>
+                <img src={buckyTeaching} alt="Bucky teaching physics" className="w-full h-auto" />
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features */}
+      {/* What We Cover — Subjects + Test Prep */}
       <section className="py-20 px-6 md:px-12 max-w-7xl mx-auto" style={{ background: "#FFFFFF" }}>
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="text-center mb-12">
+          <h2 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: "clamp(26px, 3.5vw, 36px)", fontWeight: 800, color: "#282728", lineHeight: 1.15, marginBottom: 8 }}>
+            Every subject. Every level.
+          </h2>
+          <p style={{ fontSize: 17, color: "#646569", maxWidth: 560, margin: "0 auto", lineHeight: 1.6 }}>
+            From freshman coursework to postgrad exam prep — your tutor adapts to wherever you are in your academic journey.
+          </p>
+        </div>
+        <div className="grid md:grid-cols-4 gap-5">
           {[
-            { icon: <Mic className="w-7 h-7" style={{ color: "#C5050C" }} />, title: "Voice-First Learning", desc: "Speak naturally and get clear, conversational explanations. Like office hours that never close." },
-            { icon: <Brain className="w-7 h-7" style={{ color: "#C5050C" }} />, title: "Remembers Your Progress", desc: "Picks up where you left off. Knows your strengths, adapts to your gaps." },
-            { icon: <Clock className="w-7 h-7" style={{ color: "#C5050C" }} />, title: "Track Your Growth", desc: "See your session history, mastery scores, and learning trajectory over time." },
+            { icon: <Mic className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "Voice-First Learning", desc: "Speak naturally and get clear, conversational explanations. Like office hours that never close." },
+            { icon: <Brain className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "Remembers Your Progress", desc: "Picks up where you left off. Knows your strengths and adapts to your gaps." },
+            { icon: <FlaskConical className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "All Core Subjects", desc: "Chemistry, Calculus, Physics, Biology, History, Economics, CS, Writing — and everything in between." },
+            { icon: <GraduationCap className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "Postgrad Test Prep", desc: "GRE, GMAT, LSAT, MCAT, DAT, PCAT, and more. Targeted practice with instant feedback." },
           ].map((f, i) => (
-            <div key={i} className="rounded-2xl p-9 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-default" style={{ background: "#FFFFFF", border: "1px solid #E8E8E8" }}>
-              <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-5" style={{ background: "rgba(197,5,12,0.06)" }}>{f.icon}</div>
-              <h3 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 20, fontWeight: 700, marginBottom: 10, color: "#282728" }}>{f.title}</h3>
-              <p style={{ fontSize: 15, lineHeight: 1.6, color: "#646569" }}>{f.desc}</p>
+            <div key={i} className="rounded-2xl p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-default" style={{ background: "#FFFFFF", border: "1px solid #E8E8E8" }}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4" style={{ background: "rgba(197,5,12,0.06)" }}>{f.icon}</div>
+              <h3 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 18, fontWeight: 700, marginBottom: 8, color: "#282728" }}>{f.title}</h3>
+              <p style={{ fontSize: 14, lineHeight: 1.6, color: "#646569" }}>{f.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Campus Life Photo Collage */}
-      <CampusPhotoCollage />
+      {/* Photo Collage */}
+      <PhotoCollage />
 
       {/* Auth */}
       <section id="auth-section" className="py-20 px-6 md:px-12 max-w-7xl mx-auto" style={{ background: "#FFFFFF" }}>
@@ -459,10 +405,6 @@ export default function AuthPage() {
       </footer>
 
       <style>{`
-        @keyframes pulseRing { 0% { transform: translate(-50%,-50%) scale(1); opacity: 0.6; } 50% { transform: translate(-50%,-50%) scale(1.15); opacity: 0.2; } 100% { transform: translate(-50%,-50%) scale(1); opacity: 0.6; } }
-        @keyframes waveform { 0%, 100% { height: 8px; } 50% { height: 28px; } }
-        @keyframes breathe { 0%, 100% { transform: translate(-50%,-50%) scale(1); box-shadow: 0 0 0 0 rgba(197,5,12,0.3); } 50% { transform: translate(-50%,-50%) scale(1.05); box-shadow: 0 0 0 16px rgba(197,5,12,0); } }
-        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>
