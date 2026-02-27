@@ -8,7 +8,6 @@ import { RealtimeVoiceHost, type RealtimeVoiceHostHandle } from "@/components/re
 import { AssignmentsPanel } from "@/components/AssignmentsPanel";
 import { StudentSwitcher } from "@/components/StudentSwitcher";
 import { StudentProfilePanel } from "@/components/StudentProfilePanel";
-import { TopUpModal } from "@/components/TopUpModal";
 import { VerificationBanner } from "@/components/VerificationBanner";
 import { AGENTS, GREETINGS, type AgentLevel } from "@/agents";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -131,7 +130,7 @@ export default function TutorPage() {
   
   // Session tracking state
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
-  const [showTopUpModal, setShowTopUpModal] = useState(false);
+  
   
   // Document selection state
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
@@ -403,7 +402,6 @@ export default function TutorPage() {
           setLocation('/dashboard?tab=subscription');
         } else if (availabilityData.reason === 'no_minutes') {
           toast({ title: "Out of Minutes", description: availabilityData.message, variant: "destructive" });
-          setShowTopUpModal(true);
         }
         setSessionState('idle');
         return;
@@ -738,7 +736,6 @@ export default function TutorPage() {
                   
                   {minutesData.remaining < 10 && (
                     <button
-                      onClick={() => setShowTopUpModal(true)}
                       className="text-primary hover:underline font-medium flex items-center gap-1"
                       data-testid="button-buy-more-minutes"
                     >
@@ -1076,11 +1073,6 @@ export default function TutorPage() {
         />
 
         {/* Minute Top-Up Modal */}
-        <TopUpModal
-          isOpen={showTopUpModal}
-          onClose={() => setShowTopUpModal(false)}
-          remainingMinutes={minutesData?.remaining}
-        />
 
       </TutorErrorBoundary>
     </NetworkAwareWrapper>

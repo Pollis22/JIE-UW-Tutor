@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { 
   User, 
-  CreditCard, 
+
   Settings, 
   BookOpen, 
   BarChart3, 
@@ -38,7 +38,6 @@ import {
   GraduationCap
 } from "lucide-react";
 import AccountSettings from "@/components/dashboard/account-settings";
-import PaymentMethods from "@/components/dashboard/payment-methods";
 import ThemeToggle from "@/components/dashboard/theme-toggle";
 import LanguageSelector from "@/components/dashboard/language-selector";
 import SessionHistory from "@/components/dashboard/session-history";
@@ -162,10 +161,8 @@ export default function DashboardPage() {
 
   const sidebarItems = [
     { id: "overview", label: "Overview", icon: Home },
-    { id: "support-live", label: "Live Support", icon: User, onClick: () => setLocation("/support") },
     { id: "account", label: "Account Settings", icon: User },
     { id: "progress", label: "Progress", icon: BarChart3 },
-    { id: "payments", label: "Payment Methods", icon: Shield },
     { id: "documents", label: "Study Materials", icon: FileText },
     { id: "sessions", label: "Transcripts", icon: BookOpen },
     { id: "analytics", label: "Usage Analytics", icon: BarChart3 },
@@ -398,13 +395,11 @@ export default function DashboardPage() {
                 </Card>
 
                 
-                <NewsletterSubscribe />
               </div>
             )}
 
             {activeTab === "account" && <AccountSettings />}
             {activeTab === "progress" && <div className="p-8 text-center text-muted-foreground">Progress tracking coming soon</div>}
-            {activeTab === "payments" && <PaymentMethods />}
             {activeTab === "documents" && (
               <Card>
                 <CardHeader>
