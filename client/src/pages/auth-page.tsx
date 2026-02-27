@@ -307,14 +307,14 @@ export default function AuthPage() {
             )}
             <div className="flex mb-6 md:mb-8 rounded-lg p-1" style={{ background: "#F3F3F3" }}>
               {(["login", "register"] as const).map(tab => (
-                <button key={tab} onClick={() => setActiveTab(tab)} className="flex-1 py-2.5 rounded-md text-sm font-semibold transition-all"
+                <button key={tab} onClick={() => { setActiveTab(tab); loginForm.reset(); registerForm.reset(); }} className="flex-1 py-2.5 rounded-md text-sm font-semibold transition-all"
                   style={{ background: activeTab === tab ? "white" : "transparent", color: activeTab === tab ? "#282728" : "#646569", boxShadow: activeTab === tab ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}>
                   {tab === "login" ? "Sign In" : "Create Account"}
                 </button>
               ))}
             </div>
             {activeTab === "login" ? (
-              <Form {...loginForm}>
+              <Form {...loginForm} key="login-form">
                 <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4 md:space-y-5">
                   <FormField control={loginForm.control} name="email" render={({ field }) => (
                     <FormItem>
@@ -353,7 +353,7 @@ export default function AuthPage() {
                 </form>
               </Form>
             ) : (
-              <Form {...registerForm}>
+              <Form {...registerForm} key="register-form">
                 <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-3 md:space-y-4">
                   <FormField control={registerForm.control} name="accountName" render={({ field }) => (
                     <FormItem>
