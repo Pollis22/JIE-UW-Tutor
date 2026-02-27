@@ -311,7 +311,6 @@ export default function AdminPageEnhanced() {
   const handleExportDirect = (type: string) => {
     let endpoint = '/api/admin/export';
     if (type === 'sessions') endpoint = '/api/admin/sessions/export';
-    if (type === 'trial-leads') endpoint = '/api/admin/trial-leads/export';
     
     // Use window.location for direct download - this ensures cookies are sent
     window.location.href = endpoint;
@@ -396,11 +395,10 @@ export default function AdminPageEnhanced() {
 
           {/* Tab Navigation */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
               <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
               <TabsTrigger value="sessions" data-testid="tab-sessions">Sessions</TabsTrigger>
-              <TabsTrigger value="trial-leads" data-testid="tab-trial-leads">Trial Leads</TabsTrigger>
               <TabsTrigger value="safety-incidents" data-testid="tab-safety-incidents">Safety</TabsTrigger>
               <TabsTrigger value="usage" data-testid="tab-usage">Usage</TabsTrigger>
             </TabsList>
@@ -950,112 +948,6 @@ export default function AdminPageEnhanced() {
                     <div className="text-center py-8 text-muted-foreground">
                       No sessions found
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Trial Leads Tab */}
-            <TabsContent value="trial-leads" className="space-y-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Mail className="h-5 w-5" />
-                      Trial Lead Emails
-                    </CardTitle>
-                    <CardDescription>
-                      Email addresses collected from free trial signups ({trialLeadsData?.total || 0} total)
-                    </CardDescription>
-                  </div>
-                  <Button 
-                    onClick={() => exportMutation.mutate('trial-leads')}
-                    disabled={exportMutation.isPending}
-                    variant="outline"
-                    className="flex items-center space-x-2"
-                    data-testid="button-export-trial-leads"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Export CSV</span>
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  {trialLeadsLoading ? (
-                    <div className="flex justify-center py-8">
-                      <div className="animate-spin w-6 h-6 border-4 border-primary border-t-transparent rounded-full" />
-                    </div>
-                  ) : (
-                    <>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Verified</TableHead>
-                            <TableHead>Time Used</TableHead>
-                            <TableHead>Created</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {trialLeadsData?.leads?.map((lead) => (
-                            <TableRow key={lead.id} data-testid={`trial-lead-row-${lead.id}`}>
-                              <TableCell className="font-medium">{lead.email || '(hidden)'}</TableCell>
-                              <TableCell>
-                                <Badge variant={
-                                  lead.status === 'active' ? 'default' :
-                                  lead.status === 'expired' ? 'secondary' :
-                                  lead.status === 'pending' ? 'outline' : 'destructive'
-                                }>
-                                  {lead.status || 'unknown'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {formatChicagoDate(lead.verifiedAt)}
-                              </TableCell>
-                              <TableCell>
-                                {lead.consumedSeconds ? `${Math.floor(lead.consumedSeconds / 60)}m ${lead.consumedSeconds % 60}s` : '0s'}
-                              </TableCell>
-                              <TableCell>
-                                {formatChicagoDateTime(lead.createdAt)}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                          {(!trialLeadsData?.leads || trialLeadsData.leads.length === 0) && (
-                            <TableRow>
-                              <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                                No trial leads yet
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                      
-                      {trialLeadsData && trialLeadsData.totalPages > 1 && (
-                        <div className="flex justify-between items-center mt-4">
-                          <p className="text-sm text-muted-foreground">
-                            Page {trialLeadsData.page} of {trialLeadsData.totalPages}
-                          </p>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setTrialLeadsPage(p => Math.max(1, p - 1))}
-                              disabled={trialLeadsPage === 1}
-                            >
-                              Previous
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setTrialLeadsPage(p => Math.min(trialLeadsData.totalPages, p + 1))}
-                              disabled={trialLeadsPage >= trialLeadsData.totalPages}
-                            >
-                              Next
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </>
                   )}
                 </CardContent>
               </Card>
