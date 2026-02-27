@@ -137,7 +137,7 @@ export default function AuthPage() {
         }}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <img src={uwLogo} alt="University of Wisconsin-Madison" className="h-14 object-contain" />
+            <img src={uwLogo} alt="University of Wisconsin-Madison" className="h-20 object-contain" />
             <div style={{ borderLeft: "1px solid #DAD7CB", paddingLeft: 16 }}>
               <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontWeight: 700, fontSize: 18, color: "#282728", lineHeight: 1.1 }}>AI Tutor</div>
               <div style={{ fontSize: 11, color: "#646569", fontWeight: 500, letterSpacing: 1.2, textTransform: "uppercase" }}>Powered by JIE Mastery</div>
