@@ -23,7 +23,7 @@ export function LiveChatWidget() {
       setError(null);
       setMessages(prev => [...prev, {
         role: 'agent',
-        content: 'Connected! How can I help you with JIE Mastery today?',
+        content: 'Connected! How can I help you with UW AI Tutor today?',
         timestamp: new Date()
       }]);
     },
@@ -115,7 +115,7 @@ export function LiveChatWidget() {
                 <Phone className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold">JIE Mastery Support</h3>
+                <h3 className="font-semibold">UW AI Tutor Support</h3>
                 <p className="text-xs text-red-100">
                   {conversation.status === 'connected' ? '● Live' : 'Connecting...'}
                 </p>

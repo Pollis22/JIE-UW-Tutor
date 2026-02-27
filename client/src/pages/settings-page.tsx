@@ -145,7 +145,7 @@ export default function SettingsPage() {
     updateSettingsMutation.mutate(data);
   };
 
-  const handleManageSubscription = () => {
+  const handleManageAccount = () => {
     createPortalSessionMutation.mutate();
   };
 
@@ -353,11 +353,11 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
 
-              {/* Subscription Settings */}
+              {/* Account Settings */}
               <Card className="shadow-sm">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle>Subscription</CardTitle>
+                    <CardTitle>Account</CardTitle>
                     {isDashboardLoading ? (
                       <Skeleton className="h-6 w-24" />
                     ) : (
@@ -426,11 +426,11 @@ export default function SettingsPage() {
                   <div className="flex space-x-3">
                     <Button 
                       type="button"
-                      onClick={handleManageSubscription}
+                      onClick={handleManageAccount}
                       disabled={createPortalSessionMutation.isPending}
                       data-testid="button-manage-subscription"
                     >
-                      {createPortalSessionMutation.isPending ? "Opening..." : "Manage Subscription"}
+                      {createPortalSessionMutation.isPending ? "Opening..." : "Manage Account"}
                     </Button>
                     <Button 
                       type="button"

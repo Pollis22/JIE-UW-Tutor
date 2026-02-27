@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { PublicMobileMenu } from "@/components/PublicMobileMenu";
-import jieLogo from "@/assets/jie-mastery-logo-sm.jpg";
+import uwLogo from '@/assets/uw-madison-logo.png';
 
 export default function DemoPage() {
   const [, setLocation] = useLocation();
@@ -13,8 +13,8 @@ export default function DemoPage() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setLocation("/auth")}>
-              <img src={jieLogo} alt="JIE Mastery" className="h-10 w-auto" />
-              <span className="text-xl font-bold text-foreground">JIE Mastery Tutor</span>
+              <img src={uwLogo} alt="UW AI Tutor" className="h-10 w-auto" />
+              <span className="text-xl font-bold text-foreground">UW AI Tutor Tutor</span>
             </div>
             {/* Desktop navigation - hidden on mobile */}
             <div className="hidden md:flex items-center space-x-4">
@@ -23,7 +23,7 @@ export default function DemoPage() {
                 onClick={() => setLocation("/benefits")} 
                 data-testid="button-nav-benefits"
               >
-                Why JIE Mastery AI Tutors
+                Why UW AI Tutor AI Tutors
               </Button>
               <Button 
                 variant="ghost" 
@@ -92,7 +92,7 @@ export default function DemoPage() {
               </span>
             </div>
             <p className="text-xl text-muted-foreground">
-              See JIE Mastery AI Tutor in action
+              See UW AI Tutor AI Tutor in action
             </p>
           </div>
 
@@ -102,7 +102,7 @@ export default function DemoPage() {
               <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
                 <iframe 
                   src="https://www.youtube.com/embed/eZoNpF0F8AI" 
-                  title="JIE Mastery AI Tutor Demo" 
+                  title="UW AI Tutor AI Tutor Demo" 
                   frameBorder="0" 
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
                   referrerPolicy="strict-origin-when-cross-origin" 

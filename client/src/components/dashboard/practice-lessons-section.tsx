@@ -238,7 +238,7 @@ export function PracticeLessonsSection() {
         doc.setPage(i);
         doc.setFontSize(9);
         doc.setTextColor(150);
-        doc.text(`JIE Mastery AI Tutor - Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
+        doc.text(`UW AI Tutor - Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
       }
 
       // Download

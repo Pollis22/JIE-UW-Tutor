@@ -23,7 +23,7 @@ interface VoiceStatusIndicatorProps {
 const STATUS_CONFIG: Record<VoiceStatusType, { emoji: string; text: string; className: string }> = {
   listening: {
     emoji: '🟢',
-    text: 'JIE is listening...',
+    text: 'Tutor is listening...',
     className: 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400'
   },
   hearing_you: {
@@ -33,12 +33,12 @@ const STATUS_CONFIG: Record<VoiceStatusType, { emoji: string; text: string; clas
   },
   thinking: {
     emoji: '🤔',
-    text: 'JIE is thinking...',
+    text: 'Tutor is thinking...',
     className: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
   },
   speaking: {
     emoji: '🔊',
-    text: 'JIE is speaking...',
+    text: 'Tutor is speaking...',
     className: 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400'
   },
   listen_only: {

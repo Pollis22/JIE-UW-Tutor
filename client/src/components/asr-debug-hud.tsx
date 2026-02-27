@@ -1,5 +1,5 @@
 /**
- * JIE Mastery AI Tutor Platform
+ * UW AI Tutor Platform
  * Copyright (c) 2025 JIE Mastery AI, Inc.
  * All Rights Reserved.
  * 

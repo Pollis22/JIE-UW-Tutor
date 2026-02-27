@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatChicagoDateTime, formatChicagoDate } from "@/lib/date-utils";
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Download, Users, Clock, Activity, TrendingUp, FileText, DollarSign, Mail, Shield, AlertTriangle, Eye, BarChart3, Calendar } from "lucide-react";
+import { Download, Users, Clock, Activity, TrendingUp, FileText, Mail, Shield, AlertTriangle, Eye, BarChart3, Calendar } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface PageViewsStats {
@@ -27,7 +27,7 @@ interface PageViewsStats {
 
 interface AdminStats {
   totalUsers?: number;
-  activeSubscriptions?: number;
+  activeStudents?: number;
   avgSessionTime?: string;
   monthlyRevenue?: number;
   totalVoiceMinutes?: number;
@@ -65,12 +65,12 @@ interface AdminUser {
   username: string;
   email: string;
   isAdmin: boolean;
-  subscriptionStatus?: string;
-  subscriptionPlan?: string;
+  status?: string;
+  gradeBand?: string;
   voiceMinutesRemaining?: number;
   purchasedMinutesBalance?: number;
-  subscriptionMinutesUsed?: number;
-  subscriptionMinutesLimit?: number;
+  minutesUsed?: number;
+  minutesLimit?: number;
   maxConcurrentLogins?: number;
   firstName?: string;
   lastName?: string;
@@ -164,10 +164,10 @@ interface TopUsageUser {
   lastName?: string;
   parentName?: string;
   studentName?: string;
-  subscriptionPlan?: string;
-  subscriptionStatus?: string;
-  subscriptionMinutesUsed?: number;
-  subscriptionMinutesLimit?: number;
+  gradeBand?: string;
+  status?: string;
+  minutesUsed?: number;
+  minutesLimit?: number;
   purchasedMinutesBalance?: number;
   isTrialActive?: boolean;
   trialMinutesUsed?: number;
@@ -501,15 +501,15 @@ export default function AdminPageEnhanced() {
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Active Subscriptions</CardTitle>
+                    <CardTitle className="text-sm font-medium">Active Students</CardTitle>
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold" data-testid="text-active-subscriptions">
-                      {stats?.activeSubscriptions || 0}
+                      {stats?.activeStudents || 0}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {((stats?.activeSubscriptions || 0) / (stats?.totalUsers || 1) * 100).toFixed(1)}% conversion
+                      {((stats?.activeStudents || 0) / (stats?.totalUsers || 1) * 100).toFixed(1)}% active
                     </p>
                   </CardContent>
                 </Card>
@@ -550,24 +550,24 @@ export default function AdminPageEnhanced() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
-                      <DollarSign className="w-5 h-5" />
-                      <span>Revenue Overview</span>
+                      <BarChart3 className="w-5 h-5" />
+                      <span>Engagement Overview</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Monthly Recurring Revenue</span>
-                      <span className="text-lg font-bold">${stats?.monthlyRevenue || 0}</span>
+                      <span className="text-sm text-muted-foreground">Total Voice Sessions</span>
+                      <span className="text-lg font-bold">{stats?.totalSessions || 0}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Avg Revenue Per User</span>
+                      <span className="text-sm text-muted-foreground">Avg Sessions Per Student</span>
                       <span className="text-lg font-bold">
-                        ${(stats && stats.totalUsers && stats.totalUsers > 0) ? ((stats.monthlyRevenue || 0) / stats.totalUsers).toFixed(2) : '0.00'}
+                        {(stats && stats.totalUsers && stats.totalUsers > 0) ? ((stats.totalSessions || 0) / stats.totalUsers).toFixed(1) : "0"}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Total Lifetime Value</span>
-                      <span className="text-lg font-bold">${((stats?.monthlyRevenue || 0) * 12).toFixed(2)}</span>
+                      <span className="text-lg font-bold">{stats?.totalSessions || 0} total</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -667,7 +667,7 @@ export default function AdminPageEnhanced() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle>User Management</CardTitle>
-                      <CardDescription>Manage user accounts, subscriptions, and contact information</CardDescription>
+                      <CardDescription>Manage student accounts and contact information</CardDescription>
                     </div>
                     <form onSubmit={handleSearch} className="flex items-center space-x-2">
                       <Input
@@ -742,8 +742,8 @@ export default function AdminPageEnhanced() {
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant={userData.subscriptionPlan === 'elite' ? 'default' : 'secondary'}>
-                                    {userData.subscriptionPlan?.toUpperCase() || 'Starter'}
+                                  <Badge variant={userData.gradeBand === 'ADV' ? 'default' : 'secondary'}>
+                                    {userData.gradeBand?.toUpperCase() || 'College'}
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
@@ -762,7 +762,7 @@ export default function AdminPageEnhanced() {
                                     ) : (
                                       <>
                                         <div className="font-medium">
-                                          {userData.subscriptionMinutesUsed || 0} / {userData.subscriptionMinutesLimit || 0} min
+                                          {userData.minutesUsed || 0} / {userData.minutesLimit || 0} min
                                         </div>
                                         <div className="text-xs text-muted-foreground">
                                           +{userData.purchasedMinutesBalance || 0} purchased
@@ -775,8 +775,8 @@ export default function AdminPageEnhanced() {
                                   {userData.maxConcurrentLogins || 1}/{userData.maxConcurrentLogins || 1}
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant={userData.subscriptionStatus === 'active' ? 'default' : 'secondary'}>
-                                    {userData.subscriptionStatus || 'Active'}
+                                  <Badge variant={userData.status === 'active' ? 'default' : 'secondary'}>
+                                    {userData.status || 'Active'}
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
@@ -1252,8 +1252,8 @@ export default function AdminPageEnhanced() {
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
                               <TableCell>
-                                <Badge variant={user.subscriptionPlan === 'elite' ? 'default' : 'secondary'}>
-                                  {user.subscriptionPlan?.toUpperCase() || 'FREE'}
+                                <Badge variant={user.gradeBand === 'ADV' ? 'default' : 'secondary'}>
+                                  {user.gradeBand?.toUpperCase() || 'College'}
                                 </Badge>
                               </TableCell>
                               <TableCell>
@@ -1270,10 +1270,10 @@ export default function AdminPageEnhanced() {
                                   ) : (
                                     <>
                                       <div className="font-medium">
-                                        {user.subscriptionMinutesUsed || 0} / {user.subscriptionMinutesLimit || 0}
+                                        {user.minutesUsed || 0} / {user.minutesLimit || 0}
                                       </div>
                                       <div className="text-xs text-muted-foreground">
-                                        {user.subscriptionMinutesLimit ? Math.round(((user.subscriptionMinutesUsed || 0) / user.subscriptionMinutesLimit) * 100) : 0}% used
+                                        {user.minutesLimit ? Math.round(((user.minutesUsed || 0) / user.minutesLimit) * 100) : 0}% used
                                       </div>
                                     </>
                                   )}

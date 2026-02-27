@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocation } from "wouter";
 import { PublicMobileMenu } from "@/components/PublicMobileMenu";
-import jieLogo from "@/assets/jie-mastery-logo-sm.jpg";
+import uwLogo from '@/assets/uw-madison-logo.png';
 import { StartTrialButton } from "@/components/StartTrialButton";
 import { 
   BookOpen, 
@@ -42,14 +42,14 @@ export default function BenefitsPage() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setLocation("/")}>
-              <img src={jieLogo} alt="JIE Mastery" className="h-10 w-auto" />
-              <span className="text-xl font-bold text-foreground">JIE Mastery</span>
+              <img src={uwLogo} alt="UW AI Tutor" className="h-10 w-auto" />
+              <span className="text-xl font-bold text-foreground">UW AI Tutor</span>
             </div>
             
             {/* Standard Navigation Links */}
             <div className="hidden md:flex items-center space-x-6">
               <a href="#benefits" className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="link-nav-why">
-                Why JIE Mastery AI Tutors
+                Why UW AI Tutor AI Tutors
               </a>
               <button onClick={() => setLocation("/demo")} className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="link-nav-demo">
                 Tutor Demo
@@ -76,7 +76,7 @@ export default function BenefitsPage() {
                 View Pricing
               </Button>
               <Button variant="default" onClick={handleCTA} data-testid="button-nav-cta">
-                Try JIE Mastery AI Tutor
+                Try UW AI Tutor AI Tutor
               </Button>
             </div>
             <PublicMobileMenu onSignIn={() => setLocation("/auth?action=login")} />
@@ -109,7 +109,7 @@ export default function BenefitsPage() {
               <div className="flex flex-col gap-4 max-w-sm mx-auto lg:mx-0 pt-2">
                 <StartTrialButton size="lg" className="text-lg h-14 w-full" showSubtext />
                 <Button size="lg" onClick={handleCTA} className="text-lg h-14 w-full" data-testid="button-hero-cta">
-                  Try JIE Mastery AI Tutor
+                  Try UW AI Tutor AI Tutor
                 </Button>
                 <Button size="lg" onClick={() => setLocation("/support")} className="text-lg h-14 w-full bg-red-600 hover:bg-red-700 text-white border-0" data-testid="button-chat-live">
                   Chat with Live AI Agent
@@ -130,7 +130,7 @@ export default function BenefitsPage() {
                   <div className="aspect-video w-full">
                     <iframe
                       src="https://www.youtube.com/embed/e8WgxSMhnGY"
-                      title="JIE Mastery AI Tutor"
+                      title="UW AI Tutor AI Tutor"
                       className="w-full h-full"
                       frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -149,7 +149,7 @@ export default function BenefitsPage() {
       <section className="py-20 bg-card">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto mb-14">
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Why Families Choose JIE Mastery for Homework Help</h2>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Why Families Choose UW AI Tutor for Homework Help</h2>
             <p className="text-lg text-muted-foreground">Affordable AI tutoring that builds real understanding for students of all ages.</p>
           </div>
           
@@ -225,7 +225,7 @@ export default function BenefitsPage() {
 
           <div className="text-center mt-12">
             <Button size="lg" variant="outline" onClick={handleCTA} className="text-lg h-12 px-8" data-testid="button-features-cta">
-              Try JIE Mastery AI Tutor
+              Try UW AI Tutor AI Tutor
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
@@ -236,7 +236,7 @@ export default function BenefitsPage() {
       <section className="py-20 bg-card">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto mb-14">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">How JIE Mastery AI Tutor Works</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">How UW AI Tutor AI Tutor Works</h2>
             <p className="text-lg text-muted-foreground">Three simple steps to better learning.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -387,7 +387,7 @@ export default function BenefitsPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" variant="secondary" onClick={handleCTA} className="text-lg h-14 px-8" data-testid="button-final-cta">
-              Try JIE Mastery AI Tutor
+              Try UW AI Tutor AI Tutor
             </Button>
             <Button size="lg" onClick={handlePricing} className="text-lg h-14 px-8 bg-white/20 hover:bg-white/30 text-white border-0" data-testid="button-final-pricing">
               View Pricing
@@ -401,8 +401,8 @@ export default function BenefitsPage() {
       <footer className="py-12 border-t border-border">
         <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-muted-foreground">
           <div className="flex items-center space-x-2">
-            <img src={jieLogo} alt="JIE Mastery" className="h-6 w-auto grayscale opacity-50" />
-            <span>&copy; 2026 JIE Mastery AI Tutor. All rights reserved.</span>
+            <img src={uwLogo} alt="UW AI Tutor" className="h-6 w-auto grayscale opacity-50" />
+            <span>&copy; 2026 UW AI Tutor AI Tutor. All rights reserved.</span>
           </div>
           <div className="flex space-x-6">
             <a onClick={() => setLocation("/terms")} className="hover:text-primary cursor-pointer transition-colors">Terms</a>
@@ -415,7 +415,7 @@ export default function BenefitsPage() {
       {/* Sticky Mobile CTA */}
       <div className="sm:hidden fixed bottom-4 left-4 right-4 z-[60]">
         <Button onClick={handleCTA} className="w-full h-14 shadow-2xl rounded-2xl text-lg font-bold" data-testid="button-mobile-sticky">
-          Try JIE Mastery AI Tutor
+          Try UW AI Tutor AI Tutor
         </Button>
       </div>
     </div>

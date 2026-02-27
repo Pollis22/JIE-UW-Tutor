@@ -38,14 +38,12 @@ import {
   GraduationCap
 } from "lucide-react";
 import AccountSettings from "@/components/dashboard/account-settings";
-import SubscriptionManager from "@/components/dashboard/subscription-manager";
 import PaymentMethods from "@/components/dashboard/payment-methods";
 import ThemeToggle from "@/components/dashboard/theme-toggle";
 import LanguageSelector from "@/components/dashboard/language-selector";
 import SessionHistory from "@/components/dashboard/session-history";
 import UsageAnalytics from "@/components/dashboard/usage-analytics";
 import SupportCenter from "@/components/dashboard/support-center";
-import NewsletterSubscribe from "@/components/dashboard/newsletter-subscribe";
 import { AssignmentsPanel } from "@/components/AssignmentsPanel";
 import { PracticeLessonsSection } from "@/components/dashboard/practice-lessons-section";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -62,7 +60,7 @@ export default function DashboardPage() {
     console.log('[Dashboard] activeTab state is now:', activeTab);
   }, [activeTab]);
 
-  // Meta Pixel & Google Ads: Track subscription purchase/upgrade on successful checkout redirect
+  // Tracking disabled for UW deployment
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get('session_id');
@@ -106,8 +104,8 @@ export default function DashboardPage() {
 
   // Fetch voice balance
   const { data: voiceBalance } = useQuery<{
-    subscriptionMinutes: number;
-    subscriptionLimit: number;
+    voiceMinutes: number;
+    minutesLimit: number;
     purchasedMinutes: number;
     totalAvailable: number;
     resetDate: string;
@@ -166,7 +164,7 @@ export default function DashboardPage() {
     { id: "overview", label: "Overview", icon: Home },
     { id: "support-live", label: "Live Support", icon: User, onClick: () => setLocation("/support") },
     { id: "account", label: "Account Settings", icon: User },
-    { id: "subscription", label: "Subscription", icon: CreditCard },
+    { id: "progress", label: "Progress", icon: BarChart3 },
     { id: "payments", label: "Payment Methods", icon: Shield },
     { id: "documents", label: "Study Materials", icon: FileText },
     { id: "sessions", label: "Transcripts", icon: BookOpen },
@@ -292,14 +290,14 @@ export default function DashboardPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Plan</span>
                   <Badge variant="default">
-                    {user?.subscriptionPlan || "Free"}
+                    {"UW Student"}
                   </Badge>
                 </div>
 
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Status</span>
-                  <Badge variant={user?.subscriptionStatus === 'active' ? 'default' : 'secondary'}>
-                    {user?.subscriptionStatus || "Inactive"}
+                  <Badge variant={true ? 'default' : 'secondary'}>
+                    {"Active"}
                   </Badge>
                 </div>
               </CardContent>
@@ -399,13 +397,13 @@ export default function DashboardPage() {
                   </CardContent>
                 </Card>
 
-                {/* Newsletter Subscription */}
+                
                 <NewsletterSubscribe />
               </div>
             )}
 
             {activeTab === "account" && <AccountSettings />}
-            {activeTab === "subscription" && <SubscriptionManager />}
+            {activeTab === "progress" && <div className="p-8 text-center text-muted-foreground">Progress tracking coming soon</div>}
             {activeTab === "payments" && <PaymentMethods />}
             {activeTab === "documents" && (
               <Card>

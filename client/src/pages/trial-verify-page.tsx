@@ -84,7 +84,7 @@ export default function TrialVerifyPage() {
       <Card className="max-w-md w-full">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <h1 className="text-3xl font-bold text-red-600">JIE Mastery</h1>
+            <h1 className="text-3xl font-bold text-red-600">UW AI Tutor</h1>
           </div>
           <CardTitle data-testid="text-title">
             {status === 'verifying' && 'Verifying Your Email...'}

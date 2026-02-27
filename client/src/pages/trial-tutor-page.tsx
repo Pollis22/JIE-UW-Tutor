@@ -923,7 +923,7 @@ export default function TrialTutorPage() {
           <Card className="shadow-xl">
             <CardHeader className="text-center border-b">
               <CardTitle className="text-2xl font-bold text-red-600">
-                JIE Mastery AI Tutor - Free Trial
+                UW AI Tutor AI Tutor - Free Trial
               </CardTitle>
               <div className="space-y-1">
                 <p className="text-gray-600 dark:text-gray-400">

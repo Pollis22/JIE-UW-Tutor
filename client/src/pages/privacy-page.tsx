@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import jieLogo from "@/assets/jie-mastery-logo-sm.jpg";
+import uwLogo from '@/assets/uw-madison-logo.png';
 
 export default function PrivacyPage() {
   const [, setLocation] = useLocation();
@@ -12,8 +12,8 @@ export default function PrivacyPage() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setLocation("/auth")}>
-              <img src={jieLogo} alt="JIE Mastery" className="h-10 w-auto" />
-              <span className="text-xl font-bold text-foreground">JIE Mastery Tutor</span>
+              <img src={uwLogo} alt="UW AI Tutor" className="h-10 w-auto" />
+              <span className="text-xl font-bold text-foreground">UW AI Tutor Tutor</span>
             </div>
             <div className="flex items-center space-x-4">
               <Button 
@@ -21,7 +21,7 @@ export default function PrivacyPage() {
                 onClick={() => setLocation("/benefits")} 
                 data-testid="button-nav-benefits"
               >
-                Why JIE Mastery AI Tutors
+                Why UW AI Tutor AI Tutors
               </Button>
               <Button 
                 variant="ghost" 
@@ -71,7 +71,7 @@ export default function PrivacyPage() {
 
           <div className="space-y-8 text-foreground">
             <p>
-              At JIE Mastery AI Tutor, your family's privacy and safety come first. We are committed to protecting 
+              At UW AI Tutor AI Tutor, your family's privacy and safety come first. We are committed to protecting 
               the personal information of all users — especially children — in compliance with the Children's Online 
               Privacy Protection Act (COPPA) and other applicable privacy laws.
             </p>

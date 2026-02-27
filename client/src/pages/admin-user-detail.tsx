@@ -51,10 +51,10 @@ interface UserDetails {
     email: string;
     studentName?: string;
     gradeLevel?: string;
-    subscriptionPlan?: string;
-    subscriptionStatus?: string;
-    subscriptionMinutesLimit?: number;
-    subscriptionMinutesUsed?: number;
+    enrollmentPlan?: string;
+    enrollmentStatus?: string;
+    enrollmentMinutesLimit?: number;
+    enrollmentMinutesUsed?: number;
     purchasedMinutesBalance?: number;
     createdAt: string;
     emailVerified?: boolean;
@@ -62,7 +62,7 @@ interface UserDetails {
     isDisabled?: boolean;
     deletedAt?: string;
     stripeCustomerId?: string;
-    stripeSubscriptionId?: string;
+    stripeEnrollmentId?: string;
   };
   stats: {
     totalSessions: number;
@@ -106,16 +106,16 @@ export default function AdminUserDetail() {
     enabled: !!userId,
   });
 
-  const cancelSubscriptionMutation = useMutation({
+  const cancelEnrollmentMutation = useMutation({
     mutationFn: async (cancelImmediately: boolean) => {
-      const response = await apiRequest("POST", `/api/admin/users/${userId}/cancel-subscription`, {
+      const response = await apiRequest("POST", `/api/admin/users/${userId}/cancel-enrollment`, {
         cancelImmediately,
       });
       return response.json();
     },
     onSuccess: (data) => {
       toast({
-        title: "Subscription Canceled",
+        title: "Enrollment Canceled",
         description: data.message,
       });
       setShowCancelModal(false);
@@ -124,7 +124,7 @@ export default function AdminUserDetail() {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to cancel subscription",
+        description: error.message || "Failed to cancel enrollment",
         variant: "destructive",
       });
     },
@@ -215,7 +215,7 @@ export default function AdminUserDetail() {
   }
 
   const { user, stats, recentSessions, documents } = data;
-  const hasActiveSubscription = user.subscriptionStatus === 'active';
+  const hasActiveEnrollment = user.enrollmentStatus === 'active';
   const isDeleted = !!user.deletedAt;
 
   return (
@@ -300,7 +300,7 @@ export default function AdminUserDetail() {
               Admin Actions
             </CardTitle>
             <CardDescription>
-              Manage this user's account, subscription, and access
+              Manage this user's account, enrollment, and access
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -326,21 +326,21 @@ export default function AdminUserDetail() {
               <div className="flex items-center gap-3">
                 <XCircle className="w-5 h-5 text-muted-foreground" />
                 <div>
-                  <p className="font-medium">Cancel Subscription</p>
+                  <p className="font-medium">Cancel Enrollment</p>
                   <p className="text-sm text-muted-foreground">
-                    {hasActiveSubscription 
-                      ? `Plan: ${user.subscriptionPlan} - Cancel in Stripe and update database`
-                      : 'No active subscription'}
+                    {hasActiveEnrollment 
+                      ? `Plan: ${user.enrollmentPlan} - Cancel in Stripe and update database`
+                      : 'No active enrollment'}
                   </p>
                 </div>
               </div>
               <Button
                 variant="outline"
                 onClick={() => setShowCancelModal(true)}
-                disabled={!hasActiveSubscription || isDeleted}
-                data-testid="button-cancel-subscription"
+                disabled={!hasActiveEnrollment || isDeleted}
+                data-testid="button-cancel-enrollment"
               >
-                Cancel Subscription
+                Cancel Enrollment
               </Button>
             </div>
 
@@ -350,7 +350,7 @@ export default function AdminUserDetail() {
                 <div>
                   <p className="font-medium text-destructive">Delete Account</p>
                   <p className="text-sm text-muted-foreground">
-                    Soft-delete account, cancel subscription, optionally purge data
+                    Soft-delete account, cancel enrollment, optionally purge data
                   </p>
                 </div>
               </div>
@@ -400,7 +400,7 @@ export default function AdminUserDetail() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="w-5 h-5" />
-                Subscription Details
+                Enrollment Details
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -408,27 +408,27 @@ export default function AdminUserDetail() {
                 <div>
                   <p className="text-sm text-muted-foreground">Plan</p>
                   <Badge 
-                    variant={user.subscriptionStatus === "active" ? "default" : "secondary"}
+                    variant={user.enrollmentStatus === "active" ? "default" : "secondary"}
                     className="mt-1"
-                    data-testid="badge-subscription-plan"
+                    data-testid="badge-enrollment-plan"
                   >
-                    {user.subscriptionPlan || "None"}
+                    {user.enrollmentPlan || "None"}
                   </Badge>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
                   <Badge 
-                    variant={user.subscriptionStatus === "active" ? "default" : "outline"}
+                    variant={user.enrollmentStatus === "active" ? "default" : "outline"}
                     className="mt-1"
-                    data-testid="badge-subscription-status"
+                    data-testid="badge-enrollment-status"
                   >
-                    {user.subscriptionStatus || "Inactive"}
+                    {user.enrollmentStatus || "Inactive"}
                   </Badge>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Monthly Minutes</p>
                   <p className="font-medium" data-testid="text-monthly-minutes">
-                    {user.subscriptionMinutesUsed || 0} / {user.subscriptionMinutesLimit || 0}
+                    {user.enrollmentMinutesUsed || 0} / {user.enrollmentMinutesLimit || 0}
                   </p>
                 </div>
                 <div>
@@ -533,10 +533,10 @@ export default function AdminUserDetail() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <XCircle className="w-5 h-5" />
-              Cancel Subscription
+              Cancel Enrollment
             </DialogTitle>
             <DialogDescription>
-              Cancel the subscription for {user.email}. This will update Stripe and the database.
+              Cancel the enrollment for {user.email}. This will update Stripe and the database.
             </DialogDescription>
           </DialogHeader>
           
@@ -554,7 +554,7 @@ export default function AdminUserDetail() {
               </Select>
               <p className="text-sm text-muted-foreground">
                 {cancelOption === 'immediate' 
-                  ? 'Subscription ends immediately. User loses access right away.'
+                  ? 'Enrollment ends immediately. User loses access right away.'
                   : 'User keeps access until the end of their current billing period.'}
               </p>
             </div>
@@ -566,11 +566,11 @@ export default function AdminUserDetail() {
             </Button>
             <Button 
               variant="destructive" 
-              onClick={() => cancelSubscriptionMutation.mutate(cancelOption === 'immediate')}
-              disabled={cancelSubscriptionMutation.isPending}
-              data-testid="button-confirm-cancel-subscription"
+              onClick={() => cancelEnrollmentMutation.mutate(cancelOption === 'immediate')}
+              disabled={cancelEnrollmentMutation.isPending}
+              data-testid="button-confirm-cancel-enrollment"
             >
-              {cancelSubscriptionMutation.isPending ? 'Canceling...' : 'Confirm Cancel'}
+              {cancelEnrollmentMutation.isPending ? 'Canceling...' : 'Confirm Cancel'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -585,7 +585,7 @@ export default function AdminUserDetail() {
             </DialogTitle>
             <DialogDescription>
               This action will soft-delete the account for {user.email}. 
-              The subscription will be canceled and the user will be disabled.
+              The enrollment will be canceled and the user will be disabled.
             </DialogDescription>
           </DialogHeader>
           

@@ -50,8 +50,8 @@ const STATUS_CONFIG: Record<MicStatus, {
     textColor: 'text-amber-600 dark:text-amber-400',
   },
   tutor_speaking: {
-    label: 'JIE Speaking',
-    ariaLabel: 'JIE is speaking',
+    label: 'Tutor Speaking',
+    ariaLabel: 'Tutor is speaking',
     icon: Volume2,
     bgColor: 'bg-purple-100 dark:bg-purple-900/40',
     textColor: 'text-purple-600 dark:text-purple-400',

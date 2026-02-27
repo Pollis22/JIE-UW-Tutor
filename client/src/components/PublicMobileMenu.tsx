@@ -23,7 +23,7 @@ export function PublicMobileMenu({ onSignIn }: PublicMobileMenuProps) {
   };
 
   const menuItems = [
-    { label: "Why JIE Mastery", path: "/benefits", icon: Sparkles },
+    { label: "Why UW AI Tutor", path: "/benefits", icon: Sparkles },
     { label: "Demo", path: "/demo", icon: Play },
     { label: "Pricing", path: "/pricing", icon: DollarSign },
     { label: "FAQ", path: "/faq", icon: HelpCircle },

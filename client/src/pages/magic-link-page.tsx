@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, CheckCircle, AlertCircle, ArrowRight, Play } from "lucide-react";
-import jieLogo from "@/assets/jie-mastery-logo-sm.jpg";
+import uwLogo from '@/assets/uw-madison-logo.png';
 
 export default function MagicLinkPage() {
   const [, setLocation] = useLocation();
@@ -70,7 +70,7 @@ export default function MagicLinkPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <img src={jieLogo} alt="JIE Mastery" className="h-16 w-auto" />
+            <img src={uwLogo} alt="UW AI Tutor" className="h-16 w-auto" />
           </div>
           <CardTitle className="text-2xl">
             {status === 'validating' && 'Signing you in...'}
@@ -144,7 +144,7 @@ export default function MagicLinkPage() {
                 <AlertCircle className="h-4 w-4 text-amber-600" />
                 <AlertTitle className="text-amber-800">Trial Ended</AlertTitle>
                 <AlertDescription className="text-amber-700">
-                  Your free trial has ended. Sign up now to continue learning with JIE Mastery!
+                  Your free trial has ended. Sign up now to continue learning with UW AI Tutor!
                 </AlertDescription>
               </Alert>
               <div className="space-y-2">

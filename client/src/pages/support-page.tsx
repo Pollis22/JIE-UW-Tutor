@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { PublicMobileMenu } from "@/components/PublicMobileMenu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, HelpCircle, Mail, MessageCircle } from "lucide-react";
-import jieLogo from "@/assets/jie-mastery-logo-sm.jpg";
+import uwLogo from '@/assets/uw-madison-logo.png';
 import { LiveChatWidget } from "@/components/LiveChatWidget";
 
 export default function SupportPage() {
@@ -16,8 +16,8 @@ export default function SupportPage() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setLocation("/auth")}>
-              <img src={jieLogo} alt="JIE Mastery" className="h-10 w-auto" />
-              <span className="text-xl font-bold text-foreground">JIE Mastery Tutor</span>
+              <img src={uwLogo} alt="UW AI Tutor" className="h-10 w-auto" />
+              <span className="text-xl font-bold text-foreground">UW AI Tutor Tutor</span>
             </div>
             <div className="hidden md:flex items-center space-x-4">
               <Button 
@@ -25,7 +25,7 @@ export default function SupportPage() {
                 onClick={() => setLocation("/benefits")} 
                 data-testid="button-nav-benefits"
               >
-                Why JIE Mastery AI Tutors
+                Why UW AI Tutor AI Tutors
               </Button>
               <Button 
                 variant="ghost" 
@@ -83,7 +83,7 @@ export default function SupportPage() {
               Support Center
             </h1>
             <p className="text-xl text-muted-foreground">
-              We're here to help you get the most out of JIE Mastery AI Tutor
+              We're here to help you get the most out of UW AI Tutor AI Tutor
             </p>
           </div>
 

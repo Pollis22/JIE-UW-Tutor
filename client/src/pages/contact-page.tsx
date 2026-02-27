@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Mail, MessageSquare, Clock } from "lucide-react";
-import jieLogo from "@/assets/jie-mastery-logo-sm.jpg";
+import uwLogo from '@/assets/uw-madison-logo.png';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -75,8 +75,8 @@ export default function ContactPage() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setLocation("/auth")}>
-              <img src={jieLogo} alt="JIE Mastery" className="h-10 w-auto" />
-              <span className="text-xl font-bold text-foreground">JIE Mastery Tutor</span>
+              <img src={uwLogo} alt="UW AI Tutor" className="h-10 w-auto" />
+              <span className="text-xl font-bold text-foreground">UW AI Tutor Tutor</span>
             </div>
             <div className="hidden md:flex items-center space-x-4">
               <Button 
@@ -84,7 +84,7 @@ export default function ContactPage() {
                 onClick={() => setLocation("/benefits")} 
                 data-testid="button-nav-benefits"
               >
-                Why JIE Mastery AI Tutors
+                Why UW AI Tutor AI Tutors
               </Button>
               <Button 
                 variant="ghost" 
@@ -157,7 +157,7 @@ export default function ContactPage() {
                   <CardTitle className="text-lg">Email Us</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground">support@JIEmastery.ai</p>
+                  <p className="text-sm text-muted-foreground">support@wisc.edu</p>
                 </CardContent>
               </Card>
 

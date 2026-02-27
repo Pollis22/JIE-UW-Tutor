@@ -27,9 +27,9 @@ interface AdminUser {
   createdAt: string;
   lastActiveAt?: string | null;
   isAdmin: boolean;
-  subscriptionStatus?: string;
-  subscriptionPlan?: string;
-  subscriptionEndDate?: string;
+  enrollmentStatus?: string;
+  enrollmentPlan?: string;
+  enrollmentEndDate?: string;
   voiceMinutesRemaining?: number;
   bonusMinutes?: number;
   gradeLevel?: string;
@@ -131,7 +131,7 @@ export default function AdminUsers() {
                     <tr className="border-b">
                       <th className="text-left p-3 font-semibold">User</th>
                       <th className="text-left p-3 font-semibold">Grade Level</th>
-                      <th className="text-left p-3 font-semibold">Subscription</th>
+                      <th className="text-left p-3 font-semibold">enrollment</th>
                       <th className="text-left p-3 font-semibold">Minutes</th>
                       <th className="text-left p-3 font-semibold">Created</th>
                       <th className="text-left p-3 font-semibold">Last Active</th>
@@ -154,14 +154,14 @@ export default function AdminUsers() {
                           <span className="text-sm">{user.gradeLevel || "N/A"}</span>
                         </td>
                         <td className="p-3">
-                          {user.subscriptionStatus ? (
+                          {user.enrollmentStatus ? (
                             <Badge
-                              variant={user.subscriptionStatus === "active" ? "default" : "secondary"}
+                              variant={user.enrollmentStatus === "active" ? "default" : "secondary"}
                             >
-                              {user.subscriptionPlan || "N/A"}
+                              {user.enrollmentPlan || "N/A"}
                             </Badge>
                           ) : (
-                            <span className="text-sm text-muted-foreground">No subscription</span>
+                            <span className="text-sm text-muted-foreground">No enrollment</span>
                           )}
                         </td>
                         <td className="p-3">

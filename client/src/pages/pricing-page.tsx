@@ -432,7 +432,7 @@ export default function PricingPage() {
       <footer className="bg-card border-t border-border py-8">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <p className="text-muted-foreground">&copy; 2025 JIE Mastery Tutor. All rights reserved.</p>
+            <p className="text-muted-foreground">&copy; 2025 UW AI Tutor Tutor. All rights reserved.</p>
             <div className="flex space-x-6">
               <button
                 onClick={() => setLocation("/terms")}

@@ -28,7 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import jieLogo from "@/assets/jie-mastery-logo-sm.jpg";
+import uwLogo from '@/assets/uw-madison-logo.png';
 import tutorHero from "@/assets/tutor-hero.png";
 
 interface ProgressData {
@@ -650,13 +650,13 @@ export default function TutorPage() {
               <div className="flex-1" />
               <div className="flex items-center gap-3">
                 <img 
-                  src={jieLogo} 
-                  alt="JIE Mastery Logo" 
+                  src={uwLogo} 
+                  alt="UW AI Tutor Logo" 
                   className="h-12 w-auto"
-                  data-testid="img-jie-logo"
+                  data-testid="img-uw-logo"
                 />
                 <h1 id="page-title" className="text-2xl font-bold text-foreground">
-                  JIE Mastery Tutor — Multi-Agent
+                  UW AI Tutor Tutor — Multi-Agent
                 </h1>
               </div>
               <div className="flex-1 flex justify-end items-center gap-2">
@@ -764,7 +764,7 @@ export default function TutorPage() {
               <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors">
                 <h3 className="font-bold text-blue-900 dark:text-blue-100 flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-blue-600" />
-                  How to Use JIE Mastery Tutor
+                  How to Use UW AI Tutor Tutor
                 </h3>
                 <ChevronDown className="h-5 w-5 text-blue-600 transition-transform duration-200 group-data-[state=open]:rotate-180" />
               </div>

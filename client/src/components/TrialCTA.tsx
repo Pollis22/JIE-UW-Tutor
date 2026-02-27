@@ -486,7 +486,7 @@ export function TrialCTA({ variant = 'primary', size = 'md', className = '', sho
             
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-2" data-testid="notice-trial-demo">
               <p className="text-xs text-gray-500 leading-relaxed" style={{ fontSize: '12px' }}>
-                <span className="font-medium text-gray-600">Free Trial Notice:</span> This trial runs in a lightweight demo mode for speed and reliability. To unlock the full JIE Mastery experience (profiles, more subjects, saved history, and full features), create a full account.
+                <span className="font-medium text-gray-600">Free Trial Notice:</span> This trial runs in a lightweight demo mode for speed and reliability. To unlock the full UW AI Tutor experience (profiles, more subjects, saved history, and full features), create a full account.
               </p>
             </div>
             
@@ -573,7 +573,7 @@ export function TrialCTA({ variant = 'primary', size = 'md', className = '', sho
                   
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-2" data-testid="notice-trial-demo-continue">
                     <p className="text-xs text-gray-500 leading-relaxed" style={{ fontSize: '12px' }}>
-                      <span className="font-medium text-gray-600">Free Trial Notice:</span> This trial runs in a lightweight demo mode for speed and reliability. To unlock the full JIE Mastery experience (profiles, more subjects, saved history, and full features), create a full account.
+                      <span className="font-medium text-gray-600">Free Trial Notice:</span> This trial runs in a lightweight demo mode for speed and reliability. To unlock the full UW AI Tutor experience (profiles, more subjects, saved history, and full features), create a full account.
                     </p>
                   </div>
                   

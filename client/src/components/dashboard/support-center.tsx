@@ -1,5 +1,5 @@
 /**
- * JIE Mastery AI Tutor Platform
+ * UW AI Tutor Platform
  * Copyright (c) 2025 JIE Mastery AI, Inc.
  * All Rights Reserved.
  * 
@@ -155,7 +155,7 @@ export default function SupportCenter() {
     <Card>
       <CardHeader>
         <CardTitle>Support & Help</CardTitle>
-        <CardDescription>Get help with JIE Mastery Tutor</CardDescription>
+        <CardDescription>Get help with UW AI Tutor</CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="faq" className="space-y-4">
@@ -203,8 +203,8 @@ export default function SupportCenter() {
               <Mail className="h-4 w-4" />
               <AlertDescription>
                 For general inquiries, email us at{" "}
-                <a href="mailto:support@JIEmastery.ai" className="font-medium underline">
-                  support@JIEmastery.ai
+                <a href="mailto:support@wisc.edu" className="font-medium underline">
+                  support@wisc.edu
                 </a>
               </AlertDescription>
             </Alert>
@@ -264,7 +264,7 @@ export default function SupportCenter() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">support@JIEmastery.ai</span>
+                  <span className="text-sm">support@wisc.edu</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <MessageCircle className="h-4 w-4 text-muted-foreground" />

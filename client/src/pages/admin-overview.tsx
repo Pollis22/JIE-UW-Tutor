@@ -8,10 +8,10 @@ import { Users, CreditCard, FileText, Activity, Download } from "lucide-react";
 
 interface AdminStats {
   totalUsers: number;
-  activeSubscriptions: number;
+  activeStudents: number;
   totalDocuments: number;
   activeSessions: number;
-  monthlyRevenue: number;
+  totalSessions: number;
   avgSessionTime: string;
   totalSessions: number;
   storageUsed: string;
@@ -78,8 +78,8 @@ export default function AdminOverview() {
       bg: "bg-blue-100",
     },
     {
-      title: "Active Subscriptions",
-      value: stats?.activeSubscriptions || 0,
+      title: "Active Students",
+      value: stats?.activeStudents || 0,
       icon: CreditCard,
       color: "text-green-600",
       bg: "bg-green-100",
@@ -167,8 +167,8 @@ export default function AdminOverview() {
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Monthly Revenue</span>
-                  <span className="font-bold">{stats?.monthlyRevenue ? `$${stats.monthlyRevenue}` : '$0'}</span>
+                  <span className="text-muted-foreground">Total Sessions</span>
+                  <span className="font-bold">{stats?.totalSessions || '0'}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Avg Session Time</span>
@@ -227,7 +227,7 @@ export default function AdminOverview() {
                 className="justify-start"
               >
                 <Download className="h-4 w-4 mr-2" />
-                {exportingSegment === 'cancelled' ? 'Exporting...' : 'Cancelled Subscriptions'}
+                {exportingSegment === 'cancelled' ? 'Exporting...' : 'Inactive Students'}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-4">

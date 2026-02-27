@@ -22,17 +22,17 @@ const STATE_CONFIG: Record<VoicePresenceState, {
   listening: {
     baseColor: 'bg-teal-300 dark:bg-teal-500',
     glowColor: 'shadow-teal-300/30 dark:shadow-teal-500/25',
-    ariaLabel: 'JIE is listening'
+    ariaLabel: 'Tutor is listening'
   },
   userSpeaking: {
     baseColor: 'bg-sky-300 dark:bg-sky-500',
     glowColor: 'shadow-sky-300/35 dark:shadow-sky-500/30',
-    ariaLabel: 'JIE is hearing you'
+    ariaLabel: 'Tutor is hearing you'
   },
   tutorSpeaking: {
     baseColor: 'bg-violet-400 dark:bg-violet-500',
     glowColor: 'shadow-violet-400/40 dark:shadow-violet-500/35',
-    ariaLabel: 'JIE is speaking'
+    ariaLabel: 'Tutor is speaking'
   }
 };
 

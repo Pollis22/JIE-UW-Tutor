@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
-import jieLogo from "@/assets/jie-mastery-logo-sm.jpg";
+import uwLogo from '@/assets/uw-madison-logo.png';
 import { Footer } from "@/components/footer";
 
 export default function TrustSafetyPage() {
@@ -12,8 +12,8 @@ export default function TrustSafetyPage() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setLocation("/auth")}>
-              <img src={jieLogo} alt="JIE Mastery" className="h-10 w-auto" />
-              <span className="text-xl font-bold text-foreground">JIE Mastery Tutor</span>
+              <img src={uwLogo} alt="UW AI Tutor" className="h-10 w-auto" />
+              <span className="text-xl font-bold text-foreground">UW AI Tutor Tutor</span>
             </div>
             <div className="flex items-center space-x-4">
               <Button variant="ghost" onClick={() => setLocation("/pricing")} data-testid="button-nav-pricing">
@@ -29,10 +29,10 @@ export default function TrustSafetyPage() {
 
       <div className="container mx-auto px-4 py-12 max-w-4xl flex-grow">
         <div className="prose prose-slate dark:prose-invert max-w-none">
-          <h1 className="text-4xl font-bold mb-4">Trust, Safety & Compliance at JIE Mastery AI Tutor</h1>
+          <h1 className="text-4xl font-bold mb-4">Trust, Safety & Compliance at UW AI Tutor AI Tutor</h1>
           
           <p className="text-lg text-muted-foreground mb-8">
-            At JIE Mastery AI Tutor ("JIE Mastery", "we", "us"), trust is not a feature – it's the product.
+            At UW AI Tutor AI Tutor ("UW AI Tutor", "we", "us"), trust is not a feature – it's the product.
             Parents, students, schools, and businesses are handing us something incredibly valuable: their
             time, their learning, and their data. This page explains how we protect that trust across privacy,
             security, student safety, AI guardrails, and compliance.
@@ -40,7 +40,7 @@ export default function TrustSafetyPage() {
 
           <section className="mb-10">
             <h2 className="text-2xl font-bold mb-4">Our Mission: Real Learning, Not Shortcuts</h2>
-            <p className="text-lg font-semibold mb-3">JIE Mastery is built to teach, not to cheat.</p>
+            <p className="text-lg font-semibold mb-3">UW AI Tutor is built to teach, not to cheat.</p>
             <ul className="list-disc pl-6 space-y-2">
               <li>We use a Socratic tutoring approach – the tutor guides students with questions and step-by-step reasoning instead of just giving answers.</li>
               <li>We log and store sessions so parents, educators, and administrators can see that the student is actually learning, not copying.</li>
@@ -66,7 +66,7 @@ export default function TrustSafetyPage() {
               <li><strong>No ads built on student data.</strong> We do not use student data to build targeted advertising profiles.</li>
               <li><strong>Limited use of data.</strong> Data is used only to:
                 <ul className="list-disc pl-6 mt-2 space-y-1">
-                  <li>Deliver and improve the JIE Mastery tutoring experience,</li>
+                  <li>Deliver and improve the UW AI Tutor tutoring experience,</li>
                   <li>Maintain security and reliability,</li>
                   <li>Meet our legal obligations.</li>
                 </ul>
@@ -100,7 +100,7 @@ export default function TrustSafetyPage() {
 
           <section className="mb-10">
             <h2 className="text-2xl font-bold mb-4">Compliance for Schools (K–12 and Higher Education)</h2>
-            <p className="mb-4">JIE Mastery is designed to support compliance with key US education privacy laws and state requirements.</p>
+            <p className="mb-4">UW AI Tutor is designed to support compliance with key US education privacy laws and state requirements.</p>
             
             <h3 className="text-xl font-semibold mb-3">FERPA (Family Educational Rights and Privacy Act)</h3>
             <ul className="list-disc pl-6 space-y-2 mb-4">
@@ -111,7 +111,7 @@ export default function TrustSafetyPage() {
 
             <h3 className="text-xl font-semibold mb-3">COPPA (Children's Online Privacy Protection Act)</h3>
             <ul className="list-disc pl-6 space-y-2 mb-4">
-              <li>For children under 13 using JIE Mastery through a school, the school or district can provide consent on behalf of parents where allowed by law.</li>
+              <li>For children under 13 using UW AI Tutor through a school, the school or district can provide consent on behalf of parents where allowed by law.</li>
               <li>For direct-to-consumer use (e.g., family plans), we obtain parent or guardian consent before collecting personal information from children under 13.</li>
             </ul>
 
@@ -160,7 +160,7 @@ export default function TrustSafetyPage() {
 
           <section className="mb-10">
             <h2 className="text-2xl font-bold mb-4">Accessibility & Inclusion</h2>
-            <p className="mb-4">We are committed to making JIE Mastery accessible to as many learners as possible.</p>
+            <p className="mb-4">We are committed to making UW AI Tutor accessible to as many learners as possible.</p>
             <ul className="list-disc pl-6 space-y-2">
               <li>We are working toward conformance with WCAG 2.1 AA guidelines for web accessibility.</li>
               <li>We support key accessibility features such as keyboard navigation, screen reader compatibility, and adjustable text/audio experiences.</li>
@@ -174,9 +174,9 @@ export default function TrustSafetyPage() {
             <ul className="list-disc pl-6 space-y-2">
               <li><strong>Email:</strong> support@jiemastery.ai</li>
               <li><strong>Mailing address:</strong> 2863 W. 95th Street, Suite 123-129, Naperville, IL 60564</li>
-              <li><strong>Subject line suggestion:</strong> "Attn: Security & Privacy – JIE Mastery AI Tutor"</li>
+              <li><strong>Subject line suggestion:</strong> "Attn: Security & Privacy – UW AI Tutor AI Tutor"</li>
             </ul>
-            <p className="mt-4">We take every inquiry seriously and work directly with your IT, legal, or compliance teams to ensure JIE Mastery fits your requirements.</p>
+            <p className="mt-4">We take every inquiry seriously and work directly with your IT, legal, or compliance teams to ensure UW AI Tutor fits your requirements.</p>
           </section>
         </div>
       </div>
