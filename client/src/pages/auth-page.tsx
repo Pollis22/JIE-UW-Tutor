@@ -123,20 +123,23 @@ export default function AuthPage() {
   if (user) return null;
 
   return (
-    <div className="min-h-screen" style={{ background: "#F7F3EE", fontFamily: "'Red Hat Text', 'Source Sans 3', sans-serif" }}>
+    <div className="min-h-screen" style={{ background: "#FFFFFF", fontFamily: "'Red Hat Text', 'Source Sans 3', sans-serif" }}>
+      {/* Red top bar */}
+      <div className="fixed top-0 left-0 right-0 z-[60]" style={{ height: 4, background: "#C5050C" }} />
+
       {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
+      <nav className="fixed top-1 left-0 right-0 z-50 transition-all duration-300"
         style={{
-          background: scrolled ? "rgba(247,243,238,0.95)" : "transparent",
-          backdropFilter: scrolled ? "blur(20px)" : "none",
-          borderBottom: scrolled ? "1px solid rgba(218,215,203,0.4)" : "none",
-          padding: "16px 48px",
+          background: scrolled ? "rgba(255,255,255,0.97)" : "rgba(255,255,255,0.97)",
+          backdropFilter: "blur(20px)",
+          borderBottom: scrolled ? "1px solid rgba(0,0,0,0.06)" : "1px solid transparent",
+          padding: "10px 48px",
         }}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <img src={uwLogo} alt="University of Wisconsin-Madison" className="h-12 object-contain" />
-            <div className="hidden sm:block" style={{ borderLeft: "1px solid #DAD7CB", paddingLeft: 16, marginLeft: 4 }}>
-              <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontWeight: 700, fontSize: 17, color: "#282728", lineHeight: 1.1 }}>AI Tutor</div>
+            <img src={uwLogo} alt="University of Wisconsin-Madison" className="h-14 object-contain" />
+            <div style={{ borderLeft: "1px solid #DAD7CB", paddingLeft: 16 }}>
+              <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontWeight: 700, fontSize: 18, color: "#282728", lineHeight: 1.1 }}>AI Tutor</div>
               <div style={{ fontSize: 11, color: "#646569", fontWeight: 500, letterSpacing: 1.2, textTransform: "uppercase" }}>Powered by JIE Mastery</div>
             </div>
           </div>
@@ -146,8 +149,7 @@ export default function AuthPage() {
       </nav>
 
       {/* Hero */}
-      <section className="relative overflow-hidden" style={{ paddingTop: 120, paddingBottom: 80 }}>
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 40px, #C5050C 40px, #C5050C 41px)" }} />
+      <section className="relative" style={{ paddingTop: 130, paddingBottom: 80, background: "#FFFFFF" }}>
         <div className="max-w-7xl mx-auto px-6 md:px-12 grid md:grid-cols-2 gap-16 items-center">
           <div style={{ animation: "fadeInUp 0.8s ease" }}>
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-8" style={{ background: "rgba(197,5,12,0.08)", border: "1px solid rgba(197,5,12,0.15)" }}>
@@ -181,7 +183,7 @@ export default function AuthPage() {
               </div>
               {[{ label: "Chemistry", top: "8%", left: "-5%", delay: 0 }, { label: "Calculus", top: "15%", right: "-8%", delay: 0.8 }, { label: "Physics", bottom: "18%", left: "-10%", delay: 1.6 }, { label: "History", bottom: "5%", right: "-3%", delay: 2.4 }].map((item, i) => {
                 const { label, delay, ...pos } = item;
-                return <div key={i} className="absolute px-3.5 py-1.5 rounded-full text-sm font-semibold shadow-md" style={{ ...pos as any, background: "#FFFFFF", color: "#3E3D3F", animation: `float 3s ease-in-out ${delay}s infinite`, fontSize: 13 }}>{label}</div>;
+                return <div key={i} className="absolute px-3.5 py-1.5 rounded-full text-sm font-semibold shadow-md" style={{ ...pos as any, background: "#FFFFFF", color: "#3E3D3F", animation: `float 3s ease-in-out ${delay}s infinite`, fontSize: 13, border: "1px solid #E8E8E8" }}>{label}</div>;
               })}
             </div>
           </div>
@@ -189,14 +191,14 @@ export default function AuthPage() {
       </section>
 
       {/* Features */}
-      <section className="py-20 px-6 md:px-12 max-w-7xl mx-auto">
+      <section className="py-20 px-6 md:px-12 max-w-7xl mx-auto" style={{ background: "#FFFFFF" }}>
         <div className="grid md:grid-cols-3 gap-6">
           {[
             { icon: <Mic className="w-7 h-7" style={{ color: "#C5050C" }} />, title: "Voice-First Learning", desc: "Speak naturally and get clear, conversational explanations. Like office hours that never close." },
             { icon: <Brain className="w-7 h-7" style={{ color: "#C5050C" }} />, title: "Remembers Your Progress", desc: "Picks up where you left off. Knows your strengths, adapts to your gaps." },
             { icon: <Clock className="w-7 h-7" style={{ color: "#C5050C" }} />, title: "Track Your Growth", desc: "See your session history, mastery scores, and learning trajectory over time." },
           ].map((f, i) => (
-            <div key={i} className="rounded-2xl p-9 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-default" style={{ background: "#FFFFFF", border: "1px solid rgba(218,215,203,0.5)" }}>
+            <div key={i} className="rounded-2xl p-9 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-default" style={{ background: "#FFFFFF", border: "1px solid #E8E8E8" }}>
               <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-5" style={{ background: "rgba(197,5,12,0.06)" }}>{f.icon}</div>
               <h3 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 20, fontWeight: 700, marginBottom: 10, color: "#282728" }}>{f.title}</h3>
               <p style={{ fontSize: 15, lineHeight: 1.6, color: "#646569" }}>{f.desc}</p>
@@ -206,12 +208,12 @@ export default function AuthPage() {
       </section>
 
       {/* Auth */}
-      <section id="auth-section" className="py-20 px-6 md:px-12 max-w-7xl mx-auto">
+      <section id="auth-section" className="py-20 px-6 md:px-12 max-w-7xl mx-auto" style={{ background: "#FFFFFF" }}>
         <div className="grid md:grid-cols-2 gap-0 rounded-2xl overflow-hidden shadow-2xl" style={{ maxWidth: 960, margin: "0 auto" }}>
           <div className="relative p-12 md:p-16 flex flex-col justify-center" style={{ background: "#C5050C" }}>
             <div className="absolute inset-0 opacity-[0.06] pointer-events-none" style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 40px, white 40px, white 41px)" }} />
             <div className="relative z-10">
-              <div className="w-16 h-16 rounded-xl flex items-center justify-center mb-10" style={{ background: "rgba(255,255,255,0.15)", fontFamily: "'Red Hat Display', sans-serif", fontWeight: 800, fontSize: 36, color: "white" }}>W</div>
+              <div className="mb-10" style={{ fontFamily: "'Red Hat Display', sans-serif", fontWeight: 800, fontSize: 22, color: "white", letterSpacing: 1 }}>UW–MADISON</div>
               <h2 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 40, fontWeight: 700, color: "white", lineHeight: 1.15, marginBottom: 20 }}>Welcome,<br />Badger.</h2>
               <p style={{ fontSize: 17, color: "rgba(255,255,255,0.7)", lineHeight: 1.6, maxWidth: 360 }}>Your AI tutor is ready. Sign in to start a voice session, review past conversations, or track your learning progress.</p>
             </div>
@@ -222,7 +224,7 @@ export default function AuthPage() {
                 <p className="text-sm font-semibold" style={{ color: "#1B5E20" }}>Email verified! You can now sign in.</p>
               </div>
             )}
-            <div className="flex mb-8 rounded-lg p-1" style={{ background: "#F7F3EE" }}>
+            <div className="flex mb-8 rounded-lg p-1" style={{ background: "#F3F3F3" }}>
               {(["login", "register"] as const).map(tab => (
                 <button key={tab} onClick={() => setActiveTab(tab)} className="flex-1 py-2.5 rounded-md text-sm font-semibold transition-all"
                   style={{ background: activeTab === tab ? "white" : "transparent", color: activeTab === tab ? "#282728" : "#646569", boxShadow: activeTab === tab ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}>
@@ -318,7 +320,7 @@ export default function AuthPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-10 px-6 md:px-12 max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4" style={{ borderTop: "1px solid rgba(218,215,203,0.4)" }}>
+      <footer className="py-10 px-6 md:px-12 max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4" style={{ borderTop: "1px solid #E8E8E8", background: "#FFFFFF" }}>
         <div className="flex items-center gap-3">
           <img src={uwLogo} alt="UW" className="h-8 object-contain" />
           <span style={{ fontSize: 13, color: "#646569" }}>University of Wisconsin–Madison · AI Tutor Program</span>
