@@ -37,6 +37,7 @@ const registerSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   plan: z.literal("elite"),
   marketingOptIn: z.boolean().default(false),
+  accessCode: z.string().min(1, "Access code is required"),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -165,6 +166,7 @@ export default function AuthPage() {
       accountName: "", studentName: "", studentAge: 20,
       gradeLevel: "college-adult", primarySubject: "general",
       email: "", password: "", plan: "elite", marketingOptIn: false,
+      accessCode: "",
     },
   });
 
@@ -384,6 +386,16 @@ export default function AuthPage() {
                             {showRegisterPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                         </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={registerForm.control} name="accessCode" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel style={{ fontSize: 13, fontWeight: 600, color: "#3E3D3F" }}>Access Code</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter your access code" {...field} className="h-11 rounded-lg font-mono uppercase tracking-wider" 
+                          onChange={(e) => field.onChange(e.target.value.toUpperCase())} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

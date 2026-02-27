@@ -12,9 +12,9 @@ import { setupSecurityHeaders, setupCORS } from "./middleware/security";
 import { requireAdmin } from "./middleware/admin-auth";
 import { auditActions } from "./middleware/audit-log";
 import { convertUsersToCSV, generateFilename } from "./utils/csv-export";
-import { sql, desc, eq } from "drizzle-orm";
+import { sql, desc, eq, and } from "drizzle-orm";
 import { db } from "./db";
-import { realtimeSessions, trialSessions, safetyIncidents, users, userDocuments, documentChunks, documentEmbeddings, learningSessions } from "@shared/schema";
+import { realtimeSessions, trialSessions, safetyIncidents, users, userDocuments, documentChunks, documentEmbeddings, learningSessions, accessCodes } from "@shared/schema";
 import Stripe from "stripe";
 import { z } from "zod";
 import { createHmac, timingSafeEqual } from "crypto";
@@ -3887,6 +3887,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[API] Failed to fetch learning observations:', error);
       res.status(500).json({ message: "Failed to fetch learning observations" });
+    }
+  });
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // ACCESS CODE MANAGEMENT (Admin only)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  // List all access codes
+  app.get("/api/admin/access-codes", requireAdmin, async (req, res) => {
+    try {
+      const codes = await db.select().from(accessCodes).orderBy(desc(accessCodes.createdAt));
+      res.json({ codes });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to fetch access codes: " + error.message });
+    }
+  });
+
+  // Generate a new access code
+  app.post("/api/admin/access-codes", requireAdmin, async (req, res) => {
+    try {
+      const { label, maxUses, code: customCode } = req.body;
+      
+      // Generate code: use custom or auto-generate
+      const code = customCode
+        ? customCode.trim().toUpperCase()
+        : `UW-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+      // 24-hour expiration
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+
+      const [newCode] = await db.insert(accessCodes).values({
+        code,
+        label: label || null,
+        maxUses: maxUses || null,
+        expiresAt,
+        isActive: true,
+        createdBy: (req.user as any)?.id || null,
+      }).returning();
+
+      console.log(`[Admin] ✅ Access code generated: ${code} (expires ${expiresAt.toISOString()})`);
+      res.json({ code: newCode });
+    } catch (error: any) {
+      if (error.message?.includes('unique') || error.code === '23505') {
+        return res.status(400).json({ message: "This code already exists. Try a different one." });
+      }
+      res.status(500).json({ message: "Failed to generate access code: " + error.message });
+    }
+  });
+
+  // Deactivate an access code
+  app.patch("/api/admin/access-codes/:id/deactivate", requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await db.update(accessCodes).set({ isActive: false }).where(eq(accessCodes.id, id));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to deactivate code: " + error.message });
+    }
+  });
+
+  // Validate access code (public — used by registration form)
+  app.post("/api/auth/validate-access-code", async (req, res) => {
+    try {
+      const { code } = req.body;
+      if (!code) return res.status(400).json({ valid: false, message: "Code is required" });
+
+      const [codeRecord] = await db.select().from(accessCodes)
+        .where(and(eq(accessCodes.code, code.trim().toUpperCase()), eq(accessCodes.isActive, true)))
+        .limit(1);
+
+      if (!codeRecord) return res.json({ valid: false, message: "Invalid access code" });
+      if (new Date() > new Date(codeRecord.expiresAt)) return res.json({ valid: false, message: "Code has expired" });
+      if (codeRecord.maxUses && codeRecord.timesUsed !== null && codeRecord.timesUsed >= codeRecord.maxUses) {
+        return res.json({ valid: false, message: "Code has reached its usage limit" });
+      }
+
+      res.json({ valid: true, label: codeRecord.label });
+    } catch (error: any) {
+      res.status(500).json({ valid: false, message: "Validation error" });
     }
   });
 

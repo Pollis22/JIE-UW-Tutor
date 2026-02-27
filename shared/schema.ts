@@ -1083,3 +1083,22 @@ export const verificationReminderTracking = pgTable("verification_reminder_track
 ]);
 
 export type VerificationReminderTracking = typeof verificationReminderTracking.$inferSelect;
+
+// Access Codes — required for account creation
+export const accessCodes = pgTable("access_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  label: text("label"),  // e.g. "Bio 101 Spring 2026"
+  maxUses: integer("max_uses"),  // null = unlimited
+  timesUsed: integer("times_used").default(0),
+  expiresAt: timestamp("expires_at").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_access_codes_code").on(table.code),
+  index("idx_access_codes_active").on(table.isActive),
+]);
+
+export type AccessCode = typeof accessCodes.$inferSelect;
+export type InsertAccessCode = typeof accessCodes.$inferInsert;
