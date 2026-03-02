@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Mic, Brain, ArrowRight, GraduationCap, FlaskConical } from "lucide-react";
+import { Eye, EyeOff, Mic, Brain, ArrowRight, GraduationCap, FlaskConical, CheckCircle, X, Shield, Sparkles, TrendingUp, Clock, BookOpen } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -289,6 +289,213 @@ export default function AuthPage() {
 
       {/* Photo Collage */}
       <PhotoCollage />
+
+      {/* THREE-WAY COMPARISON */}
+      <section className="py-12 md:py-20 px-4 md:px-12 max-w-7xl mx-auto" style={{ background: "#FFFFFF" }}>
+        <div className="text-center mb-8 md:mb-12">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4" style={{ background: "rgba(197,5,12,0.08)", border: "1px solid rgba(197,5,12,0.15)" }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#C5050C", textTransform: "uppercase", letterSpacing: 1 }}>Built Different</span>
+          </div>
+          <h2 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: "clamp(24px, 4vw, 40px)", fontWeight: 800, color: "#282728", lineHeight: 1.15, marginBottom: 8 }}>
+            Not ChatGPT. Not a Traditional Tutor.
+          </h2>
+          <p style={{ fontSize: 16, color: "#646569", maxWidth: 560, margin: "0 auto", lineHeight: 1.6 }}>
+            UW AI Tutor combines the best of both — and adds intelligence that neither can offer.
+          </p>
+        </div>
+
+        <div className="max-w-5xl mx-auto rounded-2xl overflow-hidden" style={{ border: "1px solid #E8E8E8", boxShadow: "0 4px 20px rgba(0,0,0,0.06)" }}>
+          {/* Header */}
+          <div className="grid grid-cols-4 text-center font-semibold" style={{ borderBottom: "1px solid #E8E8E8" }}>
+            <div className="p-3 md:p-4" style={{ background: "#F8F8F8" }}></div>
+            <div className="p-3 md:p-4" style={{ background: "#F8F8F8", fontSize: 13, color: "#646569" }}>Traditional Tutoring</div>
+            <div className="p-3 md:p-4" style={{ background: "#F8F8F8", fontSize: 13, color: "#646569" }}>ChatGPT</div>
+            <div className="p-3 md:p-4" style={{ background: "rgba(197,5,12,0.06)", fontSize: 13, color: "#C5050C", fontWeight: 700 }}>UW AI Tutor</div>
+          </div>
+          
+          {[
+            { feature: "Remembers your sessions", trad: "Depends on the tutor", gpt: false, jie: "Builds a knowledge profile across every session" },
+            { feature: "Adapts teaching strategy", trad: "If you're lucky", gpt: false, jie: "Learns what works and adjusts automatically" },
+            { feature: "Tracks mastery over time", trad: false, gpt: false, jie: "0–100% mastery scoring per concept" },
+            { feature: "Every subject, one tutor", trad: false, gpt: "Any topic, no structure", jie: "Full course load — no scheduling specialists" },
+            { feature: "Available 24/7", trad: false, gpt: true, jie: "Any time, any device, voice or text" },
+            { feature: "Guides reasoning (Socratic)", trad: "Varies", gpt: false, jie: "Never gives answers — builds understanding" },
+            { feature: "Voice conversations", trad: true, gpt: false, jie: "Natural voice in 25 languages" },
+            { feature: "Faculty dashboards", trad: "Manual notes if any", gpt: false, jie: "Mastery reports mapped to course objectives" },
+            { feature: "Detects learning challenges", trad: "Depends on attentiveness", gpt: false, jie: "Automated flags after consistent patterns" },
+            { feature: "Consistent quality", trad: "Varies by day", gpt: "Varies by prompting", jie: "Same excellence every session" },
+            { feature: "Travel & schedule friendly", trad: false, gpt: true, jie: "Study on the bus, hotel, between events" },
+            { feature: "Academic integrity", trad: true, gpt: false, jie: "Socratic method — guides, never gives answers" },
+          ].map((row, i) => (
+            <div key={i} className="grid grid-cols-4 text-center" style={{ borderBottom: "1px solid #F0F0F0", background: i % 2 === 0 ? "#FFFFFF" : "#FAFAFA" }}>
+              <div className="p-2.5 md:p-3 text-left font-medium" style={{ fontSize: 13, color: "#282728", background: i % 2 === 0 ? "#FAFAFA" : "#F5F5F5" }}>{row.feature}</div>
+              <div className="p-2.5 md:p-3 flex items-center justify-center">
+                {row.trad === true ? <CheckCircle className="w-4 h-4" style={{ color: "#646569" }} /> : 
+                 row.trad === false ? <X className="w-4 h-4" style={{ color: "#D4D4D4" }} /> :
+                 <span style={{ fontSize: 11, color: "#646569" }}>{row.trad}</span>}
+              </div>
+              <div className="p-2.5 md:p-3 flex items-center justify-center">
+                {row.gpt === true ? <CheckCircle className="w-4 h-4" style={{ color: "#646569" }} /> : 
+                 row.gpt === false ? <X className="w-4 h-4" style={{ color: "#D4D4D4" }} /> :
+                 <span style={{ fontSize: 11, color: "#646569" }}>{row.gpt}</span>}
+              </div>
+              <div className="p-2.5 md:p-3" style={{ background: "rgba(197,5,12,0.03)" }}>
+                <div className="flex items-center justify-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#28A745" }} />
+                  <span style={{ fontSize: 11, color: "#282728", fontWeight: 500, textAlign: "left" }}>{row.jie}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* IT GETS SMARTER EVERY SESSION */}
+      <section className="py-12 md:py-20 px-4 md:px-12" style={{ background: "#FAFAFA" }}>
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-8 md:mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4" style={{ background: "rgba(40,167,69,0.08)", border: "1px solid rgba(40,167,69,0.15)" }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#28A745", textTransform: "uppercase", letterSpacing: 1 }}>What No Other AI Can Do</span>
+            </div>
+            <h2 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: "clamp(24px, 4vw, 40px)", fontWeight: 800, color: "#282728", lineHeight: 1.15, marginBottom: 8 }}>
+              It Gets <span style={{ color: "#C5050C" }}>Smarter</span> Every Session
+            </h2>
+            <p style={{ fontSize: 16, color: "#646569", maxWidth: 600, margin: "0 auto", lineHeight: 1.6 }}>
+              ChatGPT forgets everything when you close the window. Your UW AI Tutor builds a permanent learning profile that compounds over time.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10">
+            {[
+              { icon: <Brain className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "It Remembers Everything", desc: "After 20 sessions, your tutor knows you struggle with organic chemistry nomenclature, learn best with real-world analogies, and need extra time on thermodynamics. Every session makes the next one better." },
+              { icon: <Sparkles className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "It Adapts Its Teaching", desc: "If step-by-step derivations work better for you than big-picture explanations, the tutor adjusts. It tracks which strategies are effective for you specifically and applies them automatically." },
+              { icon: <TrendingUp className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "You See Real Progress", desc: "Mastery scores by concept, session summaries after every conversation, and growth tracking over weeks. See exactly where you're strong and where you need to focus before the exam." },
+            ].map((f, i) => (
+              <div key={i} className="rounded-2xl p-6 md:p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" style={{ background: "#FFFFFF", border: "1px solid #E8E8E8" }}>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4" style={{ background: "rgba(197,5,12,0.06)" }}>{f.icon}</div>
+                <h3 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 18, fontWeight: 700, marginBottom: 8, color: "#282728" }}>{f.title}</h3>
+                <p style={{ fontSize: 14, lineHeight: 1.65, color: "#646569" }}>{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Session 1 vs Session 20 */}
+          <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #E8E8E8", boxShadow: "0 4px 20px rgba(0,0,0,0.06)" }}>
+            <div className="grid md:grid-cols-2">
+              <div className="p-6 md:p-8" style={{ borderBottom: "1px solid #E8E8E8", background: "#FFFFFF" }}>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm" style={{ background: "#F0F0F0", color: "#646569" }}>1</div>
+                  <div>
+                    <p style={{ fontWeight: 700, color: "#282728", fontSize: 15 }}>Session 1</p>
+                    <p style={{ fontSize: 12, color: "#646569" }}>Any AI tool can do this</p>
+                  </div>
+                </div>
+                <div className="space-y-2.5">
+                  {["Generic introduction, no context about your coursework", "Doesn't know your major or what you're studying", "Uses default explanations for everyone", "No idea what you already understand"].map((t, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: "#D4D4D4" }} />
+                      <span style={{ fontSize: 13, color: "#646569" }}>{t}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-6 md:p-8" style={{ background: "rgba(197,5,12,0.03)" }}>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-white" style={{ background: "#C5050C" }}>20</div>
+                  <div>
+                    <p style={{ fontWeight: 700, color: "#282728", fontSize: 15 }}>Session 20</p>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: "#C5050C" }}>Only UW AI Tutor can do this</p>
+                  </div>
+                </div>
+                <div className="space-y-2.5">
+                  {[
+                    '"Welcome back! Last time we nailed Le Chatelier\'s — ready to tackle equilibrium constants?"',
+                    "Knows you learn best with real-world examples, not abstract formulas",
+                    "Skips concepts already mastered, focuses on your actual gaps",
+                    "Detects recurring misconceptions and addresses them proactively",
+                  ].map((t, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: "#28A745" }} />
+                      <span style={{ fontSize: 13, color: "#282728", fontWeight: 500 }}>{t}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-center mt-6" style={{ fontSize: 14, color: "#646569" }}>
+            ChatGPT starts cold every conversation. Your UW AI Tutor has 20 sessions of intelligence about how you learn.
+            <br /><strong style={{ color: "#282728" }}>That gap grows every single session.</strong>
+          </p>
+        </div>
+      </section>
+
+      {/* STUDENT-ATHLETE SECTION */}
+      <section className="py-12 md:py-20 px-4 md:px-12 max-w-7xl mx-auto" style={{ background: "#FFFFFF" }}>
+        <div className="max-w-4xl mx-auto">
+          <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #E8E8E8", boxShadow: "0 4px 20px rgba(0,0,0,0.06)" }}>
+            <div className="p-2" style={{ background: "#C5050C" }}>
+              <p className="text-center text-white font-bold" style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 14, letterSpacing: 1, textTransform: "uppercase" }}>For Badger Athletes</p>
+            </div>
+            <div className="p-6 md:p-10" style={{ background: "#FFF7ED" }}>
+              <h3 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: "clamp(20px, 3vw, 28px)", fontWeight: 800, color: "#282728", marginBottom: 12 }}>
+                Built for Your Schedule, Not the Other Way Around
+              </h3>
+              <p style={{ fontSize: 15, color: "#646569", lineHeight: 1.65, marginBottom: 24 }}>
+                Travel schedules, practice commitments, and game-day recovery make office hours nearly impossible. Your AI tutor adapts to your life.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { icon: <Clock className="w-5 h-5" style={{ color: "#C5050C" }} />, title: "Available 24/7", desc: "Study at 11 PM after a road game. Review before a 6 AM flight. No scheduling conflicts." },
+                  { icon: <Mic className="w-5 h-5" style={{ color: "#C5050C" }} />, title: "Travel-Ready", desc: "Voice tutoring on any device. Study by speaking — on the bus, in the hotel, between events." },
+                  { icon: <BookOpen className="w-5 h-5" style={{ color: "#C5050C" }} />, title: "Every Subject, One Tutor", desc: "No scheduling three specialists for Econ, Bio, and Spanish. One tutor covers the full course load." },
+                  { icon: <Brain className="w-5 h-5" style={{ color: "#C5050C" }} />, title: "Remembers Everything", desc: "Missed two weeks for conference play? The tutor knows exactly where you left off and what gaps need filling." },
+                ].map((f, i) => (
+                  <div key={i} className="flex items-start gap-3 p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.8)", border: "1px solid rgba(0,0,0,0.06)" }}>
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(197,5,12,0.06)" }}>{f.icon}</div>
+                    <div>
+                      <p style={{ fontWeight: 700, fontSize: 14, color: "#282728", marginBottom: 2 }}>{f.title}</p>
+                      <p style={{ fontSize: 13, color: "#646569", lineHeight: 1.5 }}>{f.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-6 p-4 rounded-xl" style={{ background: "rgba(197,5,12,0.06)", border: "1px solid rgba(197,5,12,0.12)" }}>
+                <div className="flex items-start gap-3">
+                  <Shield className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: "#C5050C" }} />
+                  <div>
+                    <p style={{ fontWeight: 700, fontSize: 14, color: "#282728", marginBottom: 2 }}>Eligibility Protection</p>
+                    <p style={{ fontSize: 13, color: "#646569", lineHeight: 1.5 }}>Early intervention flags alert academic advisors when a student-athlete shows signs of academic difficulty — weeks before midterm grades. Protect your eligibility proactively.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* EXAM PREP */}
+      <section className="py-10 md:py-16 px-4 md:px-12" style={{ background: "#FAFAFA" }}>
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: "clamp(20px, 3vw, 30px)", fontWeight: 800, color: "#282728", marginBottom: 8 }}>
+            Post-Graduate & Professional Exam Prep
+          </h2>
+          <p style={{ fontSize: 15, color: "#646569", maxWidth: 520, margin: "0 auto 24px", lineHeight: 1.6 }}>
+            The same adaptive intelligence that powers your coursework tutoring — applied to high-stakes exams.
+          </p>
+          <div className="flex flex-wrap justify-center gap-2 md:gap-3">
+            {["GRE", "GMAT", "LSAT", "MCAT", "DAT", "PCAT", "OAT", "CFA", "CPA", "Series 7", "FE", "PE", "NCLEX", "PANCE", "Praxis", "ASWB"].map((exam) => (
+              <span key={exam} className="px-3 py-1.5 rounded-lg text-sm font-semibold" style={{ background: "#FFFFFF", border: "1px solid #E8E8E8", color: "#282728" }}>
+                {exam}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Auth */}
       <section id="auth-section" className="py-12 md:py-20 px-4 md:px-12 max-w-7xl mx-auto" style={{ background: "#FFFFFF" }}>
