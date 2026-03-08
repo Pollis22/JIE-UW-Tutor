@@ -4,7 +4,7 @@ import { IncomingMessage } from 'http';
 import { Socket } from 'net';
 import { startDeepgramStream, DeepgramConnection } from "../services/deepgram-service";
 import { generateTutorResponse, generateTutorResponseStreaming, StreamingCallbacks } from "../services/ai-service";
-import { generateSpeech } from "../services/tts-service";
+import { generateSpeech, prewarmTTS } from "../services/tts-service";
 import { db } from "../db";
 import { realtimeSessions, contentViolations, userSuspensions, documentChunks } from "@shared/schema";
 import { eq, and, or, gte } from "drizzle-orm";
@@ -799,23 +799,26 @@ function createAssemblyAIConnection(
               // Store deferred state for comparison when next EOT arrives
               state.eotDeferredWordCount = confirmedTranscript.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
               state.eotDeferredConfidence = confidence;
+              // Store current transcript in state so deferred timer has latest
+              state.lastAccumulatedTranscript = confirmedTranscript;
+              state.lastAccumulatedConfidence = confidence;
               state.eotDeferTimerId = setTimeout(() => {
                 state.eotDeferTimerId = undefined;
                 state.eotDeferredWordCount = undefined;
                 state.eotDeferredConfidence = undefined;
-                if (confirmedTranscript && !state.currentTurnCommitted) {
-                  console.log(`[AssemblyAI v3] ✅ Deferred EOT firing now with: "${confirmedTranscript.substring(0, 60)}"`);
+                // Read LATEST transcript from state — not the stale closure capture
+                const latestTranscript = state.lastAccumulatedTranscript.trim();
+                const latestConf = state.lastAccumulatedConfidence || confidence;
+                if (latestTranscript && !state.currentTurnCommitted) {
+                  console.log(`[AssemblyAI v3] ✅ Deferred EOT firing now with: "${latestTranscript.substring(0, 60)}"`);
                   if (turnOrder !== undefined) {
                     state.committedTurnOrders.add(turnOrder);
                   }
                   state.currentTurnCommitted = true;
-                  // Continue to onTranscript below via the stored text
-                  const deferredText = confirmedTranscript;
-                  const deferredConf = confidence;
                   confirmedTranscript = '';
                   state.firstEotTimestamp = undefined;
                   state.currentTurnCommitted = false;
-                  onTranscript(deferredText, true, deferredConf);
+                  onTranscript(latestTranscript, true, latestConf);
                 }
               }, LOW_CONF_DEFER_MS);
               return; // Don't commit yet — wait for deferral or a higher-confidence EOT
@@ -1334,6 +1337,8 @@ interface SessionState {
   // FIX 1A: STT activity tracking to prevent premature turn firing
   lastSttActivityAt: number;
   lastAccumulatedTranscript: string;
+  lastAccumulatedConfidence: number; // Track latest EOT confidence for state-based commit
+  audioFrameCount: number; // LOG REDUCTION: Count audio frames for sampled logging
   bargeInCandidate: {
     isActive: boolean;
     startedAt: number;
@@ -1372,6 +1377,9 @@ interface SessionState {
   watchdogRecoveries: number;
   lastWatchdogRecoveryAt: number;
   watchdogDisabled: boolean;
+  // TRIAL MINUTE ENFORCEMENT: Periodic check to end session when trial minutes exhausted
+  trialMinuteCheckTimerId: NodeJS.Timeout | null;
+  trialMinuteWarned: boolean; // Whether 2-minute warning has been sent
 }
 
 // Helper to send typed WebSocket events
@@ -1529,19 +1537,11 @@ function hardInterruptTutor(
     }));
   }
 
-  if (!llmAborted && !ttsAborted) {
-    console.log(JSON.stringify({
-      event: 'barge_in_fired_but_no_effect',
-      session_id: state.sessionId,
-      reason,
-      target_gen_id: state.playbackGenId,
-      timestamp: now,
-    }));
-    setPhase(state, 'TUTOR_SPEAKING', 'barge_in_no_effect', ws);
-    state.tutorAudioPlaying = true;
-    return false;
-  }
-
+  // Even when LLM/TTS are already done generating, the barge-in is still valid:
+  // Audio may be queued and playing client-side. The tutor_barge_in + interrupt
+  // messages we already sent (above) tell the client to stop playback.
+  // Previously this reverted to TUTOR_SPEAKING which caused a phase conflict
+  // (client stops, but server thinks tutor is still speaking).
   console.log(JSON.stringify({
     event: 'barge_in_triggered',
     session_id: state.sessionId,
@@ -1549,6 +1549,7 @@ function hardInterruptTutor(
     target_gen_id: state.playbackGenId,
     llm_aborted: llmAborted,
     tts_aborted: ttsAborted,
+    client_side_stop: !llmAborted && !ttsAborted,
     timestamp: now,
   }));
 
@@ -1826,6 +1827,12 @@ async function finalizeSession(
   if (state.sttReconnectTimerId) {
     clearTimeout(state.sttReconnectTimerId);
     state.sttReconnectTimerId = null;
+  }
+  // TRIAL MINUTE ENFORCEMENT: Clear trial minute check timer
+  if (state.trialMinuteCheckTimerId) {
+    clearInterval(state.trialMinuteCheckTimerId);
+    state.trialMinuteCheckTimerId = null;
+    console.log(`[Finalize] 🧹 Cleared trial minute check timer (reason: ${reason})`);
   }
   if (state.assemblyAIWs) {
     try { state.assemblyAIWs.close(); } catch (_e) {}
@@ -2423,6 +2430,8 @@ export function setupCustomVoiceWebSocket(server: Server) {
       isTutorThinking: false,
       lastSttActivityAt: 0,
       lastAccumulatedTranscript: '',
+      lastAccumulatedConfidence: 0,
+      audioFrameCount: 0,
       bargeInCandidate: {
         isActive: false,
         startedAt: 0,
@@ -2457,6 +2466,8 @@ export function setupCustomVoiceWebSocket(server: Server) {
       watchdogRecoveries: 0,
       lastWatchdogRecoveryAt: 0,
       watchdogDisabled: false,
+      trialMinuteCheckTimerId: null,
+      trialMinuteWarned: false,
     };
 
     // FIX #3: Auto-persist every 10 seconds
@@ -2700,6 +2711,155 @@ export function setupCustomVoiceWebSocket(server: Server) {
     }, 30000); // Check every 30 seconds
 
     console.log('[Inactivity] ✅ Checker started (checks every 30 seconds)');
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // TRIAL MINUTE ENFORCEMENT: Check remaining minutes every 60s
+    // Warns at 2 minutes remaining, disconnects at 0
+    // Only runs for trial users (trialActive = true)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if (!isTrialSession) {
+      // For authenticated users, start a periodic check if they're a trial user
+      // We check on first tick and then every 60 seconds
+      const startTrialMinuteCheck = async () => {
+        try {
+          const user = await storage.getUser(authenticatedUserId);
+          if (!user || !user.trialActive) {
+            console.log('[TrialMinuteCheck] ℹ️ User is not a trial user, skipping enforcement');
+            return;
+          }
+
+          console.log('[TrialMinuteCheck] 🎫 Trial user detected — starting minute enforcement timer');
+
+          state.trialMinuteCheckTimerId = setInterval(async () => {
+            if (state.isSessionEnded || state.sessionFinalizing) return;
+
+            try {
+              const currentUser = await storage.getUser(authenticatedUserId);
+              if (!currentUser || !currentUser.trialActive) return;
+
+              const trialLimit = currentUser.trialMinutesLimit || 30;
+              const trialUsed = currentUser.trialMinutesUsed || 0;
+              
+              // Also account for current session time not yet deducted
+              const currentSessionMinutes = Math.ceil((Date.now() - state.sessionStartTime) / 60000);
+              const effectiveUsed = trialUsed + currentSessionMinutes;
+              const effectiveRemaining = Math.max(0, trialLimit - effectiveUsed);
+
+              console.log(`[TrialMinuteCheck] ⏱️ Trial: ${effectiveUsed}/${trialLimit} min used (DB: ${trialUsed}, session: ${currentSessionMinutes}), ${effectiveRemaining} remaining`);
+
+              // WARNING at 2 minutes remaining
+              if (effectiveRemaining <= 2 && effectiveRemaining > 0 && !state.trialMinuteWarned) {
+                state.trialMinuteWarned = true;
+                console.log('[TrialMinuteCheck] ⚠️ Trial running low — sending 2-minute warning');
+
+                const warningText = `Just a heads up — you have about ${effectiveRemaining} minute${effectiveRemaining === 1 ? '' : 's'} left in your free trial. After that, you can subscribe to keep learning!`;
+
+                state.transcript.push({
+                  speaker: "tutor",
+                  text: warningText,
+                  timestamp: new Date().toISOString(),
+                  messageId: crypto.randomUUID(),
+                });
+
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({
+                    type: 'transcript',
+                    speaker: 'tutor',
+                    text: warningText,
+                  }));
+
+                  // Generate speech for warning
+                  if (state.tutorAudioEnabled) {
+                    try {
+                      const audioBuffer = await generateSpeech(warningText, state.ageGroup, state.speechSpeed);
+                      if (audioBuffer && audioBuffer.length > 0) {
+                        ws.send(JSON.stringify({
+                          type: 'audio',
+                          data: audioBuffer.toString('base64'),
+                          mimeType: 'audio/pcm;rate=16000',
+                        }));
+                      }
+                    } catch (audioErr) {
+                      console.error('[TrialMinuteCheck] ❌ Warning audio error:', audioErr);
+                    }
+                  }
+                }
+              }
+
+              // END SESSION at 0 minutes remaining
+              if (effectiveRemaining <= 0) {
+                console.log('[TrialMinuteCheck] 🛑 Trial minutes exhausted — ending session');
+
+                // Clear this interval immediately
+                if (state.trialMinuteCheckTimerId) {
+                  clearInterval(state.trialMinuteCheckTimerId);
+                  state.trialMinuteCheckTimerId = null;
+                }
+
+                const endText = "Your free trial time is up! I hope you enjoyed learning with me. Subscribe to a plan to continue our sessions — I'd love to keep helping you learn!";
+
+                state.transcript.push({
+                  speaker: "tutor",
+                  text: endText,
+                  timestamp: new Date().toISOString(),
+                  messageId: crypto.randomUUID(),
+                });
+
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({
+                    type: 'transcript',
+                    speaker: 'tutor',
+                    text: endText,
+                  }));
+
+                  // Generate speech for end message
+                  if (state.tutorAudioEnabled) {
+                    try {
+                      const audioBuffer = await generateSpeech(endText, state.ageGroup, state.speechSpeed);
+                      if (audioBuffer && audioBuffer.length > 0) {
+                        ws.send(JSON.stringify({
+                          type: 'audio',
+                          data: audioBuffer.toString('base64'),
+                          mimeType: 'audio/pcm;rate=16000',
+                        }));
+                      }
+                    } catch (audioErr) {
+                      console.error('[TrialMinuteCheck] ❌ End audio error:', audioErr);
+                    }
+                  }
+
+                  // Wait for audio to play, then end session
+                  setTimeout(async () => {
+                    try {
+                      ws.send(JSON.stringify({
+                        type: 'session_ended',
+                        reason: 'minutes_exhausted',
+                        message: 'Your free trial has ended. Subscribe to continue learning!',
+                        isTrial: true
+                      }));
+
+                      await finalizeSession(state, 'minutes_exhausted');
+                      ws.close(1000, 'Trial minutes exhausted');
+                      console.log('[TrialMinuteCheck] ✅ Trial session ended successfully');
+                    } catch (endErr) {
+                      console.error('[TrialMinuteCheck] ❌ Error ending trial session:', endErr);
+                      ws.close(1011, 'Error ending trial session');
+                    }
+                  }, 5000);
+                }
+              }
+            } catch (checkErr) {
+              console.error('[TrialMinuteCheck] ❌ Error checking trial minutes:', checkErr);
+            }
+          }, 60000); // Check every 60 seconds
+        } catch (err) {
+          console.error('[TrialMinuteCheck] ❌ Error initializing trial check:', err);
+        }
+      };
+
+      // Fire async — don't block WS setup
+      startTrialMinuteCheck();
+    }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // SAFETY TIMEOUT (Dec 10, 2025): Reset stuck isProcessing flag
@@ -3264,8 +3424,32 @@ export function setupCustomVoiceWebSocket(server: Server) {
               console.log(`[Custom Voice] 🚨 CRITICAL SAFETY: ${moderation.violationType} requires immediate termination`);
               warningLevel = 'final'; // Force immediate termination
             } else {
+              // Count severe profanity instances in the message for escalation
+              // A message with multiple F-bombs + hostility should escalate faster
+              const severePatterns = [
+                /\bf[u*\-_]ck(?:ing|ed|er|s)?\b/gi,
+                /\bsh[i*\-_]t(?:ty|s)?\b/gi,
+                /\bb[i*\-_]tch(?:es|ing)?\b/gi,
+                /\bass(?:hole|es)\b/gi,
+              ];
+              let severeMatchCount = 0;
+              for (const pattern of severePatterns) {
+                const matches = transcript.match(pattern);
+                if (matches) severeMatchCount += matches.length;
+              }
+              
+              // Check for hostility directed at the tutor (e.g., "fuck off", "you suck", "your voice is whack")
+              const tutorHostility = /\b(?:fuck\s*(?:off|you)|screw\s*you|you\s+suck|hate\s+you|shut\s+(?:the\s+)?(?:fuck\s+)?up)\b/i.test(transcript);
+              
+              // Escalation: multi-profanity (3+) or profanity + tutor hostility = +1 extra strike
+              let extraStrikes = 0;
+              if (severeMatchCount >= 3 || (severeMatchCount >= 2 && tutorHostility)) {
+                extraStrikes = 1;
+                console.log(`[Custom Voice] ⚠️ Escalated violation: ${severeMatchCount} severe terms${tutorHostility ? ' + tutor hostility' : ''} → +1 extra strike`);
+              }
+              
               // Increment violation count for non-critical violations
-              state.violationCount++;
+              state.violationCount += (1 + extraStrikes);
               warningLevel = shouldWarnUser(state.violationCount - 1);
             }
             
@@ -3307,9 +3491,9 @@ export function setupCustomVoiceWebSocket(server: Server) {
           if (warningLevel === 'final') {
             console.log("[Custom Voice] 🚫 Suspending user due to repeated violations");
             
-            // Create suspension record (24 hour suspension)
+            // Create suspension record (1 hour suspension)
             const suspendedUntil = new Date();
-            suspendedUntil.setHours(suspendedUntil.getHours() + 24);
+            suspendedUntil.setHours(suspendedUntil.getHours() + 1);
             
             try {
               await db.insert(userSuspensions).values({
@@ -3337,7 +3521,7 @@ export function setupCustomVoiceWebSocket(server: Server) {
                 matchedTerms: moderation.matchedTerms,
                 actionTaken: isImmediateTermination 
                   ? `Critical safety incident - Immediate session termination (${moderation.violationType})`
-                  : 'Session terminated - User suspended for 24 hours',
+                  : 'Session terminated - User suspended for 1 hour',
                 timestamp: new Date()
               };
               handleSafetyIncident(safetyNotification).catch(err => {
@@ -3557,10 +3741,23 @@ export function setupCustomVoiceWebSocket(server: Server) {
         // Use streaming with sentence-by-sentence TTS for minimal latency
         await new Promise<void>((resolve, reject) => {
           const callbacks: StreamingCallbacks = {
-            onSentence: async (sentence: string) => {
+            onSentence: async (sentenceRaw: string) => {
               sentenceCount++;
               const sentenceStart = Date.now();
-              
+
+              // ── VISUAL TAG PARSER ────────────────────────────────────────
+              // Strip [VISUAL: tag_name] from sentence before TTS/transcript.
+              // If found, send show_visual event to client.
+              const visualMatch = sentenceRaw.match(/\[VISUAL:\s*([a-z_]+)\]/i);
+              let sentence = sentenceRaw;
+              if (visualMatch) {
+                const visualTag = visualMatch[1].toLowerCase();
+                sentence = sentenceRaw.replace(visualMatch[0], '').trim();
+                console.log(`[Visual] 📊 Triggering visual: ${visualTag} session=${state.sessionId?.substring(0,8)}`);
+                ws.send(JSON.stringify({ type: 'show_visual', visualTag }));
+              }
+              // ── END VISUAL TAG PARSER ────────────────────────────────────
+
               if (sentenceCount === 1) {
                 firstSentenceMs = sentenceStart - claudeStart;
                 state.isTutorThinking = false;
@@ -3995,6 +4192,9 @@ export function setupCustomVoiceWebSocket(server: Server) {
               state.language = message.language || "en";
               state.speechSpeed = 1.0;
               
+              // PRE-WARM: Fire-and-forget TTS connection warm-up so greeting first sentence is fast
+              prewarmTTS(state.ageGroup).catch(() => {});
+              
               console.log(`[Custom Voice] 🎫 Trial session initialized:`, {
                 sessionId: state.sessionId,
                 userId: state.userId,
@@ -4142,6 +4342,9 @@ export function setupCustomVoiceWebSocket(server: Server) {
               state.language = message.language || "en"; // LANGUAGE: Store selected language
               state.uploadedDocCount = typeof message.uploadedDocCount === 'number' ? message.uploadedDocCount : 0;
               
+              // PRE-WARM: Fire-and-forget TTS connection warm-up so greeting first sentence is fast
+              prewarmTTS(state.ageGroup).catch(() => {});
+              
               // STUDENT ISOLATION: Set studentId from init message
               // Also fall back to the session record's studentId for safety
               if (message.studentId) {
@@ -4184,6 +4387,12 @@ export function setupCustomVoiceWebSocket(server: Server) {
                 } else {
                   state.speechSpeed = 1.0; // Default (normal speed)
                   console.log(`[Custom Voice] ⚙️ Using default speech speed: 1.0`);
+                }
+                
+                // SAFETY: Populate parentEmail for safety incident notifications
+                if (user && user.email) {
+                  state.parentEmail = user.email;
+                  console.log(`[Custom Voice] 🛡️ Parent email set for safety alerts: ${user.email.substring(0, 3)}***`);
                 }
               } catch (error) {
                 console.error("[Custom Voice] ⚠️ Error fetching user settings, using default speech speed:", error);
@@ -4315,6 +4524,36 @@ FLOW:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
 
+            // VISUAL AID SYSTEM: Claude can optionally trigger on-screen visuals
+            const VISUAL_SYSTEM_INSTRUCTION = `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 VISUAL AID SYSTEM (OPTIONAL — USE SPARINGLY):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+You can display an on-screen visual to the student by including a tag in your response.
+The tag will be REMOVED before your response is spoken — the student only sees the diagram.
+
+AVAILABLE VISUALS (use exact tag name):
+  [VISUAL: math_area_model]           — Distributive property / expanding brackets
+  [VISUAL: math_number_line]          — Number line for positive/negative numbers
+  [VISUAL: math_fractions]            — Fraction bars (halves, quarters, eighths)
+  [VISUAL: math_place_value]          — Place value chart (ones, tens, hundreds, thousands)
+  [VISUAL: math_multiplication_table] — Times table (1–6)
+  [VISUAL: writing_paragraph_structure] — Paragraph structure diagram
+  [VISUAL: writing_essay_outline]     — Essay outline (intro, body, conclusion)
+  [VISUAL: periodic_table_simplified] — Common chemical elements
+  [VISUAL: grammar_sentence_parts]    — Parts of a sentence (subject, predicate, etc.)
+  [VISUAL: reading_main_idea]         — Main idea and supporting details map
+
+RULES:
+✅ Place the tag at the START of a sentence, alone: "[VISUAL: math_fractions] Let me show you how fractions compare."
+✅ Only use when a visual genuinely helps — not every response
+✅ Only use ONE visual per response
+❌ Never mention the tag or the visual system to the student — just let it appear
+❌ Never invent tag names — only use the exact tags listed above
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+
             // STT_ARTIFACT_HARDENING is defined at module level (see top of file)
             
             // K2 TURN POLICY: Add response constraints for K-2 students
@@ -4347,6 +4586,23 @@ FLOW:
               // Continue without memory - non-blocking
             }
             
+            // LSIS: Inject longitudinal student knowledge profile
+            let lsisProfileBlock = '';
+            try {
+              const { getProfileForSystemPrompt } = await import('../services/lsis-service');
+              if (state.studentId) {
+                const profileSection = await getProfileForSystemPrompt(state.studentId);
+                if (profileSection) {
+                  lsisProfileBlock = profileSection;
+                  console.log(`[LSIS] 🧠 Injected student knowledge profile (${lsisProfileBlock.length} chars)`);
+                } else {
+                  console.log(`[LSIS] ℹ️ No knowledge profile yet for student ${state.studentId}`);
+                }
+              }
+            } catch (lsisError) {
+              console.warn('[LSIS] ⚠️ Profile injection failed (non-blocking):', lsisError);
+            }
+            
             // Build system instruction with personality and document context
             // NO-GHOSTING FIX: Calculate actual content length before claiming doc access
             const ragChars = state.uploadedDocuments.reduce((sum, doc) => {
@@ -4366,7 +4622,7 @@ FLOW:
               });
               
               // Create enhanced system instruction - NO-GHOSTING: Only claim access when content exists
-              state.systemInstruction = `${personality.systemPrompt}${VOICE_CONVERSATION_CONSTRAINTS}${K2_CONSTRAINTS}${continuityBlock}
+              state.systemInstruction = `${personality.systemPrompt}${VOICE_CONVERSATION_CONSTRAINTS}${VISUAL_SYSTEM_INSTRUCTION}${K2_CONSTRAINTS}${continuityBlock}${lsisProfileBlock}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📚 DOCUMENTS LOADED FOR THIS SESSION (${ragChars} chars):
@@ -4400,7 +4656,7 @@ DOCUMENT ACKNOWLEDGMENT RULE:
                 return titleMatch ? titleMatch[1] : `file ${i + 1}`;
               });
               
-              state.systemInstruction = `${personality.systemPrompt}${VOICE_CONVERSATION_CONSTRAINTS}${K2_CONSTRAINTS}${continuityBlock}
+              state.systemInstruction = `${personality.systemPrompt}${VOICE_CONVERSATION_CONSTRAINTS}${VISUAL_SYSTEM_INSTRUCTION}${K2_CONSTRAINTS}${continuityBlock}${lsisProfileBlock}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚠️ DOCUMENT UPLOAD ISSUE:
@@ -4418,7 +4674,7 @@ HONESTY INSTRUCTIONS:
               console.log(`[Custom Voice] ⚠️ Files uploaded but no content extracted (ragChars=0, files=${uploadedFilenames.join(', ')}) - using honest acknowledgment`);
             } else {
               // No documents at all - use standard prompt
-              state.systemInstruction = personality.systemPrompt + VOICE_CONVERSATION_CONSTRAINTS + K2_CONSTRAINTS + continuityBlock + STT_ARTIFACT_HARDENING;
+              state.systemInstruction = personality.systemPrompt + VOICE_CONVERSATION_CONSTRAINTS + VISUAL_SYSTEM_INSTRUCTION + K2_CONSTRAINTS + continuityBlock + lsisProfileBlock + STT_ARTIFACT_HARDENING;
               console.log(`[Custom Voice] No documents uploaded - using standard prompt`);
             }
             
@@ -4524,7 +4780,7 @@ HONESTY INSTRUCTIONS:
               // Language-specific greeting templates
               const greetings: Record<string, { intro: string; docAck: (count: number, titles: string) => string; closing: Record<string, string> }> = {
                 en: {
-                  intro: `Hi ${name}! I'm ${tutorName}, your AI tutor.`,
+                  intro: `Hi ${name}! I'm ${tutorName}, your tutor.`,
                   docAck: (count, titles) => count === 1 ? ` I can see you've uploaded "${titles}" - excellent!` : ` I've loaded ${count} documents for our session.`,
                   closing: {
                     'K-2': docTitles.length > 0 ? " Let's look at it together! What do you want to learn about?" : " I'm so excited to learn with you today! What would you like to explore?",
@@ -4535,7 +4791,7 @@ HONESTY INSTRUCTIONS:
                   }
                 },
                 fr: {
-                  intro: `Bonjour ${name}! Je suis ${tutorName}, ton tuteur IA.`,
+                  intro: `Bonjour ${name}! Je suis ${tutorName}, ton tuteur.`,
                   docAck: (count, titles) => count === 1 ? ` Je vois que tu as téléchargé "${titles}" - excellent!` : ` J'ai chargé ${count} documents pour notre session. Super!`,
                   closing: {
                     'K-2': docTitles.length > 0 ? " Regardons ça ensemble! Qu'est-ce que tu veux apprendre?" : " Je suis tellement content d'apprendre avec toi! Qu'est-ce qui t'intéresse?",
@@ -4546,7 +4802,7 @@ HONESTY INSTRUCTIONS:
                   }
                 },
                 es: {
-                  intro: `¡Hola ${name}! Soy ${tutorName}, tu tutor de IA.`,
+                  intro: `¡Hola ${name}! Soy ${tutorName}, tu tutor.`,
                   docAck: (count, titles) => count === 1 ? ` Veo que has subido "${titles}" - ¡excelente!` : ` He cargado ${count} documentos para nuestra sesión. ¡Genial!`,
                   closing: {
                     'K-2': docTitles.length > 0 ? " ¡Veámoslo juntos! ¿Qué quieres aprender?" : " ¡Estoy muy emocionado de aprender contigo! ¿Qué te gustaría explorar?",
@@ -4557,7 +4813,7 @@ HONESTY INSTRUCTIONS:
                   }
                 },
                 sw: {
-                  intro: `Habari ${name}! Mimi ni ${tutorName}, mwalimu wako wa AI.`,
+                  intro: `Habari ${name}! Mimi ni ${tutorName}, mwalimu wako.`,
                   docAck: (count, titles) => count === 1 ? ` Naona umepakia "${titles}" - bora!` : ` Nimepakia nyaraka ${count} kwa kipindi chetu. Vizuri!`,
                   closing: {
                     'K-2': docTitles.length > 0 ? " Tuangalie pamoja! Unataka kujifunza nini?" : " Ninafuraha sana kujifunza nawe! Unataka kuchunguza nini?",
@@ -4568,7 +4824,7 @@ HONESTY INSTRUCTIONS:
                   }
                 },
                 yo: {
-                  intro: `Bawo ni ${name}! Mo je ${tutorName}, olukọni AI rẹ.`,
+                  intro: `Bawo ni ${name}! Mo je ${tutorName}, olukọni rẹ.`,
                   docAck: (count, titles) => count === 1 ? ` Mo ri pe o ti fi "${titles}" soke - o dara!` : ` Mo ri pe o ti fi iwe ${count} soke: ${titles}. O dara pupo!`,
                   closing: {
                     'K-2': docTitles.length > 0 ? " Jẹ ki a wo papọ! Kini o fẹ lati kọ?" : " Mo dun pupọ lati kọ pẹlu rẹ! Kini o fẹ lati ṣawari?",
@@ -4579,7 +4835,7 @@ HONESTY INSTRUCTIONS:
                   }
                 },
                 ha: {
-                  intro: `Sannu ${name}! Ni ne ${tutorName}, malamin AI naka.`,
+                  intro: `Sannu ${name}! Ni ne ${tutorName}, malamin naka.`,
                   docAck: (count, titles) => count === 1 ? ` Na ga cewa ka loda "${titles}" - kyau!` : ` Na ga cewa ka loda takardun ${count}: ${titles}. Da kyau!`,
                   closing: {
                     'K-2': docTitles.length > 0 ? " Bari mu duba tare! Mene ne kake so ka koya?" : " Ina farin ciki sosai in koya tare da kai! Mene ne kake so ka bincika?",
@@ -4590,7 +4846,7 @@ HONESTY INSTRUCTIONS:
                   }
                 },
                 ar: {
-                  intro: `مرحباً ${name}! أنا ${tutorName}، معلمك الذكي.`,
+                  intro: `مرحباً ${name}! أنا ${tutorName}، معلمك.`,
                   docAck: (count, titles) => count === 1 ? ` أرى أنك رفعت "${titles}" - ممتاز!` : ` أرى أنك رفعت ${count} مستندات: ${titles}. رائع!`,
                   closing: {
                     'K-2': docTitles.length > 0 ? " لنلقي نظرة معاً! ماذا تريد أن تتعلم؟" : " أنا متحمس جداً للتعلم معك! ماذا تريد أن تستكشف؟",
@@ -4601,7 +4857,7 @@ HONESTY INSTRUCTIONS:
                   }
                 },
                 de: {
-                  intro: `Hallo ${name}! Ich bin ${tutorName}, dein KI-Tutor.`,
+                  intro: `Hallo ${name}! Ich bin ${tutorName}, dein Tutor.`,
                   docAck: (count, titles) => count === 1 ? ` Ich sehe, dass du "${titles}" hochgeladen hast - ausgezeichnet!` : ` Ich sehe, dass du ${count} Dokumente hochgeladen hast: ${titles}. Toll!`,
                   closing: {
                     'K-2': docTitles.length > 0 ? " Lass uns das zusammen ansehen! Was möchtest du lernen?" : " Ich freue mich so, mit dir zu lernen! Was möchtest du erkunden?",
@@ -4612,7 +4868,7 @@ HONESTY INSTRUCTIONS:
                   }
                 },
                 pt: {
-                  intro: `Olá ${name}! Sou ${tutorName}, seu tutor de IA.`,
+                  intro: `Olá ${name}! Sou ${tutorName}, seu tutor.`,
                   docAck: (count, titles) => count === 1 ? ` Vejo que você enviou "${titles}" - excelente!` : ` Vejo que você enviou ${count} documentos: ${titles}. Ótimo!`,
                   closing: {
                     'K-2': docTitles.length > 0 ? " Vamos olhar juntos! O que você quer aprender?" : " Estou muito animado para aprender com você! O que você gostaria de explorar?",
@@ -4623,7 +4879,7 @@ HONESTY INSTRUCTIONS:
                   }
                 },
                 zh: {
-                  intro: `你好${name}！我是${tutorName}，你的AI导师。`,
+                  intro: `你好${name}！我是${tutorName}，你的导师。`,
                   docAck: (count, titles) => count === 1 ? `我看到你上传了"${titles}" - 太棒了！` : `我看到你上传了${count}个文档：${titles}。很好！`,
                   closing: {
                     'K-2': docTitles.length > 0 ? "我们一起看看吧！你想学什么？" : "我很高兴能和你一起学习！你想探索什么？",
@@ -4634,7 +4890,7 @@ HONESTY INSTRUCTIONS:
                   }
                 },
                 ja: {
-                  intro: `こんにちは${name}さん！私は${tutorName}、あなたのAIチューターです。`,
+                  intro: `こんにちは${name}さん！私は${tutorName}、あなたのチューターです。`,
                   docAck: (count, titles) => count === 1 ? `「${titles}」をアップロードしたのが見えます - 素晴らしい！` : `${count}つのドキュメントをアップロードしたのが見えます：${titles}。いいですね！`,
                   closing: {
                     'K-2': docTitles.length > 0 ? "一緒に見てみましょう！何を学びたいですか？" : "一緒に学べてとても嬉しいです！何を探求したいですか？",
@@ -4645,7 +4901,7 @@ HONESTY INSTRUCTIONS:
                   }
                 },
                 ko: {
-                  intro: `안녕하세요 ${name}님! 저는 ${tutorName}, 당신의 AI 튜터입니다.`,
+                  intro: `안녕하세요 ${name}님! 저는 ${tutorName}, 당신의 튜터입니다.`,
                   docAck: (count, titles) => count === 1 ? `"${titles}"를 업로드하신 것을 보았습니다 - 훌륭합니다!` : `${count}개의 문서를 업로드하신 것을 보았습니다: ${titles}. 좋아요!`,
                   closing: {
                     'K-2': docTitles.length > 0 ? " 함께 살펴봐요! 무엇을 배우고 싶어요?" : " 함께 배우게 되어 너무 기뻐요! 무엇을 탐험하고 싶어요?",
@@ -4687,14 +4943,14 @@ HONESTY INSTRUCTIONS:
               // (2) CONTINUITY GREETING: If prior sessions exist and no active docs, use welcome back greeting
               if (priorExists && topic) {
                 const continuityGreetings: Record<string, (name: string, tutorName: string, topic: string) => string> = {
-                  en: (n, t, tp) => `Welcome back, ${n}! I'm ${t}, your AI tutor. Shall we continue our discussion on ${tp}? What do you remember most from last time?`,
-                  es: (n, t, tp) => `¡Bienvenido de nuevo, ${n}! Soy ${t}, tu tutor de IA. ¿Continuamos con nuestra conversación sobre ${tp}? ¿Qué recuerdas de la última vez?`,
-                  fr: (n, t, tp) => `Content de te revoir, ${n}! Je suis ${t}, ton tuteur IA. On continue notre discussion sur ${tp}? Qu'est-ce que tu te rappelles de la dernière fois?`,
-                  de: (n, t, tp) => `Willkommen zurück, ${n}! Ich bin ${t}, dein KI-Tutor. Sollen wir unsere Diskussion über ${tp} fortsetzen? Woran erinnerst du dich von letztem Mal?`,
-                  pt: (n, t, tp) => `Bem-vindo de volta, ${n}! Sou ${t}, seu tutor de IA. Vamos continuar nossa discussão sobre ${tp}? O que você lembra da última vez?`,
-                  zh: (n, t, tp) => `欢迎回来，${n}！我是${t}，你的AI导师。我们继续讨论${tp}吧？你还记得上次我们讲了什么吗？`,
-                  ar: (n, t, tp) => `أهلاً بعودتك، ${n}! أنا ${t}، معلمك الذكي. هل نستمر في مناقشة ${tp}؟ ماذا تتذكر من المرة الماضية؟`,
-                  sw: (n, t, tp) => `Karibu tena, ${n}! Mimi ni ${t}, mwalimu wako wa AI. Tuendelee na mazungumzo yetu kuhusu ${tp}? Unakumbuka nini kutoka mara ya mwisho?`,
+                  en: (n, t, tp) => `Welcome back, ${n}! I'm ${t}, your tutor. Shall we continue our discussion on ${tp}? What do you remember most from last time?`,
+                  es: (n, t, tp) => `¡Bienvenido de nuevo, ${n}! Soy ${t}, tu tutor. ¿Continuamos con nuestra conversación sobre ${tp}? ¿Qué recuerdas de la última vez?`,
+                  fr: (n, t, tp) => `Content de te revoir, ${n}! Je suis ${t}, ton tuteur. On continue notre discussion sur ${tp}? Qu'est-ce que tu te rappelles de la dernière fois?`,
+                  de: (n, t, tp) => `Willkommen zurück, ${n}! Ich bin ${t}, dein Tutor. Sollen wir unsere Diskussion über ${tp} fortsetzen? Woran erinnerst du dich von letztem Mal?`,
+                  pt: (n, t, tp) => `Bem-vindo de volta, ${n}! Sou ${t}, seu tutor. Vamos continuar nossa discussão sobre ${tp}? O que você lembra da última vez?`,
+                  zh: (n, t, tp) => `欢迎回来，${n}！我是${t}，你的导师。我们继续讨论${tp}吧？你还记得上次我们讲了什么吗？`,
+                  ar: (n, t, tp) => `أهلاً بعودتك، ${n}! أنا ${t}، معلمك. هل نستمر في مناقشة ${tp}؟ ماذا تتذكر من المرة الماضية؟`,
+                  sw: (n, t, tp) => `Karibu tena, ${n}! Mimi ni ${t}, mwalimu wako. Tuendelee na mazungumzo yetu kuhusu ${tp}? Unakumbuka nini kutoka mara ya mwisho?`,
                 };
                 const continuityFn = continuityGreetings[lang] || continuityGreetings['en'];
                 return continuityFn(name, tutorName, topic);
@@ -4820,6 +5076,17 @@ HONESTY INSTRUCTIONS:
                   return;
                 }
 
+                // FRAGMENT GUARD: Single conjunction/filler words are likely mid-sentence
+                // fragments caused by brief pauses. Don't commit — let continuation guard
+                // or next EOT accumulate the full sentence.
+                const FRAGMENT_WORDS = new Set(['and', 'but', 'so', 'because', 'like', 'or', 'well', 'the', 'a', 'to', 'i', 'it', 'if', 'then', 'also', 'just']);
+                const fragmentCheck = transcript.trim().toLowerCase().replace(/[.,!?]/g, '');
+                const fragmentWords = fragmentCheck.split(/\s+/).filter((w: string) => w.length > 0);
+                if (!stallPrompt && fragmentWords.length <= 2 && fragmentWords.every((w: string) => FRAGMENT_WORDS.has(w))) {
+                  console.log(`[TurnPolicy] 🔇 Fragment guard: "${transcript.trim()}" (${fragmentWords.length} word${fragmentWords.length > 1 ? 's' : ''}) - deferring as likely mid-sentence`);
+                  return;
+                }
+
                 let finalText: string;
                 if (stallPrompt && transcript.trim()) {
                   // Stall escape - send student's transcript PLUS gentle follow-up
@@ -4864,8 +5131,11 @@ HONESTY INSTRUCTIONS:
               
               // FIX 1B: STT recency-gated Claude firing
               // If STT activity occurred within 800ms, defer the Claude call
+              // CRITICAL: Do NOT pass transcript through closure — read from state at fire time
+              // to avoid stale-closure bug where early text ("i do") is committed instead of
+              // the full accumulated transcript ("i do see a pattern but if i pause...")
               let sttDeferTimerId: NodeJS.Timeout | undefined;
-              const gatedFireClaude = (transcript: string, stallPrompt?: string) => {
+              const gatedFireClaude = (stallPrompt?: string) => {
                 const sttAge = Date.now() - state.lastSttActivityAt;
                 if (state.lastSttActivityAt > 0 && sttAge < STT_ACTIVITY_RECENCY_MS) {
                   const deferMs = STT_ACTIVITY_RECENCY_MS - sttAge + 100;
@@ -4876,14 +5146,27 @@ HONESTY INSTRUCTIONS:
                     const recheckAge = Date.now() - state.lastSttActivityAt;
                     if (recheckAge < STT_ACTIVITY_RECENCY_MS) {
                       console.log(`[TurnPolicy] still_active_after_defer recheckAgeMs=${recheckAge} - extending`);
-                      gatedFireClaude(transcript, stallPrompt);
+                      gatedFireClaude(stallPrompt);
                     } else {
-                      fireClaudeWithPolicy(transcript, stallPrompt);
+                      // Read LATEST transcript from state — not from closure
+                      const freshTranscript = state.lastAccumulatedTranscript.trim();
+                      if (!freshTranscript) {
+                        console.log(`[TurnPolicy] gated_fire_skipped - no accumulated transcript`);
+                        return;
+                      }
+                      console.log(`[TurnPolicy] gated_fire_using_fresh_transcript: "${freshTranscript.substring(0, 60)}"`);
+                      fireClaudeWithPolicy(freshTranscript, stallPrompt);
                     }
                   }, deferMs);
                   return;
                 }
-                fireClaudeWithPolicy(transcript, stallPrompt);
+                // No defer needed — but still read from state for consistency
+                const freshTranscript = state.lastAccumulatedTranscript.trim();
+                if (!freshTranscript) {
+                  console.log(`[TurnPolicy] gated_fire_skipped - no accumulated transcript`);
+                  return;
+                }
+                fireClaudeWithPolicy(freshTranscript, stallPrompt);
               };
 
               // K2 TURN POLICY: Start stall escape timer if hesitation detected
@@ -5164,7 +5447,11 @@ HONESTY INSTRUCTIONS:
                       
                       if (policyEval.should_fire_claude) {
                         state.postUtteranceGraceUntil = Date.now() + 400;
-                        gatedFireClaude(finalText);
+                        // Ensure state has the latest text from continuation guard
+                        if (finalText.trim().length > state.lastAccumulatedTranscript.trim().length) {
+                          state.lastAccumulatedTranscript = finalText;
+                        }
+                        gatedFireClaude();
                       }
                     }, graceMs);
                     
@@ -5205,7 +5492,11 @@ HONESTY INSTRUCTIONS:
                   if (evaluation.should_fire_claude) {
                     // Set post-utterance grace period (300-600ms) for merging late transcripts
                     state.postUtteranceGraceUntil = now + 400; // 400ms grace
-                    gatedFireClaude(text);
+                    // Ensure state has latest text before gated fire
+                    if (text.trim().length > state.lastAccumulatedTranscript.trim().length) {
+                      state.lastAccumulatedTranscript = text;
+                    }
+                    gatedFireClaude();
                   }
                 },
                 (error) => {
@@ -5375,7 +5666,11 @@ HONESTY INSTRUCTIONS:
                           return;
                         }
                         if (evaluation.should_fire_claude) {
-                          gatedFireClaude(text);
+                          // Ensure state has latest text before gated fire
+                          if (text.trim().length > state.lastAccumulatedTranscript.trim().length) {
+                            state.lastAccumulatedTranscript = text;
+                          }
+                          gatedFireClaude();
                         }
                       },
                       (error) => console.error('[STT] reconnect_error:', error),
@@ -5894,13 +6189,19 @@ HONESTY INSTRUCTIONS:
             }
             
             const hasConnection = USE_ASSEMBLYAI ? !!state.assemblyAIWs : !!state.deepgramConnection;
-            console.log('[Custom Voice] 📥 Audio message received:', {
-              hasData: !!message.data,
-              dataLength: message.data?.length || 0,
-              provider: USE_ASSEMBLYAI ? 'AssemblyAI' : 'Deepgram',
-              hasConnection,
-              isReconnecting: state.isReconnecting
-            });
+            // Reduced logging: only log every 100th audio frame to prevent Railway rate limits
+            // (was logging every frame, causing 96+ message drops during high-churn windows)
+            state.audioFrameCount = (state.audioFrameCount || 0) + 1;
+            if (state.audioFrameCount <= 2 || state.audioFrameCount % 100 === 0) {
+              console.log('[Custom Voice] 📥 Audio message received:', {
+                hasData: !!message.data,
+                dataLength: message.data?.length || 0,
+                provider: USE_ASSEMBLYAI ? 'AssemblyAI' : 'Deepgram',
+                hasConnection,
+                isReconnecting: state.isReconnecting,
+                frameCount: state.audioFrameCount,
+              });
+            }
             
             if (state.isReconnecting) {
               console.warn('[Custom Voice] ⏸️ Audio dropped - reconnection in progress');
@@ -6110,19 +6411,25 @@ HONESTY INSTRUCTIONS:
                 }
                 
                 if (!hasNonZero) {
-                  console.warn('[Custom Voice] ⚠️ Audio buffer is COMPLETELY SILENT (all zeros)!');
+                  console.warn('[Custom Voice] ⚠️ Audio buffer is COMPLETELY SILENT (all zeros)! Dropping chunk to prevent STT deadman trigger.');
+                  // Drop silent-zero chunks entirely — sending them to AssemblyAI causes
+                  // the deadman timer to fire (no STT messages returned) which triggers
+                  // unnecessary reconnect cycles at session start when mic is still initializing.
+                  return;
                 }
                 
                 // Send to appropriate STT provider
                 if (USE_ASSEMBLYAI) {
                   const sent = sendAudioToAssemblyAI(state.assemblyAIWs, audioBuffer, state.assemblyAIState || undefined, state);
-                  if (sent) {
+                  if (sent && (state.audioFrameCount <= 2 || state.audioFrameCount % 100 === 0)) {
                     console.log('[Custom Voice] ✅ Audio forwarded to AssemblyAI');
                   }
                   // P0.4: Send failures are tracked inside sendAudioToAssemblyAI with rate-limited logging
                 } else {
                   state.deepgramConnection!.send(audioBuffer);
-                  console.log('[Custom Voice] ✅ Audio forwarded to Deepgram');
+                  if (state.audioFrameCount <= 2 || state.audioFrameCount % 100 === 0) {
+                    console.log('[Custom Voice] ✅ Audio forwarded to Deepgram');
+                  }
                 }
               } catch (error) {
                 console.error('[Custom Voice] ❌ Error sending audio:', {
