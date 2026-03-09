@@ -4345,6 +4345,122 @@ FLOW:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
 
+
+            // VISUAL AID SYSTEM: Claude can optionally trigger on-screen visuals
+            const VISUAL_SYSTEM_INSTRUCTION = `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 VISUAL AID SYSTEM (USE WHEN HELPFUL):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+You can display an on-screen visual to the student by including a tag in your response.
+The tag will be REMOVED before your response is spoken — the student only sees the diagram.
+
+AVAILABLE VISUALS (use exact tag name):
+
+MATH — INTERMEDIATE / ADVANCED:
+  [VISUAL: math_area_model]                 — Distributive property / expanding brackets
+  [VISUAL: math_order_of_operations]        — PEMDAS order of operations
+  [VISUAL: math_percent_diagram]            — Part / Percent / Whole relationships
+  [VISUAL: math_algebra_balance]            — Balance scale for solving equations
+  [VISUAL: math_coordinate_plane]           — X/Y coordinate plane with quadrants
+  [VISUAL: math_geometry_shapes]            — Triangle, rectangle, circle, trapezoid formulas
+  [VISUAL: math_advanced_formulas]          — Quadratic formula, trig ratios, exponent rules
+  [VISUAL: math_trig_unit_circle]           — Unit circle Q1 with sin/cos values
+  [VISUAL: math_statistics_chart]           — Mean, median, mode, range, standard deviation
+
+MATH — CALCULUS & COLLEGE:
+  [VISUAL: math_calculus_derivatives]       — Derivative rules (power, product, chain, trig, ln)
+  [VISUAL: math_calculus_integrals]         — Common integral formulas + C
+  [VISUAL: math_limits]                     — Limit definition, L'Hôpital's, key limit rules
+  [VISUAL: math_linear_algebra]             — Matrix multiply, determinant, eigenvalues, dot product
+  [VISUAL: math_probability_stats]          — Probability rules, mean, std dev, z-score, combinations
+  [VISUAL: math_logarithms]                 — Log rules: product, quotient, power, change of base
+
+WRITING / ELA:
+  [VISUAL: writing_essay_outline]           — Intro, body paragraphs, conclusion
+  [VISUAL: writing_figurative_language]     — Simile, metaphor, personification, hyperbole, alliteration
+
+READING:
+  [VISUAL: reading_text_structure]          — Description, sequence, compare/contrast, problem/solution
+
+ENGLISH — COLLEGE LEVEL:
+  [VISUAL: english_thesis_development]      — Weak vs strong thesis, thesis formula
+  [VISUAL: english_argument_structure]      — Claim, evidence, warrant, counterargument, rebuttal
+  [VISUAL: english_research_paper_structure]— Abstract, intro, lit review, methods, results, discussion
+  [VISUAL: english_citation_formats]        — APA 7th and MLA 9th citation formats
+  [VISUAL: english_college_grammar]         — Comma splice, run-ons, dangling modifiers, active/passive
+  [VISUAL: english_rhetorical_devices]      — Ethos, pathos, logos, anaphora, chiasmus, antithesis
+  [VISUAL: english_literary_analysis]       — Theme, motif, symbol, tone, mood, POV, foil, irony
+  [VISUAL: english_critical_reading]        — Annotating, fact vs opinion, evaluating evidence, fallacies
+  [VISUAL: english_parts_of_speech_advanced]— Gerunds, infinitives, participles, appositives, conjunctions
+  [VISUAL: english_logical_fallacies]       — Ad hominem, straw man, false dichotomy, slippery slope
+
+LANGUAGE — ALPHABETS & SYSTEMS:
+  [VISUAL: lang_alphabet_spanish]           — Spanish alphabet (27 letters, Ñ and accents)
+  [VISUAL: lang_alphabet_french]            — French alphabet + accented characters
+  [VISUAL: lang_alphabet_japanese]          — Japanese Hiragana (25 characters with romaji)
+  [VISUAL: lang_alphabet_chinese]           — Chinese common characters (15 hanzi with pinyin)
+  [VISUAL: lang_german_alphabet]            — German alphabet + Umlauts (Ä, Ö, Ü, ß)
+  [VISUAL: lang_korean_hangul]              — Korean Hangul consonants and vowels
+  [VISUAL: lang_arabic_alphabet]            — Arabic alphabet (28 letters, right-to-left)
+  [VISUAL: lang_russian_cyrillic]           — Russian Cyrillic alphabet (33 letters)
+  [VISUAL: lang_japanese_katakana]          — Japanese Katakana (foreign loan words)
+  [VISUAL: lang_spanish_verb_conjugation]   — Spanish present tense: hablar, ser, estar, tener
+  [VISUAL: lang_french_verb_conjugation]    — French present tense: parler, être, avoir, aller
+  [VISUAL: lang_chinese_tones]              — Mandarin 4 tones with marks, descriptions, examples
+
+SCIENCE:
+  [VISUAL: science_cell_diagram]            — Plant vs Animal cell parts comparison
+  [VISUAL: science_scientific_method]       — 5-step scientific method
+  [VISUAL: science_human_body_systems]      — 6 major body systems
+  [VISUAL: science_solar_system]            — All 8 planets with key facts
+  [VISUAL: periodic_table_simplified]       — Common chemical elements
+  [VISUAL: science_atomic_structure]        — Proton, neutron, electron; atomic number vs mass number
+  [VISUAL: science_chemical_bonding]        — Ionic, covalent, polar covalent, metallic, hydrogen bonds
+  [VISUAL: science_dna_genetics]            — DNA base pairing, mitosis vs meiosis
+  [VISUAL: science_punnett_square]          — Punnett square example (Tt × Tt), phenotype ratios
+
+PHYSICS:
+  [VISUAL: physics_newtons_laws]            — Newton's 3 laws with formulas
+  [VISUAL: physics_electromagnetic_spectrum]— Radio → Gamma ray spectrum with uses
+  [VISUAL: physics_formulas]                — Motion, force, energy, waves, electricity, gravity
+  [VISUAL: physics_thermodynamics]          — Laws of thermodynamics + temperature conversions
+
+HISTORY / SOCIAL STUDIES:
+  [VISUAL: history_three_branches]          — Legislative, Executive, Judicial branches
+
+GEOGRAPHY — MAPS:
+  [VISUAL: geography_continents]            — All 7 continents with key facts
+  [VISUAL: geography_usa_map]               — US regions and all 50 states by region
+  [VISUAL: geography_world_map]             — World regions and key countries per continent
+  [VISUAL: geography_europe_map]            — European countries and capitals
+  [VISUAL: geography_lat_long]              — Latitude/longitude, equator, prime meridian
+
+ECONOMICS:
+  [VISUAL: economics_supply_demand]         — Supply & demand with equilibrium
+  [VISUAL: economics_gdp]                   — GDP formula (C+I+G+NX), nominal vs real, business cycle
+  [VISUAL: economics_market_structures]     — Perfect competition → monopoly comparison
+  [VISUAL: economics_fiscal_monetary]       — Fiscal vs monetary policy tools
+  [VISUAL: economics_comparative_advantage] — Comparative advantage table and trade gains
+
+POLITICAL SCIENCE / GOVERNMENT:
+  [VISUAL: polisci_constitution]            — 7 Articles of the U.S. Constitution
+  [VISUAL: polisci_bill_of_rights]          — Amendments 1–10 with descriptions
+  [VISUAL: polisci_world_governments]       — Democracy, monarchy, theocracy, authoritarian, etc.
+
+STUDY SKILLS:
+  [VISUAL: study_skills_cornell_notes]      — Cornell notes format (cue, notes, summary)
+  [VISUAL: study_blooms_taxonomy]           — Bloom's 6 levels with action verbs
+  [VISUAL: study_time_management]           — Pomodoro, time blocking, Eisenhower matrix
+
+RULES:
+✅ Place the tag at the START of a sentence: "[VISUAL: math_calculus_derivatives] Here are the key derivative rules."
+✅ Use when a diagram genuinely helps — especially for new concepts, comparisons, or processes
+✅ Only use ONE visual per response
+❌ Never mention the tag or the visual system to the student — just let it appear
+❌ Never invent tag names — only use the exact tags listed above
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
             // STT_ARTIFACT_HARDENING is defined at module level (see top of file)
             
             // K2 TURN POLICY: Add response constraints for K-2 students
@@ -4413,7 +4529,7 @@ FLOW:
               });
               
               // Create enhanced system instruction - NO-GHOSTING: Only claim access when content exists
-              state.systemInstruction = `${personality.systemPrompt}${VOICE_CONVERSATION_CONSTRAINTS}${K2_CONSTRAINTS}${continuityBlock}${lsisProfileBlock}
+              state.systemInstruction = `${personality.systemPrompt}${VOICE_CONVERSATION_CONSTRAINTS}${VISUAL_SYSTEM_INSTRUCTION}${K2_CONSTRAINTS}${continuityBlock}${lsisProfileBlock}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📚 DOCUMENTS LOADED FOR THIS SESSION (${ragChars} chars):
@@ -4447,7 +4563,7 @@ DOCUMENT ACKNOWLEDGMENT RULE:
                 return titleMatch ? titleMatch[1] : `file ${i + 1}`;
               });
               
-              state.systemInstruction = `${personality.systemPrompt}${VOICE_CONVERSATION_CONSTRAINTS}${K2_CONSTRAINTS}${continuityBlock}${lsisProfileBlock}
+              state.systemInstruction = `${personality.systemPrompt}${VOICE_CONVERSATION_CONSTRAINTS}${VISUAL_SYSTEM_INSTRUCTION}${K2_CONSTRAINTS}${continuityBlock}${lsisProfileBlock}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚠️ DOCUMENT UPLOAD ISSUE:
@@ -4465,7 +4581,7 @@ HONESTY INSTRUCTIONS:
               console.log(`[Custom Voice] ⚠️ Files uploaded but no content extracted (ragChars=0, files=${uploadedFilenames.join(', ')}) - using honest acknowledgment`);
             } else {
               // No documents at all - use standard prompt
-              state.systemInstruction = personality.systemPrompt + VOICE_CONVERSATION_CONSTRAINTS + K2_CONSTRAINTS + continuityBlock + lsisProfileBlock + STT_ARTIFACT_HARDENING;
+              state.systemInstruction = personality.systemPrompt + VOICE_CONVERSATION_CONSTRAINTS + VISUAL_SYSTEM_INSTRUCTION + K2_CONSTRAINTS + continuityBlock + lsisProfileBlock + STT_ARTIFACT_HARDENING;
               console.log(`[Custom Voice] No documents uploaded - using standard prompt`);
             }
             
