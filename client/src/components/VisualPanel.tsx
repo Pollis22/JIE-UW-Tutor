@@ -7,7 +7,6 @@ import { X } from 'lucide-react';
 
 // ─── Visual Tag Registry ───────────────────────────────────────────────────
 export const VISUAL_TAGS = [
-  // Math — Early (K-5)
   // Math — Intermediate / Advanced
   'math_area_model',
   'math_order_of_operations',
@@ -18,154 +17,19 @@ export const VISUAL_TAGS = [
   'math_advanced_formulas',
   'math_trig_unit_circle',
   'math_statistics_chart',
-  // Writing / ELA
-  'writing_paragraph_structure',
-  'writing_essay_outline',
-  'writing_figurative_language',
-  // Grammar / Reading
-  'reading_text_structure',
-  // Language — Alphabets
-  'lang_alphabet_spanish',
-  'lang_alphabet_french',
-  'lang_alphabet_japanese',
-  'lang_alphabet_chinese',
-  // Science
-  'science_cell_diagram',
-  'science_scientific_method',
-  'science_human_body_systems',
-  'science_solar_system',
-  'periodic_table_simplified',
-  // History / Social Studies
-  'history_three_branches',
-  // Geography
-  'geography_continents',
-  // Economics
-  'economics_supply_demand',
-  // Study Skills
-  'study_skills_cornell_notes',
-  // ── COLLEGE / ADVANCED ──────────────────────────────────────
-  // Math — College
-  'math_calculus_derivatives',
-  'math_calculus_integrals',
-  'math_calculus_limits',
-  'math_matrix_operations',
-  'math_quadratic_formula',
-  'math_logarithms',
-  'math_probability_rules',
-  'math_vector_diagram',
-  'math_complex_numbers',
-  'math_binomial_theorem',
-  // Languages — College
-  'lang_alphabet_german',
-  'lang_alphabet_korean',
-  'lang_alphabet_arabic',
-  'lang_alphabet_russian',
-  'lang_alphabet_japanese_katakana',
-  'lang_spanish_verb_conjugation',
-  'lang_french_verb_conjugation',
-  'lang_german_cases',
-  'lang_chinese_tones',
-  'lang_italian_common_phrases',
-  // Geography
-  'geography_map_usa',
-  'geography_map_world',
-  'geography_map_europe',
-  'geography_map_asia',
-  'geography_map_africa',
-  'geography_us_regions',
-  'geography_latitude_longitude',
-  // Physics
-  'physics_newtons_laws',
-  'physics_wave_properties',
-  'physics_electromagnetic_spectrum',
-  'physics_thermodynamics_laws',
-  'physics_kinematics',
-  'physics_circuit_diagram',
-  // Chemistry
-  'chem_periodic_table_full',
-  'chem_ph_scale',
-  'chem_organic_functional_groups',
-  'chem_reaction_types',
-  'chem_atomic_structure',
-  'chem_chemical_bonding',
-  'chem_mole_concept',
-  // Biology
-  'bio_dna_structure',
-  'bio_cell_division',
-  'bio_genetics_punnett',
-  'bio_photosynthesis',
-  'bio_human_anatomy',
-  // Economics — College
-  'econ_gdp_components',
-  'econ_market_structures',
-  'econ_business_cycle',
-  'econ_fiscal_monetary',
-  'econ_comparative_advantage',
-  'econ_inflation_unemployment',
-  // Political Science
-  'poli_us_constitution',
-  'poli_bill_of_rights',
-  'poli_electoral_college',
-  'poli_world_governments',
-  // English — College
-  'eng_parts_of_speech_advanced',
-  'eng_sentence_types',
-  'eng_punctuation_rules',
-  'eng_thesis_development',
-  'eng_argument_structure',
-  'eng_literary_devices',
-  'eng_rhetoric_appeals',
-  'eng_research_paper_structure',
-  'eng_apa_citation',
-  'eng_mla_citation',
-  'eng_active_passive_voice',
-  'eng_reading_strategies',
-  // Study Skills — College
-  'study_blooms_taxonomy',
-  'study_academic_integrity',
-  'study_time_management',
-  'study_critical_thinking',
-  // Math — Calculus & Advanced
+  // Math — Calculus & College
   'math_calculus_derivatives',
   'math_calculus_integrals',
   'math_limits',
   'math_linear_algebra',
   'math_probability_stats',
   'math_logarithms',
-  // Languages — College & Advanced
-  'lang_german_alphabet',
-  'lang_korean_hangul',
-  'lang_arabic_alphabet',
-  'lang_russian_cyrillic',
-  'lang_japanese_katakana',
-  'lang_spanish_verb_conjugation',
-  'lang_french_verb_conjugation',
-  'lang_chinese_tones',
-  // Geography — Maps
-  'geography_usa_map',
-  'geography_world_map',
-  'geography_europe_map',
-  'geography_lat_long',
-  // Physics
-  'physics_newtons_laws',
-  'physics_electromagnetic_spectrum',
-  'physics_formulas',
-  'physics_thermodynamics',
-  // Science — Advanced
-  'science_atomic_structure',
-  'science_chemical_bonding',
-  'science_dna_genetics',
-  'science_punnett_square',
-  // Economics — Advanced
-  'economics_gdp',
-  'economics_market_structures',
-  'economics_fiscal_monetary',
-  'economics_comparative_advantage',
-  // Political Science / History
-  'polisci_constitution',
-  'polisci_bill_of_rights',
-  'polisci_world_governments',
-  // English / Writing / Grammar / Reading — College
+  // Writing / ELA
+  'writing_essay_outline',
+  'writing_figurative_language',
+  // Grammar / Reading
+  'reading_text_structure',
+  // English — College Level
   'english_thesis_development',
   'english_argument_structure',
   'english_research_paper_structure',
@@ -176,7 +40,54 @@ export const VISUAL_TAGS = [
   'english_critical_reading',
   'english_parts_of_speech_advanced',
   'english_logical_fallacies',
-  // Study Skills — College
+  // Language — Alphabets & Systems
+  'lang_alphabet_spanish',
+  'lang_alphabet_french',
+  'lang_alphabet_japanese',
+  'lang_alphabet_chinese',
+  'lang_german_alphabet',
+  'lang_korean_hangul',
+  'lang_arabic_alphabet',
+  'lang_russian_cyrillic',
+  'lang_japanese_katakana',
+  'lang_spanish_verb_conjugation',
+  'lang_french_verb_conjugation',
+  'lang_chinese_tones',
+  // Science
+  'science_cell_diagram',
+  'science_scientific_method',
+  'science_human_body_systems',
+  'science_solar_system',
+  'periodic_table_simplified',
+  'science_atomic_structure',
+  'science_chemical_bonding',
+  'science_dna_genetics',
+  'science_punnett_square',
+  // Physics
+  'physics_newtons_laws',
+  'physics_electromagnetic_spectrum',
+  'physics_formulas',
+  'physics_thermodynamics',
+  // History / Social Studies
+  'history_three_branches',
+  // Geography — Maps
+  'geography_continents',
+  'geography_usa_map',
+  'geography_world_map',
+  'geography_europe_map',
+  'geography_lat_long',
+  // Economics
+  'economics_supply_demand',
+  'economics_gdp',
+  'economics_market_structures',
+  'economics_fiscal_monetary',
+  'economics_comparative_advantage',
+  // Political Science
+  'polisci_constitution',
+  'polisci_bill_of_rights',
+  'polisci_world_governments',
+  // Study Skills
+  'study_skills_cornell_notes',
   'study_blooms_taxonomy',
   'study_time_management',
 ] as const;
