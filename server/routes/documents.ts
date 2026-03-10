@@ -565,8 +565,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       const isImageType = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/bmp'].includes(req.file.mimetype);
       const usedVision = isImageType && extractedText.startsWith('[VISION]');
       if (usedVision) {
-        extractedText = extractedText.replace(/^\[VISION\]
-/, '');
+        extractedText = extractedText.replace(/^\[VISION\]\n/, '');
       }
       logDocExtracted({
         docId: documentId,
