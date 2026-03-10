@@ -214,7 +214,7 @@ async function runTrialAbuseTrackingMigration() {
       CREATE TABLE IF NOT EXISTS public.trial_abuse_tracking (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         device_hash TEXT,
-        ip_hash TEXT NOT NULL,
+        ip_hash TEXT,
         user_id UUID REFERENCES users(id) ON DELETE SET NULL,
         trial_count INTEGER NOT NULL DEFAULT 0,
         last_trial_at TIMESTAMPTZ,
