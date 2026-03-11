@@ -4,7 +4,7 @@ import { IncomingMessage } from 'http';
 import { Socket } from 'net';
 import { startDeepgramStream, DeepgramConnection } from "../services/deepgram-service";
 import { generateTutorResponse, generateTutorResponseStreaming, StreamingCallbacks } from "../services/ai-service";
-import { generateSpeech } from "../services/tts-service";
+import { generateSpeech, prewarmTTS } from "../services/tts-service";
 import { db } from "../db";
 import { realtimeSessions, contentViolations, userSuspensions, documentChunks } from "@shared/schema";
 import { eq, and, or, gte } from "drizzle-orm";
@@ -4019,6 +4019,9 @@ export function setupCustomVoiceWebSocket(server: Server) {
               state.language = message.language || "en";
               state.speechSpeed = 1.0;
               
+              // PRE-WARM: Fire-and-forget TTS connection warm-up so greeting first sentence is fast
+              prewarmTTS(state.ageGroup).catch(() => {});
+              
               console.log(`[Custom Voice] 🎫 Trial session initialized:`, {
                 sessionId: state.sessionId,
                 userId: state.userId,
@@ -4165,6 +4168,9 @@ export function setupCustomVoiceWebSocket(server: Server) {
               state.subject = message.subject || "General"; // SESSION: Store tutoring subject
               state.language = message.language || "en"; // LANGUAGE: Store selected language
               state.uploadedDocCount = typeof message.uploadedDocCount === 'number' ? message.uploadedDocCount : 0;
+              
+              // PRE-WARM: Fire-and-forget TTS connection warm-up so greeting first sentence is fast
+              prewarmTTS(state.ageGroup).catch(() => {});
               
               // STUDENT ISOLATION: Set studentId from init message
               // Also fall back to the session record's studentId for safety
@@ -6022,18 +6028,43 @@ HONESTY INSTRUCTIONS:
                 speaker: "tutor"
               }));
               
+              // BARGE-IN: Set phase to TUTOR_SPEAKING so hardInterruptTutor can fire during greeting.
+              // Without this the phase stays LISTENING and barge-in is completely blocked.
+              setPhase(state, 'TUTOR_SPEAKING', 'greeting_start', ws);
+              state.tutorAudioPlaying = true;
+              state.tutorAudioStartMs = Date.now();
+              
+              // BARGE-IN: Create an AbortController so the greeting loop can be cancelled mid-stream.
+              const greetingAc = new AbortController();
+              state.ttsAbortController = greetingAc;
+              
               const greetingTtsStart = Date.now();
               let totalGreetingAudioBytes = 0;
               let chunkIndex = 0;
+              let greetingInterrupted = false;
               
               try {
                 for (const sentence of greetingSentences) {
+                  // Check barge-in abort between sentences
+                  if (greetingAc.signal.aborted) {
+                    greetingInterrupted = true;
+                    console.log(`[Greeting Chunking] ⚡ Greeting interrupted by barge-in after ${chunkIndex} sentences`);
+                    break;
+                  }
+                  
                   chunkIndex++;
                   const chunkStart = Date.now();
                   
                   const audioBuffer = await generateSpeech(sentence, state.ageGroup, state.speechSpeed);
                   const chunkMs = Date.now() - chunkStart;
                   totalGreetingAudioBytes += audioBuffer.length;
+                  
+                  // Check again after TTS (barge-in may have fired while generating)
+                  if (greetingAc.signal.aborted) {
+                    greetingInterrupted = true;
+                    console.log(`[Greeting Chunking] ⚡ Greeting interrupted mid-chunk ${chunkIndex} by barge-in`);
+                    break;
+                  }
                   
                   console.log(`[Greeting Chunking] 🔊 Chunk ${chunkIndex}/${greetingSentences.length}: ${chunkMs}ms, ${audioBuffer.length} bytes | "${sentence.substring(0, 50)}..."`);
                   
@@ -6046,15 +6077,25 @@ HONESTY INSTRUCTIONS:
                   }));
                 }
                 
-                const totalGreetingMs = Date.now() - greetingTtsStart;
-                console.log(`[Greeting Chunking] ✅ All ${chunkIndex} chunks sent in ${totalGreetingMs}ms total (${totalGreetingAudioBytes} bytes)`);
+                if (!greetingInterrupted) {
+                  const totalGreetingMs = Date.now() - greetingTtsStart;
+                  console.log(`[Greeting Chunking] ✅ All ${chunkIndex} chunks sent in ${totalGreetingMs}ms total (${totalGreetingAudioBytes} bytes)`);
+                }
               } catch (error) {
                 console.error("[Custom Voice] ❌ Failed to generate greeting audio:", error);
               } finally {
+                // Only reset phase if barge-in hasn't already changed it
+                if (!greetingInterrupted) {
+                  setPhase(state, 'LISTENING', 'greeting_complete', ws);
+                  state.tutorAudioPlaying = false;
+                }
+                if (state.ttsAbortController === greetingAc) {
+                  state.ttsAbortController = null;
+                }
                 state.isProcessing = false;
                 state.processingSinceMs = null;
                 state.isTutorSpeaking = false;
-                console.log(`[Pipeline] greeting_processing_end isProcessing=false queueLen=${state.transcriptQueue.length}`);
+                console.log(`[Pipeline] greeting_processing_end isProcessing=false interrupted=${greetingInterrupted} queueLen=${state.transcriptQueue.length}`);
                 if (state.transcriptQueue.length > 0 && !state.isSessionEnded) {
                   console.log(`[Pipeline] drainQueue after greeting, queueLen=${state.transcriptQueue.length}`);
                   setImmediate(() => processTranscriptQueue());
