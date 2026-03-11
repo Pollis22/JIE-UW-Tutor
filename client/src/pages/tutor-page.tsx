@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import uwLogo from '@/assets/uw-madison-logo.png';
+import { AmbientBackground } from '@/components/AmbientBackground';
 import tutorHero from "@/assets/tutor-hero.png";
 import buckyClassroom from "@/assets/campus/student-library.png";
 
@@ -640,9 +641,11 @@ export default function TutorPage() {
   return (
     <NetworkAwareWrapper>
       <TutorErrorBoundary>
+        {/* Ambient neural network canvas - side margins only */}
+        <AmbientBackground />
         {/* Show verification banner if email not verified */}
         {user && !user.emailVerified && <VerificationBanner />}
-        <div className="tutor-page max-w-3xl mx-auto p-4 space-y-4">
+        <div className="tutor-page max-w-3xl mx-auto p-4 space-y-4" style={{ position: 'relative', zIndex: 1 }}>
           {/* Header with Logo and Student Switcher */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">

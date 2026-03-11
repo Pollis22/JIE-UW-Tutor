@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { VoiceStatusIndicator } from "./VoiceStatusIndicator";
 import { useAgeTheme } from "@/contexts/ThemeContext";
 import { ArrowDown } from "lucide-react";
+import { TutorSessionAmbient } from "./TutorSessionAmbient";
 
 interface RealtimeMessage {
   role: 'user' | 'assistant' | 'system';
@@ -161,13 +162,22 @@ export function RealtimeVoiceTranscript({
             data-testid="transcript-scroll-container"
           >
             <div className="space-y-3">
-              {messages.length === 0 ? (
-                <div className={`text-center text-sm py-8 ${isDark ? 'text-gray-500' : 'text-muted-foreground'}`}>
-                  {isConnected 
-                    ? "Start speaking to begin the conversation..." 
-                    : "Connecting to voice service..."}
-                </div>
-              ) : (
+              <AnimatePresence>
+                {messages.length === 0 && (
+                  <motion.div
+                    key="ambient"
+                    initial={{ opacity: 1 }}
+                    exit={{ opacity: 0, transition: { duration: 0.35 } }}
+                  >
+                    <TutorSessionAmbient
+                      isSpeaking={isTutorSpeaking}
+                      isConnected={isConnected}
+                      hasMessages={false}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {messages.length > 0 && (
                 <AnimatePresence initial={false}>
                   {messages.filter(m => !m.isThinking).map((message, index, arr) => {
                     const isUser = message.role === 'user';
