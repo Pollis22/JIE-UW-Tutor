@@ -29,8 +29,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import uwLogo from '@/assets/uw-madison-logo.png';
 import { AmbientBackground } from '@/components/AmbientBackground';
+import { UWHeroBanner } from '@/components/UWHeroBanner';
 import tutorHero from "@/assets/tutor-hero.png";
-import buckyClassroom from "@/assets/campus/student-library.png";
 
 interface ProgressData {
   lastLevel?: string;
@@ -748,20 +748,8 @@ export default function TutorPage() {
             </Card>
           )}
 
-          {/* Motivational Student Photo — centered, clean */}
-          {!mounted && (
-            <div className="flex justify-center">
-              <div className="relative overflow-hidden rounded-xl" style={{ 
-                border: "3px solid white", 
-                boxShadow: "0 8px 30px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)",
-                maxWidth: 400,
-                width: "100%",
-              }}>
-                <img src={buckyClassroom} alt="UW student studying in library with headphones" className="w-full object-cover" style={{ aspectRatio: "16/10" }} />
-                <div style={{ height: 3, background: "#C5050C" }} />
-              </div>
-            </div>
-          )}
+          {/* UW Hero Banner — rotating campus slideshow with stats strip */}
+          <UWHeroBanner mounted={mounted} />
 
           {/* Getting Started Instructions - Collapsible, Hidden during active session */}
           {!mounted && (
