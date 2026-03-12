@@ -14,6 +14,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { AgeThemeProvider } from '@/contexts/ThemeContext';
 import { isYoungLearner as checkYoungLearner } from '@/styles/themes';
+import { VisualPanel } from './VisualPanel';
+import type { VisualTag } from './VisualPanel';
 
 // Session Timer Component - UI only, no billing logic
 function SessionTimer({ isActive }: { isActive: boolean }) {
@@ -979,6 +981,14 @@ IMPORTANT: Start the session by reading the opening introduction naturally. Then
         
         {/* Scrollable Transcript Area - Takes remaining space */}
         <div className={`${customVoice.isConnected ? 'flex-1 min-h-0 overflow-y-auto px-2' : ''}`}>
+
+          {/* Visual Aid Panel - inside scroll area so it's always visible */}
+          {customVoice.isConnected && (
+            <VisualPanel
+              visualTag={customVoice.currentVisual as VisualTag | null}
+              onDismiss={() => customVoice.setCurrentVisual(null)}
+            />
+          )}
           <RealtimeVoiceTranscript
             messages={customVoice.transcript.map(t => ({
               role: t.speaker === 'student' ? 'user' as const : 'assistant' as const,
