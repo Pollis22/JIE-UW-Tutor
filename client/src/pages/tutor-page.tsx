@@ -758,9 +758,6 @@ export default function TutorPage() {
           {/* Post-session feedback — appears after session ends */}
           <SessionFeedback show={showFeedback && !mounted} />
 
-          {/* Feedback comment box — visible when session is not active */}
-          {user && !mounted && <FeedbackWidget />}
-
           {/* Getting Started Instructions - Collapsible, Hidden during active session */}
           {!mounted && (
           <>
@@ -1063,6 +1060,8 @@ export default function TutorPage() {
               )}
             </div>
           )}
+          {/* Feedback Widget — bottom of page, visible when session is not active */}
+          {user && !mounted && <FeedbackWidget />}
         </div>
 
         {/* Student Profile Panel */}
