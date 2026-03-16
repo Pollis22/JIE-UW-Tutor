@@ -6733,7 +6733,8 @@ HONESTY INSTRUCTIONS:
                     state.isTutorThinking = false;
                     console.log(`[Custom Voice] ⏱️ Text streaming complete: ${textStreamMs}ms, ${textSentenceCount} sentences`);
                     
-                    const normalizedTextContent = (fullText ?? "").trim();
+                    // ── STRIP VISUAL TAGS from full text before saving to history/transcript ──
+                    const normalizedTextContent = (fullText ?? "").trim().replace(/\[VISUAL:\s*[a-z0-9_]+\]/gi, '').replace(/\s{2,}/g, ' ').trim();
                     const textWasAborted = textLlmAc.signal.aborted || textTtsAc.signal.aborted;
                     if (normalizedTextContent.length === 0 || textWasAborted || textSentenceCount === 0) {
                       console.warn(`[LLM] Aborted/empty assistant response (text mode) — not saving to history reason=${textWasAborted ? 'aborted' : 'empty'} sentences=${textSentenceCount}`);
