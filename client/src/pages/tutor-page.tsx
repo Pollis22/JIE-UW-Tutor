@@ -31,6 +31,7 @@ import uwLogo from '@/assets/uw-madison-logo.png';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { UWHeroBanner } from '@/components/UWHeroBanner';
 import { SessionFeedback } from '@/components/SessionFeedback';
+import { FeedbackWidget } from '@/components/FeedbackWidget';
 import tutorHero from "@/assets/tutor-hero.png";
 
 interface ProgressData {
@@ -756,6 +757,9 @@ export default function TutorPage() {
 
           {/* Post-session feedback — appears after session ends */}
           <SessionFeedback show={showFeedback && !mounted} />
+
+          {/* Feedback comment box — visible when session is not active */}
+          {user && !mounted && <FeedbackWidget />}
 
           {/* Getting Started Instructions - Collapsible, Hidden during active session */}
           {!mounted && (
