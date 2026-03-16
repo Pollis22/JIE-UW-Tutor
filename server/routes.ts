@@ -606,11 +606,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const { default: billingRoutes } = await import('./routes/billing');
   const { default: promoRoutes } = await import('./routes/promo');
   app.use("/api/support", supportRoutes);
-  const { default: feedbackRoutes } = await import('./routes/feedback');
-  app.use("/api/feedback", feedbackRoutes);
   app.use("/api/payment-methods", paymentMethodRoutes);
   app.use("/api/billing", billingRoutes);
   app.use("/api/promo", promoRoutes);
+
+  // Session feedback route
+  const { default: feedbackRoutes } = await import('./routes/feedback');
+  app.use(feedbackRoutes);
 
   // Learning sessions routes
   const { default: sessionsRoutes } = await import('./routes/sessions');

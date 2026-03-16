@@ -30,6 +30,7 @@ import {
 import uwLogo from '@/assets/uw-madison-logo.png';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { UWHeroBanner } from '@/components/UWHeroBanner';
+import { SessionFeedback } from '@/components/SessionFeedback';
 import tutorHero from "@/assets/tutor-hero.png";
 
 interface ProgressData {
@@ -86,6 +87,7 @@ export default function TutorPage() {
   const [studentName, setStudentName] = useState("");
   const [gradeText, setGradeText] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [sessionState, setSessionState] = useState<'idle' | 'starting' | 'active' | 'ending'>('idle');
   const voiceHostRef = useRef<RealtimeVoiceHostHandle>(null);
   const [lastSummary, setLastSummary] = useState(memo.lastSummary || "");
@@ -546,6 +548,7 @@ export default function TutorPage() {
     }
 
     setMounted(false);
+    setShowFeedback(true);
     setTranscriptMessages([]);
     setIsTranscriptConnected(false);
     setSessionState('idle');
@@ -750,6 +753,9 @@ export default function TutorPage() {
 
           {/* UW Hero Banner — rotating campus slideshow with stats strip */}
           <UWHeroBanner mounted={mounted} />
+
+          {/* Post-session feedback — appears after session ends */}
+          <SessionFeedback show={showFeedback && !mounted} />
 
           {/* Getting Started Instructions - Collapsible, Hidden during active session */}
           {!mounted && (
@@ -1043,6 +1049,7 @@ export default function TutorPage() {
                     onDisconnected={() => {
                       if (sessionState !== 'ending') {
                         setMounted(false);
+                        setShowFeedback(true);
                       }
                     }}
                     onRequestEnd={stop}
