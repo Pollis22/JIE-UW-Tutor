@@ -28,9 +28,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import uwLogo from '@/assets/uw-madison-logo.png';
-import { AmbientBackground } from '@/components/AmbientBackground';
-import { UWHeroBanner } from '@/components/UWHeroBanner';
+import { FeedbackWidget } from "@/components/FeedbackWidget";
 import tutorHero from "@/assets/tutor-hero.png";
+import buckyClassroom from "@/assets/campus/student-library.png";
 
 interface ProgressData {
   lastLevel?: string;
@@ -641,11 +641,9 @@ export default function TutorPage() {
   return (
     <NetworkAwareWrapper>
       <TutorErrorBoundary>
-        {/* Ambient neural network canvas - side margins only */}
-        <AmbientBackground />
         {/* Show verification banner if email not verified */}
         {user && !user.emailVerified && <VerificationBanner />}
-        <div className="tutor-page max-w-3xl mx-auto p-4 space-y-4" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="tutor-page max-w-3xl mx-auto p-4 space-y-4">
           {/* Header with Logo and Student Switcher */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
@@ -748,8 +746,20 @@ export default function TutorPage() {
             </Card>
           )}
 
-          {/* UW Hero Banner — rotating campus slideshow with stats strip */}
-          <UWHeroBanner mounted={mounted} />
+          {/* Motivational Student Photo — centered, clean */}
+          {!mounted && (
+            <div className="flex justify-center">
+              <div className="relative overflow-hidden rounded-xl" style={{ 
+                border: "3px solid white", 
+                boxShadow: "0 8px 30px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)",
+                maxWidth: 400,
+                width: "100%",
+              }}>
+                <img src={buckyClassroom} alt="UW student studying in library with headphones" className="w-full object-cover" style={{ aspectRatio: "16/10" }} />
+                <div style={{ height: 3, background: "#C5050C" }} />
+              </div>
+            </div>
+          )}
 
           {/* Getting Started Instructions - Collapsible, Hidden during active session */}
           {!mounted && (
@@ -1052,6 +1062,9 @@ export default function TutorPage() {
               )}
             </div>
           )}
+
+          {/* Feedback Widget */}
+          {user && !mounted && <FeedbackWidget />}
         </div>
 
         {/* Student Profile Panel */}
