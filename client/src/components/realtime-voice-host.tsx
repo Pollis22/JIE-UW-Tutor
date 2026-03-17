@@ -679,16 +679,20 @@ IMPORTANT: Start the session by reading the opening introduction naturally. Then
     const isImage = file.type.startsWith('image/');
     console.log(`[Chat] 📤 Uploading ${isImage ? 'image' : 'file'} from chat:`, file.name);
 
-    // Use the same upload endpoint for ALL files (images use OCR on server)
+    // Use the same upload endpoint for ALL files (images use Claude Vision on server)
     const formData = new FormData();
     formData.append('file', file);
     formData.append('studentId', studentId || '');
+    // Pass session context so Vision prompt is grade/subject-aware
+    if (subject) formData.append('subject', subject);
+    if (ageGroup) formData.append('grade', ageGroup);
+    if (language) formData.append('language', language);
 
     try {
       toast({
-        title: "Uploading...",
+        title: isImage ? "Analyzing Image..." : "Uploading...",
         description: isImage 
-          ? `Processing ${file.name} with OCR...` 
+          ? `Reading "${file.name}" with AI vision...` 
           : `Uploading ${file.name}...`,
       });
 
@@ -723,7 +727,7 @@ IMPORTANT: Start the session by reading the opening introduction naturally. Then
       toast({
         title: "Upload Complete",
         description: isImage 
-          ? `AI can now read "${file.name}". Ask about it!`
+          ? `Tutor can now see and teach from "${file.name}". Ask about it!`
           : `${file.name} uploaded successfully`,
       });
 

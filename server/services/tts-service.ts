@@ -138,6 +138,12 @@ export async function generateSpeech(
   }
 }
 
+/**
+ * Pre-warm the ElevenLabs connection for a given ageGroup.
+ * Called at session start BEFORE the greeting fires so the first real TTS
+ * request hits a warm HTTP/2 connection (~200ms) instead of a cold one (~1400ms).
+ * The result is discarded — this is purely a connection warm-up.
+ */
 export async function prewarmTTS(ageGroup: string): Promise<void> {
   const start = Date.now();
   try {

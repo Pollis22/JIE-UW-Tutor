@@ -3581,18 +3581,19 @@ export function setupCustomVoiceWebSocket(server: Server) {
         // Use streaming with sentence-by-sentence TTS for minimal latency
         await new Promise<void>((resolve, reject) => {
           const callbacks: StreamingCallbacks = {
-            onSentence: async (sentence: string) => {
+            onSentence: async (sentenceRaw: string) => {
               sentenceCount++;
               const sentenceStart = Date.now();
 
               // ── VISUAL TAG PARSER ────────────────────────────────────────
               // Strip [VISUAL: tag_name] from sentence before TTS/transcript.
               // If found, send show_visual event to client.
-              const sentenceRaw = sentence;
               const visualMatch = sentenceRaw.match(/\[VISUAL:\s*([a-z0-9_]+)\]/i);
+              let sentence = sentenceRaw;
               if (visualMatch) {
-                const visualTag = visualMatch[1];
-                sentence = sentenceRaw.replace(/\[VISUAL:\s*[a-z0-9_]+\]/gi, '').replace(/\s{2,}/g, ' ').trim();
+                const visualTag = visualMatch[1].toLowerCase();
+                sentence = sentenceRaw.replace(visualMatch[0], '').trim();
+                console.log(`[Visual] 📊 Triggering visual: ${visualTag} session=${state.sessionId?.substring(0,8)}`);
                 ws.send(JSON.stringify({ type: 'show_visual', visualTag }));
               }
               // ── END VISUAL TAG PARSER ────────────────────────────────────
@@ -3684,6 +3685,7 @@ export function setupCustomVoiceWebSocket(server: Server) {
               markProgress(state);
               console.log(`[Pipeline] 4. Claude response received (${claudeMs}ms), generating audio...`);
               
+              // ── STRIP VISUAL TAGS from full text before saving to history/transcript ──
               const normalizedContent = (fullText ?? "").trim().replace(/\[VISUAL:\s*[a-z0-9_]+\]/gi, '').replace(/\s{2,}/g, ' ').trim();
               const wasAborted = llmAc.signal.aborted || ttsAc.signal.aborted;
               if (normalizedContent.length === 0 || wasAborted || sentenceCount === 0) {
@@ -5468,7 +5470,8 @@ HONESTY INSTRUCTIONS:
               
               const STT_RING_BUFFER_MAX = 16;
               const STT_DEADMAN_INTERVAL_MS = 2000;
-              const STT_DEADMAN_NO_MESSAGE_MS = 8000;
+              // PATIENCE FIX: Was 8s — too short, fired mid-utterance when student paused. AssemblyAI max_turn_silence=6s, so 15s gives ample time before treating connection as stalled.
+              const STT_DEADMAN_NO_MESSAGE_MS = 15000;
               const STT_DEADMAN_AUDIO_RECENCY_MS = 3000;
               const STT_MAX_RECONNECT_ATTEMPTS = 5;
               const STT_RECONNECT_BACKOFF = [250, 500, 1000, 2000, 4000];
@@ -5506,6 +5509,11 @@ HONESTY INSTRUCTIONS:
                       state.stallEscapeTimerId = null;
                       console.log('[STT] reconnect cleared lingering stall timer');
                     }
+                    
+                    // PATIENCE FIX: Preserve pendingTranscript across STT reconnects
+                    // so partial speech before deadman is not lost
+                    const savedPendingTranscript = pendingTranscript;
+                    pendingTranscript = '';
                     
                     const wasGuardActive = state.turnPolicyState.hesitationGuardActive;
                     const wasAwaitingEot = state.turnPolicyState.awaitingSecondEot;
@@ -5563,7 +5571,15 @@ HONESTY INSTRUCTIONS:
                     
                     const { ws: newWs, state: newState } = createAssemblyAIConnection(
                       state.language,
-                      (text, endOfTurn, confidence) => {
+                      (rawText, endOfTurn, confidence) => {
+                        // PATIENCE FIX: Merge any transcript saved before deadman with post-reconnect text
+                        // so speech that was in-flight when deadman fired is not silently dropped
+                        const text = savedPendingTranscript
+                          ? (savedPendingTranscript + ' ' + rawText).trim()
+                          : rawText;
+                        if (savedPendingTranscript) {
+                          console.log(`[AssemblyAI-Reconnect] 🔗 Merged pre-reconnect transcript: "${savedPendingTranscript}" + "${rawText}" => "${text}"`);
+                        }
                         console.log(`[AssemblyAI-Reconnect] 📝 Complete utterance (confidence: ${confidence.toFixed(2)}): "${text}"`);
                         state.lastAudioReceivedAt = Date.now();
                         
@@ -5705,6 +5721,15 @@ HONESTY INSTRUCTIONS:
                 const msSinceLastBargeIn = Date.now() - state.lastBargeInAt;
                 if (state.lastBargeInAt > 0 && msSinceLastBargeIn < 5000) {
                   console.log(`[STT] deadman_suppressed reason=barge_in_recovery msSinceBargeIn=${msSinceLastBargeIn} sessionId=${state.sessionId}`);
+                  return;
+                }
+                
+                // GPT rec: suppress deadman when student has spoken but not finished.
+                // pendingTranscript has content means AssemblyAI already returned text
+                // for this turn — killing STT now risks losing the partial.
+                // The continuation guard or stall escape will handle completion.
+                if (pendingTranscript.trim().length > 0) {
+                  console.log(`[STT] deadman_suppressed reason=pending_transcript text="${pendingTranscript.substring(0, 40)}" sessionId=${state.sessionId}`);
                   return;
                 }
                 
