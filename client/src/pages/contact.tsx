@@ -12,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { LiveChatWidget } from "@/components/LiveChatWidget";
 
 const contactSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -273,6 +274,9 @@ export default function ContactPage() {
           </div>
         </div>
       </div>
+
+      {/* ElevenLabs Live Chat Widget */}
+      <LiveChatWidget />
     </div>
   );
 }

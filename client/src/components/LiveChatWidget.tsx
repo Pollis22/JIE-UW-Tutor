@@ -15,15 +15,16 @@ export function LiveChatWidget() {
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const agentId = import.meta.env.VITE_ELEVENLABS_CONVAI_AGENT_ID;
+  // UW AI Tutor Support Agent ID
+  const agentId = 'agent_7601k9nzfad9e3c88n3hhdc2p80d';
 
   const conversation = useConversation({
     onConnect: () => {
-      console.log('[LiveChat] Connected');
+      console.log('[LiveChat] Connected to UW AI Tutor Support');
       setError(null);
       setMessages(prev => [...prev, {
         role: 'agent',
-        content: 'Connected! How can I help you with UW AI Tutor today?',
+        content: 'Hi there! 👋 Welcome to UW AI Tutor support. I\'m here to help with platform questions - login issues, feature questions, tech troubleshooting, and getting you set up for success. What can I help you with today?',
         timestamp: new Date()
       }]);
     },
@@ -99,7 +100,8 @@ export function LiveChatWidget() {
       {!isOpen && (
         <button
           onClick={handleStart}
-          className="fixed bottom-6 right-6 z-50 bg-red-600 hover:bg-red-700 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-105"
+          className="fixed bottom-6 right-6 z-50 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-105"
+          style={{ background: '#C5050C' }}
           aria-label="Start live chat"
           data-testid="button-start-live-chat"
         >
@@ -109,14 +111,14 @@ export function LiveChatWidget() {
 
       {isOpen && (
         <div className="fixed bottom-6 right-6 z-50 w-[380px] h-[550px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
-          <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-4 flex justify-between items-center">
+          <div className="text-white p-4 flex justify-between items-center" style={{ background: 'linear-gradient(135deg, #C5050C 0%, #A00409 100%)' }}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
                 <Phone className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold">UW AI Tutor Support</h3>
-                <p className="text-xs text-red-100">
+                <h3 className="font-semibold" style={{ fontFamily: "'Red Hat Display', sans-serif" }}>UW AI Tutor Support</h3>
+                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.9)' }}>
                   {conversation.status === 'connected' ? '● Live' : 'Connecting...'}
                 </p>
               </div>
@@ -133,7 +135,7 @@ export function LiveChatWidget() {
 
           <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-3">
             {error && (
-              <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded-lg text-sm">
+              <div className="border px-4 py-2 rounded-lg text-sm" style={{ background: '#FEE2E2', borderColor: '#FCA5A5', color: '#991B1B' }}>
                 {error}
               </div>
             )}
@@ -153,13 +155,14 @@ export function LiveChatWidget() {
                 <div
                   className={`max-w-[80%] rounded-2xl px-4 py-2 ${
                     msg.role === 'user'
-                      ? 'bg-red-600 text-white rounded-br-md'
+                      ? 'text-white rounded-br-md'
                       : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-bl-md'
                   }`}
+                  style={msg.role === 'user' ? { background: '#C5050C' } : {}}
                 >
                   <p className="text-sm">{msg.content}</p>
                   <p className={`text-xs mt-1 ${
-                    msg.role === 'user' ? 'text-red-200' : 'text-gray-400'
+                    msg.role === 'user' ? 'opacity-80' : 'text-gray-400'
                   }`}>
                     {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
@@ -171,9 +174,9 @@ export function LiveChatWidget() {
               <div className="flex justify-start">
                 <div className="bg-white rounded-2xl px-4 py-2 shadow-sm border border-gray-100">
                   <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <div className="w-2 h-2 rounded-full animate-bounce" style={{ background: '#C5050C', animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 rounded-full animate-bounce" style={{ background: '#C5050C', animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 rounded-full animate-bounce" style={{ background: '#C5050C', animationDelay: '300ms' }} />
                   </div>
                 </div>
               </div>
@@ -189,9 +192,10 @@ export function LiveChatWidget() {
                   onClick={toggleMute}
                   className={`p-2 rounded-full transition-colors ${
                     isMuted 
-                      ? 'bg-red-100 text-red-600' 
+                      ? 'text-white' 
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
+                  style={isMuted ? { background: '#C5050C' } : {}}
                   data-testid="button-toggle-mute"
                 >
                   {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
@@ -203,7 +207,10 @@ export function LiveChatWidget() {
               
               <button
                 onClick={handleEnd}
-                className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-full transition-colors"
+                style={{ background: '#FEE2E2', color: '#C5050C' }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#FCA5A5'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#FEE2E2'}
                 data-testid="button-end-call"
               >
                 <PhoneOff className="h-4 w-4" />

@@ -2,13 +2,13 @@ import { useEffect } from "react";
 import { MessageCircle, Mail, Book, HelpCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import uwLogo from "@/assets/uw-madison-logo.png";
+import { LiveChatWidget } from "@/components/LiveChatWidget";
 
 export default function LiveSupport() {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    // Placeholder for Crisp or AI agent integration
-    console.log("Live support page loaded - AI agent integration pending");
+    console.log("Live support page loaded with ElevenLabs agent");
   }, []);
 
   return (
@@ -98,25 +98,19 @@ export default function LiveSupport() {
           <div className="bg-gradient-to-r from-[#C5050C] to-[#A00409] text-white p-8 rounded-lg text-center mb-8">
             <MessageCircle className="w-16 h-16 mx-auto mb-4" />
             <h2 className="text-3xl font-bold mb-4" style={{ fontFamily: 'Red Hat Display, sans-serif' }}>
-              Live Chat Support
+              Live Voice Support
             </h2>
             <p className="text-lg mb-6">
-              Chat with our AI support assistant for instant help with technical issues, account questions, or platform guidance.
+              Talk with our AI support assistant for instant help with technical issues, account questions, or platform guidance.
             </p>
-            <button 
-              onClick={() => {
-                // Placeholder - will trigger Crisp or AI agent chat
-                alert("Live chat will open here once AI agent is integrated");
-              }}
-              className="bg-white text-[#C5050C] px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors"
-            >
-              Start Live Chat
-            </button>
+            <p className="text-sm mb-6 text-white/90">
+              Click the phone icon in the bottom-right corner to start a voice conversation, or scroll down for FAQs.
+            </p>
           </div>
 
           <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded">
             <p className="text-gray-700">
-              <strong>Note:</strong> Our AI support assistant is available 24/7 to help with platform questions, technical issues, and general inquiries. For academic tutoring, please use the main tutoring interface.
+              <strong>Note:</strong> Our AI support assistant is available 24/7 to help with platform questions, technical issues, and general inquiries. For academic tutoring, please sign in and start a tutoring session.
             </p>
           </div>
         </section>
@@ -233,22 +227,22 @@ export default function LiveSupport() {
         <section>
           <div className="bg-gray-50 p-8 rounded-lg text-center">
             <Mail className="w-12 h-12 text-[#C5050C] mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-4">Still Need Help?</h2>
+            <h2 className="text-2xl font-bold mb-4">Prefer Email?</h2>
             <p className="text-gray-700 mb-6">
-              If you have questions that aren't answered here, our live chat support is always available.
+              You can also reach us via our contact form for non-urgent inquiries.
             </p>
             <button 
-              onClick={() => {
-                // Placeholder - will trigger Crisp or AI agent chat
-                alert("Live chat will open here once AI agent is integrated");
-              }}
+              onClick={() => setLocation("/contact")}
               className="bg-[#C5050C] text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-[#A00409] transition-colors"
             >
-              Contact Support
+              Contact Form
             </button>
           </div>
         </section>
       </div>
+
+      {/* ElevenLabs Live Chat Widget */}
+      <LiveChatWidget />
     </div>
   );
 }
