@@ -54,6 +54,9 @@ export function NavigationHeader() {
             {[
               { label: "Tutor", path: "/tutor" },
               { label: "Dashboard", path: "/dashboard" },
+              { label: "Features", path: "/features" },
+              { label: "Best Practices", path: "/best-practices" },
+              { label: "Support", path: "/support" },
               { label: "Settings", path: "/settings" },
               ...(user?.role === "admin" ? [{ label: "Admin", path: "/admin" }] : []),
             ].map(item => (

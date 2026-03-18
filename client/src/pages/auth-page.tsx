@@ -215,6 +215,43 @@ export default function AuthPage() {
               <div style={{ fontSize: 10, color: "#646569", fontWeight: 500, letterSpacing: 1, textTransform: "uppercase" }}>Powered by JIE Mastery</div>
             </div>
           </div>
+          
+          {/* Navigation Links */}
+          <div className="hidden lg:flex items-center gap-1 flex-1 justify-center">
+            {[
+              { label: "Features", path: "/features" },
+              { label: "Best Practices", path: "/best-practices" },
+              { label: "Support", path: "/support" },
+            ].map(item => (
+              <button
+                key={item.path}
+                onClick={() => setLocation(item.path)}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 6,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: "#646569",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: "'Red Hat Text', sans-serif",
+                  transition: "all 0.15s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "#C5050C";
+                  e.currentTarget.style.background = "rgba(197,5,12,0.06)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "#646569";
+                  e.currentTarget.style.background = "transparent";
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          
           <Button onClick={() => { setActiveTab("login"); document.getElementById("auth-section")?.scrollIntoView({ behavior: "smooth" }); }}
             className="text-white font-semibold px-4 md:px-6 py-2 rounded-lg text-sm flex-shrink-0" style={{ background: "#C5050C" }}>Sign In</Button>
         </div>
