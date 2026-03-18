@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { 
   BookOpen, 
   Globe, 
@@ -11,10 +11,78 @@ import {
   Zap,
   Users
 } from "lucide-react";
+import uwLogo from "@/assets/uw-madison-logo.png";
 
 export default function FeaturesAndBenefits() {
+  const [, setLocation] = useLocation();
+
   return (
     <div className="min-h-screen bg-white">
+      {/* Red top bar */}
+      <div style={{ height: 4, background: "#C5050C" }} />
+      
+      {/* Navigation */}
+      <nav style={{ background: "#FFFFFF", borderBottom: "1px solid #E8E8E8", position: "sticky", top: 0, zIndex: 50 }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <div className="flex items-center gap-4 cursor-pointer" onClick={() => setLocation("/auth")}>
+              <img src={uwLogo} alt="University of Wisconsin-Madison" style={{ height: 48 }} />
+              <div style={{ borderLeft: "1px solid #DAD7CB", paddingLeft: 12 }}>
+                <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontWeight: 700, fontSize: 16, color: "#282728", lineHeight: 1.1 }}>AI Tutor</div>
+                <div style={{ fontSize: 10, color: "#646569", fontWeight: 500, letterSpacing: 1, textTransform: "uppercase" }}>University of Wisconsin</div>
+              </div>
+            </div>
+
+            {/* Nav Links */}
+            <div className="hidden md:flex items-center gap-1">
+              {[
+                { label: "Features", path: "/features" },
+                { label: "Best Practices", path: "/best-practices" },
+                { label: "Support", path: "/support" },
+                { label: "Contact", path: "/contact" },
+              ].map(item => (
+                <button
+                  key={item.path}
+                  onClick={() => setLocation(item.path)}
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: 6,
+                    fontSize: 14,
+                    fontWeight: window.location.pathname === item.path ? 600 : 500,
+                    color: window.location.pathname === item.path ? "#C5050C" : "#646569",
+                    background: window.location.pathname === item.path ? "rgba(197,5,12,0.06)" : "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    fontFamily: "'Red Hat Text', sans-serif",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+              <button
+                onClick={() => setLocation("/auth")}
+                style={{
+                  padding: "6px 16px",
+                  borderRadius: 6,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "#FFFFFF",
+                  background: "#C5050C",
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: "'Red Hat Text', sans-serif",
+                  marginLeft: 8,
+                }}
+              >
+                Sign In
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
       {/* Hero Section with Bascom Hall */}
       <div className="relative h-[500px] overflow-hidden">
         <img 
@@ -30,11 +98,12 @@ export default function FeaturesAndBenefits() {
             <p className="text-xl md:text-2xl mb-8">
               Master any subject, anytime, anywhere — in 25 languages
             </p>
-            <Link href="/signup">
-              <button className="bg-white text-[#C5050C] px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors">
-                Get Started Free
-              </button>
-            </Link>
+            <button
+              onClick={() => setLocation("/auth")}
+              className="bg-white text-[#C5050C] px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors"
+            >
+              Get Started
+            </button>
           </div>
         </div>
       </div>
@@ -200,13 +269,14 @@ export default function FeaturesAndBenefits() {
         {/* CTA Section */}
         <div className="text-center">
           <h2 className="text-3xl font-bold mb-6">Ready to Transform Your Learning?</h2>
-          <Link href="/signup">
-            <button className="bg-[#C5050C] text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-[#A00409] transition-colors">
-              Start Learning Now
-            </button>
-          </Link>
+          <button
+            onClick={() => setLocation("/auth")}
+            className="bg-[#C5050C] text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-[#A00409] transition-colors"
+          >
+            Start Learning Now
+          </button>
           <p className="text-gray-600 mt-4">
-            Questions? <Link href="/support" className="text-[#C5050C] hover:underline">Contact Support</Link>
+            Questions? <button onClick={() => setLocation("/contact")} className="text-[#C5050C] hover:underline">Contact Us</button>
           </p>
         </div>
       </div>

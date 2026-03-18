@@ -38,6 +38,7 @@ const PracticeLessonsPage = lazy(() => import("@/pages/practice-lessons-page"));
 const FeaturesAndBenefits = lazy(() => import("@/pages/features-benefits"));
 const BestPractices = lazy(() => import("@/pages/best-practices"));
 const LiveSupport = lazy(() => import("@/pages/live-support"));
+const ContactPage = lazy(() => import("@/pages/contact"));
 
 function Router() {
   return (
@@ -69,6 +70,7 @@ function Router() {
         <LazyRoute path="/features" component={FeaturesAndBenefits} />
         <LazyRoute path="/best-practices" component={BestPractices} />
         <LazyRoute path="/support" component={LiveSupport} />
+        <LazyRoute path="/contact" component={ContactPage} />
         <LazyRoute component={NotFound} />
     </Switch>
   );
