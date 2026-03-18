@@ -824,6 +824,7 @@ function createAssemblyAIConnection(
               state.eotDeferredConfidence = confidence;
               // Store current transcript in state so deferred timer has latest
               state.lastAccumulatedTranscript = confirmedTranscript;
+              state.lastAccumulatedTranscriptSetAt = Date.now();
               state.lastAccumulatedConfidence = confidence;
               state.eotDeferTimerId = setTimeout(() => {
                 state.eotDeferTimerId = undefined;
@@ -832,8 +833,14 @@ function createAssemblyAIConnection(
                 // Read LATEST transcript from state — not the stale closure capture
                 const latestTranscript = state.lastAccumulatedTranscript.trim();
                 const latestConf = state.lastAccumulatedConfidence || confidence;
-                if (latestTranscript && !state.currentTurnCommitted) {
-                  console.log(`[AssemblyAI v3] ✅ Deferred EOT firing now with: "${latestTranscript.substring(0, 60)}"`);
+                // DEFERRED EOT CONFIDENCE FLOOR: Don't commit genuinely low-confidence turns.
+                // The deferred timer was meant to wait for more speech; if nothing better
+                // arrived, only commit if confidence is at least 0.40 OR transcript is long
+                // enough (5+ words) to be clearly real speech regardless of confidence.
+                const deferredWordCount = latestTranscript.split(/\s+/).filter(w => w.length > 0).length;
+                const meetsConfidenceFloor = latestConf >= 0.40 || deferredWordCount >= 5;
+                if (latestTranscript && !state.currentTurnCommitted && meetsConfidenceFloor) {
+                  console.log(`[AssemblyAI v3] ✅ Deferred EOT firing now with: "${latestTranscript.substring(0, 60)}" (conf=${latestConf.toFixed(2)} words=${deferredWordCount})`);
                   if (turnOrder !== undefined) {
                     state.committedTurnOrders.add(turnOrder);
                   }
@@ -842,6 +849,10 @@ function createAssemblyAIConnection(
                   state.firstEotTimestamp = undefined;
                   state.currentTurnCommitted = false;
                   onTranscript(latestTranscript, true, latestConf);
+                } else if (latestTranscript && !state.currentTurnCommitted && !meetsConfidenceFloor) {
+                  console.log(`[AssemblyAI v3] 🚫 Deferred EOT DROPPED: conf=${latestConf.toFixed(2)} < 0.40 and words=${deferredWordCount} < 5 — likely noise/fragment: "${latestTranscript.substring(0, 60)}"`);
+                  // NOISE COACHING: Track dropped turns for persistent noise detection
+                  trackDroppedTurnForNoiseCoaching(ws, state);
                 }
               }, LOW_CONF_DEFER_MS);
               return; // Don't commit yet — wait for deferral or a higher-confidence EOT
@@ -1182,11 +1193,26 @@ interface GradeBandTimingConfig {
 }
 
 const GRADE_BAND_TIMING: Record<string, GradeBandTimingConfig> = {
-  'K2': { bargeInDebounceMs: 600, bargeInDecayMs: 300, bargeInCooldownMs: 850, shortBurstMinMs: 300, postAudioBufferMs: 2000, minMsAfterAudioStartForBargeIn: 800, continuationGraceMs: 1400, continuationHedgeGraceMs: 3000, bargeInPlaybackThreshold: 0.15, consecutiveFramesRequired: 4, bargeInConfirmDurationMs: 600 },
-  'G3-5': { bargeInDebounceMs: 500, bargeInDecayMs: 260, bargeInCooldownMs: 750, shortBurstMinMs: 260, postAudioBufferMs: 1800, minMsAfterAudioStartForBargeIn: 600, continuationGraceMs: 1200, continuationHedgeGraceMs: 2800, bargeInPlaybackThreshold: 0.14, consecutiveFramesRequired: 3, bargeInConfirmDurationMs: 500 },
-  'G6-8': { bargeInDebounceMs: 400, bargeInDecayMs: 200, bargeInCooldownMs: 650, shortBurstMinMs: 220, postAudioBufferMs: 1500, minMsAfterAudioStartForBargeIn: 500, continuationGraceMs: 1000, continuationHedgeGraceMs: 2500, bargeInPlaybackThreshold: 0.12, consecutiveFramesRequired: 3, bargeInConfirmDurationMs: 400 },
-  'G9-12': { bargeInDebounceMs: 150, bargeInDecayMs: 220, bargeInCooldownMs: 300, shortBurstMinMs: 140, postAudioBufferMs: 1400, minMsAfterAudioStartForBargeIn: 150, continuationGraceMs: 900, continuationHedgeGraceMs: 2200, bargeInPlaybackThreshold: 0.10, consecutiveFramesRequired: 2, bargeInConfirmDurationMs: 120 },
-  'ADV': { bargeInDebounceMs: 100, bargeInDecayMs: 250, bargeInCooldownMs: 200, shortBurstMinMs: 100, postAudioBufferMs: 1000, minMsAfterAudioStartForBargeIn: 100, continuationGraceMs: 800, continuationHedgeGraceMs: 2000, bargeInPlaybackThreshold: 0.08, consecutiveFramesRequired: 1, bargeInConfirmDurationMs: 80 },
+  // ── BARGE-IN PHILOSOPHY ──────────────────────────────────────────────────
+  // Sharp impulse noise (desk tap, toy drop, chair scrape) creates a brief
+  // high-RMS transient that dies within 50-150ms. Real speech — even a short
+  // word from a young child — sustains 250ms+. The bargeInConfirmDurationMs
+  // is the primary gate: it must exceed typical impulse duration at every band.
+  // consecutiveFramesRequired adds a second check: multiple consecutive audio
+  // frames above threshold, not just a single spike.
+  // ─────────────────────────────────────────────────────────────────────────
+  // K2: Very patient — kids are extremely fidgety. High threshold, many frames,
+  // long confirm. A child's voice is weaker and more variable so debounce stays high.
+  'K2':   { bargeInDebounceMs: 600, bargeInDecayMs: 300, bargeInCooldownMs: 850, shortBurstMinMs: 300, postAudioBufferMs: 2000, minMsAfterAudioStartForBargeIn: 800, continuationGraceMs: 1400, continuationHedgeGraceMs: 3000, bargeInPlaybackThreshold: 0.18, consecutiveFramesRequired: 5, bargeInConfirmDurationMs: 600 },
+  // G3-5: Slightly less patient but still strong impulse protection.
+  'G3-5': { bargeInDebounceMs: 500, bargeInDecayMs: 260, bargeInCooldownMs: 750, shortBurstMinMs: 260, postAudioBufferMs: 1800, minMsAfterAudioStartForBargeIn: 600, continuationGraceMs: 1200, continuationHedgeGraceMs: 2800, bargeInPlaybackThreshold: 0.16, consecutiveFramesRequired: 4, bargeInConfirmDurationMs: 500 },
+  // G6-8: Middle school — still active but more intentional when speaking.
+  'G6-8': { bargeInDebounceMs: 400, bargeInDecayMs: 200, bargeInCooldownMs: 650, shortBurstMinMs: 220, postAudioBufferMs: 1500, minMsAfterAudioStartForBargeIn: 500, continuationGraceMs: 1000, continuationHedgeGraceMs: 2500, bargeInPlaybackThreshold: 0.14, consecutiveFramesRequired: 3, bargeInConfirmDurationMs: 400 },
+  // G9-12 and ADV: Aligned to G6-8. Validated in testing — G6-8 naturally handles
+  // impulse noise via silence_decay (taps expire in ~250ms, well under the 400ms confirm)
+  // while Silero client VAD remains the fast path for genuine voice interruption.
+  'G9-12': { bargeInDebounceMs: 400, bargeInDecayMs: 200, bargeInCooldownMs: 650, shortBurstMinMs: 220, postAudioBufferMs: 1500, minMsAfterAudioStartForBargeIn: 500, continuationGraceMs: 1000, continuationHedgeGraceMs: 2500, bargeInPlaybackThreshold: 0.14, consecutiveFramesRequired: 3, bargeInConfirmDurationMs: 400 },
+  'ADV':   { bargeInDebounceMs: 400, bargeInDecayMs: 200, bargeInCooldownMs: 650, shortBurstMinMs: 220, postAudioBufferMs: 1500, minMsAfterAudioStartForBargeIn: 500, continuationGraceMs: 1000, continuationHedgeGraceMs: 2500, bargeInPlaybackThreshold: 0.14, consecutiveFramesRequired: 3, bargeInConfirmDurationMs: 400 },
 };
 const DEFAULT_GRADE_BAND_TIMING: GradeBandTimingConfig = GRADE_BAND_TIMING['G6-8'];
 
@@ -1360,6 +1386,7 @@ interface SessionState {
   // FIX 1A: STT activity tracking to prevent premature turn firing
   lastSttActivityAt: number;
   lastAccumulatedTranscript: string;
+  lastAccumulatedTranscriptSetAt: number; // When transcript last changed — for stability check
   lastAccumulatedConfidence: number; // Track latest EOT confidence for state-based commit
   audioFrameCount: number; // LOG REDUCTION: Count audio frames for sampled logging
   bargeInCandidate: {
@@ -1400,6 +1427,12 @@ interface SessionState {
   watchdogRecoveries: number;
   lastWatchdogRecoveryAt: number;
   watchdogDisabled: boolean;
+  // TRIAL MINUTE ENFORCEMENT: Periodic check to end session when trial minutes exhausted
+  trialMinuteCheckTimerId: NodeJS.Timeout | null;
+  trialMinuteWarned: boolean; // Whether 2-minute warning has been sent
+  // NOISE COACHING: Track dropped turns to detect persistently noisy sessions
+  droppedTurnTimestamps: number[]; // Rolling timestamps of noise-dropped turns
+  lastNoiseCoachingAtMs: number;  // Last time tutor gave noise coaching message
 }
 
 // Helper to send typed WebSocket events
@@ -1407,6 +1440,84 @@ function sendWsEvent(ws: WebSocket, type: string, payload: Record<string, unknow
   if (ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type, ...payload }));
     console.log(`[WS Event] ${type}`, payload.turnId || '');
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// NOISE COACHING: Detect persistently noisy sessions and have
+// the tutor proactively suggest a quieter environment or text mode.
+// Triggers when N turns are dropped in a rolling window.
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const NOISE_COACHING_WINDOW_MS = 60_000;   // 60-second rolling window
+const NOISE_COACHING_DROP_THRESHOLD = 4;   // 4 dropped turns triggers coaching
+const NOISE_COACHING_COOLDOWN_MS = 180_000; // 3 minutes between coaching messages
+
+async function trackDroppedTurnForNoiseCoaching(
+  ws: WebSocket,
+  state: SessionState
+): Promise<void> {
+  if (state.isSessionEnded || state.sessionFinalizing) return;
+
+  const now = Date.now();
+
+  // Add this drop to the rolling window
+  state.droppedTurnTimestamps.push(now);
+
+  // Prune drops outside the window
+  state.droppedTurnTimestamps = state.droppedTurnTimestamps.filter(
+    ts => now - ts < NOISE_COACHING_WINDOW_MS
+  );
+
+  const recentDrops = state.droppedTurnTimestamps.length;
+  const timeSinceLastCoaching = now - state.lastNoiseCoachingAtMs;
+
+  console.log(`[NoiseCoaching] Drops in ${NOISE_COACHING_WINDOW_MS / 1000}s window: ${recentDrops}/${NOISE_COACHING_DROP_THRESHOLD}, cooldown: ${Math.max(0, NOISE_COACHING_COOLDOWN_MS - timeSinceLastCoaching)}ms remaining`);
+
+  if (recentDrops < NOISE_COACHING_DROP_THRESHOLD) return;
+  if (timeSinceLastCoaching < NOISE_COACHING_COOLDOWN_MS) return;
+
+  // Check that the session isn't already processing a turn
+  if (state.isProcessing || state.phase === 'TUTOR_SPEAKING' || state.phase === 'AWAITING_RESPONSE') {
+    console.log(`[NoiseCoaching] Skipping — session busy (phase=${state.phase}, isProcessing=${state.isProcessing})`);
+    return;
+  }
+
+  state.lastNoiseCoachingAtMs = now;
+  state.droppedTurnTimestamps = []; // Reset after coaching fires
+  console.log(`[NoiseCoaching] 📢 Threshold reached — injecting noise coaching message`);
+
+  const coachingText = `I'm picking up some background noise that's making it harder for me to hear you clearly. If you can, moving to a quieter spot would help a lot. You can also switch to text mode by clicking the keyboard icon — that way background noise won't affect us at all.`;
+
+  // Add to transcript
+  state.transcript.push({
+    speaker: 'tutor',
+    text: coachingText,
+    timestamp: new Date().toISOString(),
+    messageId: crypto.randomUUID(),
+  });
+
+  // Send transcript message to client
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      type: 'transcript',
+      speaker: 'tutor',
+      text: coachingText,
+    }));
+  }
+
+  // Generate and send TTS audio
+  try {
+    const audioBuffer = await generateSpeech(coachingText, state.ageGroup, state.speechSpeed);
+    if (audioBuffer && audioBuffer.length > 0 && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'audio',
+        data: audioBuffer.toString('base64'),
+        mimeType: 'audio/pcm;rate=16000',
+      }));
+      console.log(`[NoiseCoaching] ✅ Coaching audio sent`);
+    }
+  } catch (err) {
+    console.error('[NoiseCoaching] ❌ Failed to generate coaching audio:', err);
   }
 }
 
@@ -1436,6 +1547,7 @@ function creditSttActivity(state: SessionState, currentText: string, prevText: s
     const now = Date.now();
     state.lastSttActivityAt = now;
     state.lastAccumulatedTranscript = content;
+    state.lastAccumulatedTranscriptSetAt = now;
     state.lastAudioReceivedAt = now;
     state.lastActivityTime = now;
 
@@ -1847,6 +1959,12 @@ async function finalizeSession(
   if (state.sttReconnectTimerId) {
     clearTimeout(state.sttReconnectTimerId);
     state.sttReconnectTimerId = null;
+  }
+  // TRIAL MINUTE ENFORCEMENT: Clear trial minute check timer
+  if (state.trialMinuteCheckTimerId) {
+    clearInterval(state.trialMinuteCheckTimerId);
+    state.trialMinuteCheckTimerId = null;
+    console.log(`[Finalize] 🧹 Cleared trial minute check timer (reason: ${reason})`);
   }
   if (state.assemblyAIWs) {
     try { state.assemblyAIWs.close(); } catch (_e) {}
@@ -2444,6 +2562,7 @@ export function setupCustomVoiceWebSocket(server: Server) {
       isTutorThinking: false,
       lastSttActivityAt: 0,
       lastAccumulatedTranscript: '',
+      lastAccumulatedTranscriptSetAt: 0,
       lastAccumulatedConfidence: 0,
       audioFrameCount: 0,
       bargeInCandidate: {
@@ -2480,6 +2599,10 @@ export function setupCustomVoiceWebSocket(server: Server) {
       watchdogRecoveries: 0,
       lastWatchdogRecoveryAt: 0,
       watchdogDisabled: false,
+      trialMinuteCheckTimerId: null,
+      trialMinuteWarned: false,
+      droppedTurnTimestamps: [],
+      lastNoiseCoachingAtMs: 0,
     };
 
     // FIX #3: Auto-persist every 10 seconds
@@ -2723,6 +2846,155 @@ export function setupCustomVoiceWebSocket(server: Server) {
     }, 30000); // Check every 30 seconds
 
     console.log('[Inactivity] ✅ Checker started (checks every 30 seconds)');
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // TRIAL MINUTE ENFORCEMENT: Check remaining minutes every 60s
+    // Warns at 2 minutes remaining, disconnects at 0
+    // Only runs for trial users (trialActive = true)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if (!isTrialSession) {
+      // For authenticated users, start a periodic check if they're a trial user
+      // We check on first tick and then every 60 seconds
+      const startTrialMinuteCheck = async () => {
+        try {
+          const user = await storage.getUser(authenticatedUserId);
+          if (!user || !user.trialActive) {
+            console.log('[TrialMinuteCheck] ℹ️ User is not a trial user, skipping enforcement');
+            return;
+          }
+
+          console.log('[TrialMinuteCheck] 🎫 Trial user detected — starting minute enforcement timer');
+
+          state.trialMinuteCheckTimerId = setInterval(async () => {
+            if (state.isSessionEnded || state.sessionFinalizing) return;
+
+            try {
+              const currentUser = await storage.getUser(authenticatedUserId);
+              if (!currentUser || !currentUser.trialActive) return;
+
+              const trialLimit = currentUser.trialMinutesLimit || 30;
+              const trialUsed = currentUser.trialMinutesUsed || 0;
+              
+              // Also account for current session time not yet deducted
+              const currentSessionMinutes = Math.ceil((Date.now() - state.sessionStartTime) / 60000);
+              const effectiveUsed = trialUsed + currentSessionMinutes;
+              const effectiveRemaining = Math.max(0, trialLimit - effectiveUsed);
+
+              console.log(`[TrialMinuteCheck] ⏱️ Trial: ${effectiveUsed}/${trialLimit} min used (DB: ${trialUsed}, session: ${currentSessionMinutes}), ${effectiveRemaining} remaining`);
+
+              // WARNING at 2 minutes remaining
+              if (effectiveRemaining <= 2 && effectiveRemaining > 0 && !state.trialMinuteWarned) {
+                state.trialMinuteWarned = true;
+                console.log('[TrialMinuteCheck] ⚠️ Trial running low — sending 2-minute warning');
+
+                const warningText = `Just a heads up — you have about ${effectiveRemaining} minute${effectiveRemaining === 1 ? '' : 's'} left in your free trial. After that, you can subscribe to keep learning!`;
+
+                state.transcript.push({
+                  speaker: "tutor",
+                  text: warningText,
+                  timestamp: new Date().toISOString(),
+                  messageId: crypto.randomUUID(),
+                });
+
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({
+                    type: 'transcript',
+                    speaker: 'tutor',
+                    text: warningText,
+                  }));
+
+                  // Generate speech for warning
+                  if (state.tutorAudioEnabled) {
+                    try {
+                      const audioBuffer = await generateSpeech(warningText, state.ageGroup, state.speechSpeed);
+                      if (audioBuffer && audioBuffer.length > 0) {
+                        ws.send(JSON.stringify({
+                          type: 'audio',
+                          data: audioBuffer.toString('base64'),
+                          mimeType: 'audio/pcm;rate=16000',
+                        }));
+                      }
+                    } catch (audioErr) {
+                      console.error('[TrialMinuteCheck] ❌ Warning audio error:', audioErr);
+                    }
+                  }
+                }
+              }
+
+              // END SESSION at 0 minutes remaining
+              if (effectiveRemaining <= 0) {
+                console.log('[TrialMinuteCheck] 🛑 Trial minutes exhausted — ending session');
+
+                // Clear this interval immediately
+                if (state.trialMinuteCheckTimerId) {
+                  clearInterval(state.trialMinuteCheckTimerId);
+                  state.trialMinuteCheckTimerId = null;
+                }
+
+                const endText = "Your free trial time is up! I hope you enjoyed learning with me. Subscribe to a plan to continue our sessions — I'd love to keep helping you learn!";
+
+                state.transcript.push({
+                  speaker: "tutor",
+                  text: endText,
+                  timestamp: new Date().toISOString(),
+                  messageId: crypto.randomUUID(),
+                });
+
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({
+                    type: 'transcript',
+                    speaker: 'tutor',
+                    text: endText,
+                  }));
+
+                  // Generate speech for end message
+                  if (state.tutorAudioEnabled) {
+                    try {
+                      const audioBuffer = await generateSpeech(endText, state.ageGroup, state.speechSpeed);
+                      if (audioBuffer && audioBuffer.length > 0) {
+                        ws.send(JSON.stringify({
+                          type: 'audio',
+                          data: audioBuffer.toString('base64'),
+                          mimeType: 'audio/pcm;rate=16000',
+                        }));
+                      }
+                    } catch (audioErr) {
+                      console.error('[TrialMinuteCheck] ❌ End audio error:', audioErr);
+                    }
+                  }
+
+                  // Wait for audio to play, then end session
+                  setTimeout(async () => {
+                    try {
+                      ws.send(JSON.stringify({
+                        type: 'session_ended',
+                        reason: 'minutes_exhausted',
+                        message: 'Your free trial has ended. Subscribe to continue learning!',
+                        isTrial: true
+                      }));
+
+                      await finalizeSession(state, 'minutes_exhausted');
+                      ws.close(1000, 'Trial minutes exhausted');
+                      console.log('[TrialMinuteCheck] ✅ Trial session ended successfully');
+                    } catch (endErr) {
+                      console.error('[TrialMinuteCheck] ❌ Error ending trial session:', endErr);
+                      ws.close(1011, 'Error ending trial session');
+                    }
+                  }, 5000);
+                }
+              }
+            } catch (checkErr) {
+              console.error('[TrialMinuteCheck] ❌ Error checking trial minutes:', checkErr);
+            }
+          }, 60000); // Check every 60 seconds
+        } catch (err) {
+          console.error('[TrialMinuteCheck] ❌ Error initializing trial check:', err);
+        }
+      };
+
+      // Fire async — don't block WS setup
+      startTrialMinuteCheck();
+    }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // SAFETY TIMEOUT (Dec 10, 2025): Reset stuck isProcessing flag
@@ -2974,8 +3246,9 @@ export function setupCustomVoiceWebSocket(server: Server) {
           const words = transcript.trim().split(/\s+/).filter(w => w.length > 0);
           const wordCount = words.length;
           
-          // Reject too short and low-signal transcripts (< 2 words)
-          if (wordCount < 2) {
+          // Reject too short and low-signal transcripts (< 3 words)
+          // Raised from 2→3: keyboard/mechanical noise typically produces short garbled fragments
+          if (wordCount < 3) {
             console.log(JSON.stringify({
               event: 'ambient_rejected',
               session_id: state.sessionId || 'unknown',
@@ -4388,7 +4661,6 @@ FLOW:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
 
-
             // VISUAL AID SYSTEM: Claude can optionally trigger on-screen visuals
             const VISUAL_SYSTEM_INSTRUCTION = `
 
@@ -4399,6 +4671,16 @@ You can display an on-screen visual to the student by including a tag in your re
 The tag will be REMOVED before your response is spoken — the student only sees the diagram.
 
 AVAILABLE VISUALS (use exact tag name):
+
+MATH — EARLY (K-5):
+  [VISUAL: math_counting_1_20]              — Counting numbers 1–20 with word names
+  [VISUAL: math_simple_addition_table]      — Addition table 0–5
+  [VISUAL: math_simple_subtraction_table]   — Subtraction table 0–5
+  [VISUAL: math_multiplication_table]       — Times table 1–6
+  [VISUAL: math_fractions]                  — Fraction bars (halves, quarters, eighths)
+  [VISUAL: math_place_value]                — Place value chart
+  [VISUAL: math_number_line]                — Number line (negative to positive)
+  [VISUAL: math_shapes_basic]               — Basic 2D shapes
 
 MATH — INTERMEDIATE / ADVANCED:
   [VISUAL: math_area_model]                 — Distributive property / expanding brackets
@@ -4420,10 +4702,17 @@ MATH — CALCULUS & COLLEGE:
   [VISUAL: math_logarithms]                 — Log rules: product, quotient, power, change of base
 
 WRITING / ELA:
+  [VISUAL: writing_paragraph_structure]     — Topic sentence, details, conclusion
   [VISUAL: writing_essay_outline]           — Intro, body paragraphs, conclusion
+  [VISUAL: writing_story_elements]          — Characters, setting, conflict, plot, resolution
   [VISUAL: writing_figurative_language]     — Simile, metaphor, personification, hyperbole, alliteration
 
-READING:
+GRAMMAR / READING:
+  [VISUAL: grammar_sentence_parts]          — Subject, predicate, object
+  [VISUAL: grammar_parts_of_speech]         — All 8 parts of speech with examples
+  [VISUAL: reading_main_idea]               — Main idea and supporting details map
+  [VISUAL: reading_compare_contrast]        — Venn diagram for comparing two things
+  [VISUAL: reading_cause_effect]            — Cause → Effect chains
   [VISUAL: reading_text_structure]          — Description, sequence, compare/contrast, problem/solution
 
 ENGLISH — COLLEGE LEVEL:
@@ -4439,6 +4728,7 @@ ENGLISH — COLLEGE LEVEL:
   [VISUAL: english_logical_fallacies]       — Ad hominem, straw man, false dichotomy, slippery slope
 
 LANGUAGE — ALPHABETS & SYSTEMS:
+  [VISUAL: lang_alphabet_english]           — English alphabet (26 letters, vowels highlighted)
   [VISUAL: lang_alphabet_spanish]           — Spanish alphabet (27 letters, Ñ and accents)
   [VISUAL: lang_alphabet_french]            — French alphabet + accented characters
   [VISUAL: lang_alphabet_japanese]          — Japanese Hiragana (25 characters with romaji)
@@ -4454,7 +4744,10 @@ LANGUAGE — ALPHABETS & SYSTEMS:
 
 SCIENCE:
   [VISUAL: science_cell_diagram]            — Plant vs Animal cell parts comparison
+  [VISUAL: science_water_cycle]             — Evaporation, condensation, precipitation
+  [VISUAL: science_food_chain]              — Producer → consumer → apex predator
   [VISUAL: science_scientific_method]       — 5-step scientific method
+  [VISUAL: science_states_of_matter]        — Solid, liquid, gas properties
   [VISUAL: science_human_body_systems]      — 6 major body systems
   [VISUAL: science_solar_system]            — All 8 planets with key facts
   [VISUAL: periodic_table_simplified]       — Common chemical elements
@@ -4470,7 +4763,10 @@ PHYSICS:
   [VISUAL: physics_thermodynamics]          — Laws of thermodynamics + temperature conversions
 
 HISTORY / SOCIAL STUDIES:
+  [VISUAL: history_timeline]                — Chronological event timeline
+  [VISUAL: history_cause_effect_chain]      — Historical cause → impact chain
   [VISUAL: history_three_branches]          — Legislative, Executive, Judicial branches
+  [VISUAL: history_map_compass]             — Cardinal directions and map skills
 
 GEOGRAPHY — MAPS:
   [VISUAL: geography_continents]            — All 7 continents with key facts
@@ -4492,6 +4788,8 @@ POLITICAL SCIENCE / GOVERNMENT:
   [VISUAL: polisci_world_governments]       — Democracy, monarchy, theocracy, authoritarian, etc.
 
 STUDY SKILLS:
+  [VISUAL: study_skills_kwl]                — Know / Want to know / Learned chart
+  [VISUAL: study_skills_concept_map]        — Main concept → subtopics → details
   [VISUAL: study_skills_cornell_notes]      — Cornell notes format (cue, notes, summary)
   [VISUAL: study_blooms_taxonomy]           — Bloom's 6 levels with action verbs
   [VISUAL: study_time_management]           — Pomodoro, time blocking, Eisenhower matrix
@@ -5041,6 +5339,16 @@ HONESTY INSTRUCTIONS:
                 if (isLanguageSession && fragmentWords.length <= 2 && fragmentWords.every((w: string) => FRAGMENT_WORDS.has(w))) {
                   console.log(`[LanguagePractice] ✅ Fragment guard bypassed for "${transcript.trim()}" in language session`);
                 }
+                // MINIMUM WORD GATE: Require at least 3 words before firing Claude.
+                // Keyboard noise and brief mic bleed typically produce 1-2 word fragments.
+                // Real utterances in tutoring sessions are almost always 3+ words.
+                // Skip this gate for language practice (single words can be valid responses).
+                if (!isLanguageSession && !stallPrompt && fragmentWords.length < 3) {
+                  console.log(`[TurnPolicy] 🔇 Min-word gate: "${transcript.trim()}" (${fragmentWords.length} word${fragmentWords.length > 1 ? 's' : ''} < 3) — dropping as likely noise fragment`);
+                  // NOISE COACHING: Count this drop toward coaching threshold
+                  trackDroppedTurnForNoiseCoaching(ws, state);
+                  return;
+                }
 
                 let finalText: string;
                 if (stallPrompt && transcript.trim()) {
@@ -5089,6 +5397,9 @@ HONESTY INSTRUCTIONS:
               // CRITICAL: Do NOT pass transcript through closure — read from state at fire time
               // to avoid stale-closure bug where early text ("i do") is committed instead of
               // the full accumulated transcript ("i do see a pattern but if i pause...")
+              // TRANSCRIPT STABILITY CHECK: Don't fire if transcript changed within last 300ms —
+              // this catches "show me the us by" committing before "itself" arrives.
+              const TRANSCRIPT_STABILITY_MS = 300;
               let sttDeferTimerId: NodeJS.Timeout | undefined;
               const gatedFireClaude = (stallPrompt?: string) => {
                 const sttAge = Date.now() - state.lastSttActivityAt;
@@ -5109,6 +5420,21 @@ HONESTY INSTRUCTIONS:
                         console.log(`[TurnPolicy] gated_fire_skipped - no accumulated transcript`);
                         return;
                       }
+                      // STABILITY CHECK: If transcript changed very recently, wait a bit more
+                      const transcriptAge = Date.now() - state.lastAccumulatedTranscriptSetAt;
+                      if (transcriptAge < TRANSCRIPT_STABILITY_MS) {
+                        const stabilityWait = TRANSCRIPT_STABILITY_MS - transcriptAge + 50;
+                        console.log(`[TurnPolicy] transcript_unstable - changed ${transcriptAge}ms ago, waiting ${stabilityWait}ms more`);
+                        sttDeferTimerId = setTimeout(() => {
+                          sttDeferTimerId = undefined;
+                          const stableTranscript = state.lastAccumulatedTranscript.trim();
+                          if (stableTranscript) {
+                            console.log(`[TurnPolicy] gated_fire_using_fresh_transcript: "${stableTranscript.substring(0, 60)}"`);
+                            fireClaudeWithPolicy(stableTranscript, stallPrompt);
+                          }
+                        }, stabilityWait);
+                        return;
+                      }
                       console.log(`[TurnPolicy] gated_fire_using_fresh_transcript: "${freshTranscript.substring(0, 60)}"`);
                       fireClaudeWithPolicy(freshTranscript, stallPrompt);
                     }
@@ -5119,6 +5445,21 @@ HONESTY INSTRUCTIONS:
                 const freshTranscript = state.lastAccumulatedTranscript.trim();
                 if (!freshTranscript) {
                   console.log(`[TurnPolicy] gated_fire_skipped - no accumulated transcript`);
+                  return;
+                }
+                // STABILITY CHECK: Even without STT recency gate, ensure transcript is stable
+                const transcriptAge = Date.now() - state.lastAccumulatedTranscriptSetAt;
+                if (state.lastAccumulatedTranscriptSetAt > 0 && transcriptAge < TRANSCRIPT_STABILITY_MS) {
+                  const stabilityWait = TRANSCRIPT_STABILITY_MS - transcriptAge + 50;
+                  console.log(`[TurnPolicy] transcript_unstable_direct - changed ${transcriptAge}ms ago, waiting ${stabilityWait}ms`);
+                  sttDeferTimerId = setTimeout(() => {
+                    sttDeferTimerId = undefined;
+                    const stableTranscript = state.lastAccumulatedTranscript.trim();
+                    if (stableTranscript) {
+                      console.log(`[TurnPolicy] gated_fire_stable: "${stableTranscript.substring(0, 60)}"`);
+                      fireClaudeWithPolicy(stableTranscript, stallPrompt);
+                    }
+                  }, stabilityWait);
                   return;
                 }
                 fireClaudeWithPolicy(freshTranscript, stallPrompt);
@@ -5405,6 +5746,7 @@ HONESTY INSTRUCTIONS:
                         // Ensure state has the latest text from continuation guard
                         if (finalText.trim().length > state.lastAccumulatedTranscript.trim().length) {
                           state.lastAccumulatedTranscript = finalText;
+                          state.lastAccumulatedTranscriptSetAt = Date.now();
                         }
                         gatedFireClaude();
                       }
@@ -5450,6 +5792,7 @@ HONESTY INSTRUCTIONS:
                     // Ensure state has latest text before gated fire
                     if (text.trim().length > state.lastAccumulatedTranscript.trim().length) {
                       state.lastAccumulatedTranscript = text;
+                      state.lastAccumulatedTranscriptSetAt = Date.now();
                     }
                     gatedFireClaude();
                   }
@@ -5538,15 +5881,14 @@ HONESTY INSTRUCTIONS:
                       console.log('[STT] reconnect cleared lingering stall timer');
                     }
                     
-                    // PATIENCE FIX: Preserve pendingTranscript across STT reconnects
-                    // so partial speech before deadman is not lost
-                    const savedPendingTranscript = pendingTranscript;
-                    pendingTranscript = '';
-                    
                     const wasGuardActive = state.turnPolicyState.hesitationGuardActive;
                     const wasAwaitingEot = state.turnPolicyState.awaitingSecondEot;
                     const savedLastEotTimestamp = state.turnPolicyState.lastEotTimestamp;
                     const savedGuardedTranscript = state.guardedTranscript;
+                    // PATIENCE FIX: Preserve pendingTranscript across STT reconnects
+                    // so partial speech before deadman is not lost
+                    const savedPendingTranscript = pendingTranscript;
+                    pendingTranscript = '';
                     const savedStallTimerStartedAt = state.stallTimerStartedAt;
                     const savedLastAudioReceivedAt = state.lastAudioReceivedAt;
                     const config = getTurnPolicyConfig(state.ageGroup as GradeBand, state.turnPolicyK2Override);
@@ -5638,6 +5980,7 @@ HONESTY INSTRUCTIONS:
                           // Ensure state has latest text before gated fire
                           if (text.trim().length > state.lastAccumulatedTranscript.trim().length) {
                             state.lastAccumulatedTranscript = text;
+                            state.lastAccumulatedTranscriptSetAt = Date.now();
                           }
                           gatedFireClaude();
                         }
@@ -6198,7 +6541,7 @@ HONESTY INSTRUCTIONS:
               console.log(`[Custom Voice] 🔄 Reconnect detected - skipping greeting audio`);
             }
 
-            // NOTE: "ready" and "session_config" messages already sent BEFORE greeting (line ~6043)
+            // NOTE: "ready" and "session_config" messages already sent BEFORE greeting (line ~6227)
             // to ensure Silero VAD is initialized before greeting audio playback begins.
             
             // Initialize turn policy state with activity mode for reading patience overlay
@@ -6208,7 +6551,7 @@ HONESTY INSTRUCTIONS:
               console.log(`[Custom Voice] 📖 Reading mode patience enabled, initial mode: ${initialActivityMode}`);
             }
             
-            // NOTE: "session_config" already sent BEFORE greeting (line ~6050)
+            // NOTE: "session_config" already sent BEFORE greeting (line ~6234)
             break;
 
           case "audio":
@@ -6233,7 +6576,18 @@ HONESTY INSTRUCTIONS:
             }
             
             if (state.isReconnecting) {
-              console.warn('[Custom Voice] ⏸️ Audio dropped - reconnection in progress');
+              // PATIENCE FIX: Buffer audio during reconnect instead of dropping it.
+              // Previously ALL speech was lost while AssemblyAI reconnected (~250ms-1s).
+              // Now we push to the ring buffer so it flushes to the new connection on open.
+              if (message.data) {
+                const buf = Buffer.from(message.data, 'base64');
+                state.sttAudioRingBuffer.push(buf);
+                if (state.sttAudioRingBuffer.length > 64) {
+                  state.sttAudioRingBuffer.shift(); // keep last ~4s at 16ms/chunk
+                }
+                state.sttLastAudioForwardAtMs = Date.now(); // prevent false deadman
+                markProgress(state);
+              }
               break;
             }
             
@@ -6440,7 +6794,11 @@ HONESTY INSTRUCTIONS:
                 }
                 
                 if (!hasNonZero) {
-                  console.warn('[Custom Voice] ⚠️ Audio buffer is COMPLETELY SILENT (all zeros)!');
+                  console.warn('[Custom Voice] ⚠️ Audio buffer is COMPLETELY SILENT (all zeros)! Dropping chunk to prevent STT deadman trigger.');
+                  // Drop silent-zero chunks entirely — sending them to AssemblyAI causes
+                  // the deadman timer to fire (no STT messages returned) which triggers
+                  // unnecessary reconnect cycles at session start when mic is still initializing.
+                  return;
                 }
                 
                 // Send to appropriate STT provider
@@ -6742,6 +7100,17 @@ HONESTY INSTRUCTIONS:
                 const textCallbacks: StreamingCallbacks = {
                   onSentence: async (sentence: string) => {
                     textSentenceCount++;
+                    
+                    // ── VISUAL TAG PARSER (text mode) ────────────────────────
+                    const textVisualMatch = sentence.match(/\[VISUAL:\s*([a-z0-9_]+)\]/i);
+                    if (textVisualMatch) {
+                      const visualTag = textVisualMatch[1].toLowerCase();
+                      sentence = sentence.replace(textVisualMatch[0], '').trim();
+                      console.log(`[Visual] 📊 Triggering visual (text mode): ${visualTag} session=${state.sessionId?.substring(0,8)}`);
+                      ws.send(JSON.stringify({ type: 'show_visual', visualTag }));
+                    }
+                    // ── END VISUAL TAG PARSER ────────────────────────────────
+                    
                     console.log(`[Custom Voice] 📤 Text sentence ${textSentenceCount}: "${sentence.substring(0, 50)}..."`);
                     
                     if (textSentenceCount === 1) {
