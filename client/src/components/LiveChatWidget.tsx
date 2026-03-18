@@ -22,11 +22,7 @@ export function LiveChatWidget() {
     onConnect: () => {
       console.log('[LiveChat] Connected to UW AI Tutor Support');
       setError(null);
-      setMessages(prev => [...prev, {
-        role: 'agent',
-        content: 'Hi there! 👋 Welcome to UW AI Tutor support. I\'m here to help with platform questions - login issues, feature questions, tech troubleshooting, and getting you set up for success. What can I help you with today?',
-        timestamp: new Date()
-      }]);
+      // First message comes from ElevenLabs agent configuration - don't add duplicate
     },
     onDisconnect: () => {
       console.log('[LiveChat] Disconnected');
