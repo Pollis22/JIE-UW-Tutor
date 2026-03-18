@@ -222,6 +222,7 @@ export default function AuthPage() {
               { label: "Features", path: "/features" },
               { label: "Best Practices", path: "/best-practices" },
               { label: "Support", path: "/support" },
+              { label: "Contact", path: "/contact" },
             ].map(item => (
               <button
                 key={item.path}
