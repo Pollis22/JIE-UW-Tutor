@@ -5578,6 +5578,11 @@ HONESTY INSTRUCTIONS:
                   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                   console.log(`[AssemblyAI] 📝 Complete utterance (confidence: ${confidence.toFixed(2)}): "${text}"`);
                   
+                  // Store confidence in SessionState so downstream min-word gate can read it
+                  // (the confidence from createAssemblyAIConnection's internal AssemblyAIState
+                  // is NOT the same object as this SessionState)
+                  state.lastAccumulatedConfidence = confidence;
+                  
                   // Update last audio received time for stall detection
                   state.lastAudioReceivedAt = Date.now();
                   
