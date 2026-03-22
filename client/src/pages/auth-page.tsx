@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Mic, Brain, ArrowRight, GraduationCap, FlaskConical, CheckCircle, X, Shield, Sparkles, TrendingUp, Clock, BookOpen } from "lucide-react";
+import { Eye, EyeOff, Mic, Brain, ArrowRight, GraduationCap, FlaskConical, CheckCircle, X, Shield, Sparkles, TrendingUp, Clock, BookOpen, Menu } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -115,6 +115,7 @@ export default function AuthPage() {
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
   const [resendCooldown, setResendCooldown] = useState(0);
   const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const searchParams = new URLSearchParams(searchString);
   const verificationStatus = searchParams.get("verified");
@@ -253,10 +254,74 @@ export default function AuthPage() {
             ))}
           </div>
           
-          <Button onClick={() => { setActiveTab("login"); document.getElementById("auth-section")?.scrollIntoView({ behavior: "smooth" }); }}
-            className="text-white font-semibold px-4 md:px-6 py-2 rounded-lg text-sm flex-shrink-0" style={{ background: "#C5050C" }}>Sign In</Button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button onClick={() => { setActiveTab("login"); document.getElementById("auth-section")?.scrollIntoView({ behavior: "smooth" }); }}
+              className="text-white font-semibold px-4 md:px-6 py-2 rounded-lg text-sm" style={{ background: "#C5050C" }}>Sign In</Button>
+            {/* Hamburger — mobile only */}
+            <button
+              className="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg"
+              style={{ background: "transparent", border: "1px solid #E8E8E8", color: "#282728" }}
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Open menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
       </nav>
+
+      {/* Mobile slide-down menu */}
+      {mobileMenuOpen && (
+        <div
+          className="lg:hidden fixed left-0 right-0 z-40"
+          style={{ top: 68, background: "#FFFFFF", borderBottom: "2px solid #C5050C", boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}
+        >
+          <div className="px-4 py-4 space-y-1">
+            {[
+              { label: "Features", path: "/features" },
+              { label: "Best Practices", path: "/best-practices" },
+              { label: "Support", path: "/support" },
+              { label: "Contact", path: "/contact" },
+            ].map(item => (
+              <button
+                key={item.path}
+                onClick={() => { setLocation(item.path); setMobileMenuOpen(false); }}
+                className="w-full text-left px-4 py-3 rounded-lg flex items-center gap-3"
+                style={{
+                  fontFamily: "'Red Hat Text', sans-serif",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: "#282728",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  borderBottom: "1px solid #F0F0F0",
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+            {/* CTA row */}
+            <div className="pt-3 pb-1 flex gap-2">
+              <Button
+                className="flex-1 text-white font-semibold rounded-lg"
+                style={{ background: "#C5050C" }}
+                onClick={() => { setActiveTab("login"); setMobileMenuOpen(false); document.getElementById("auth-section")?.scrollIntoView({ behavior: "smooth" }); }}
+              >
+                Sign In
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 font-semibold rounded-lg"
+                style={{ borderColor: "#C5050C", color: "#C5050C" }}
+                onClick={() => { setActiveTab("register"); setMobileMenuOpen(false); document.getElementById("auth-section")?.scrollIntoView({ behavior: "smooth" }); }}
+              >
+                Register
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hero — graduation photo visible on ALL screens */}
       <section className="relative" style={{ paddingTop: 100, paddingBottom: 40, background: "#FFFFFF" }}>
