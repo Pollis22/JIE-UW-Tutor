@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { PublicMobileMenu } from "@/components/PublicMobileMenu";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import uwLogo from '@/assets/uw-madison-logo.png';
+import jieLogo from "@/assets/jie-mastery-logo-sm.jpg";
 
 export default function FAQPage() {
   const [, setLocation] = useLocation();
@@ -14,8 +14,8 @@ export default function FAQPage() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setLocation("/auth")}>
-              <img src={uwLogo} alt="UW AI Tutor" className="h-10 w-auto" />
-              <span className="text-xl font-bold text-foreground">UW AI Tutor Tutor</span>
+              <img src={jieLogo} alt="JIE Mastery" className="h-10 w-auto" />
+              <span className="text-xl font-bold text-foreground">JIE Mastery Tutor</span>
             </div>
             {/* Desktop navigation - hidden on mobile */}
             <div className="hidden md:flex items-center space-x-4">
@@ -24,7 +24,7 @@ export default function FAQPage() {
                 onClick={() => setLocation("/benefits")} 
                 data-testid="button-nav-benefits"
               >
-                Why UW AI Tutor AI Tutors
+                Why JIE Mastery AI Tutors
               </Button>
               <Button 
                 variant="ghost" 
@@ -88,7 +88,7 @@ export default function FAQPage() {
               Frequently Asked Questions
             </h1>
             <p className="text-xl text-muted-foreground">
-              Everything you need to know about UW AI Tutor AI Tutor
+              Everything you need to know about JIE Mastery AI Tutor
             </p>
           </div>
 
@@ -96,10 +96,10 @@ export default function FAQPage() {
           <Accordion type="single" collapsible className="space-y-4">
             <AccordionItem value="faq-1" className="border rounded-lg px-6 bg-card">
               <AccordionTrigger className="text-lg font-medium hover:text-primary text-left" data-testid="faq-trigger-1">
-                What's the difference between UW AI Tutor AI Tutor and ChatGPT or other AI chatbots?
+                What's the difference between JIE Mastery AI Tutor and ChatGPT or other AI chatbots?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground leading-relaxed" data-testid="faq-content-1">
-                Most AI chat tools are text-only—they answer questions but don't actually teach. <strong>UW AI Tutor AI Tutor</strong> was built for real learning. It uses a powerful conversational voice engine that allows natural, two-way dialogue. The tutor remembers what you're studying, adapts to your level, and walks you step-by-step through problems in math, English, science, and more. Think of ChatGPT as an assistant; UW AI Tutor is your personal tutor that listens, speaks, and guides you in real time.
+                Most AI chat tools are text-only—they answer questions but don't actually teach. <strong>JIE Mastery AI Tutor</strong> was built for real learning. It uses a powerful conversational voice engine that allows natural, two-way dialogue. The tutor remembers what you're studying, adapts to your level, and walks you step-by-step through problems in math, English, science, and more. Think of ChatGPT as an assistant; JIE Mastery is your personal tutor that listens, speaks, and guides you in real time.
               </AccordionContent>
             </AccordionItem>
 
@@ -108,7 +108,7 @@ export default function FAQPage() {
                 How does the voice tutoring work?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground leading-relaxed" data-testid="faq-content-2">
-                UW AI Tutor's voice engine lets you talk naturally—simply ask a question aloud, and the tutor responds instantly. No typing, no delays—just a smooth back-and-forth conversation like having a live teacher beside you.
+                JIE Mastery's voice engine lets you talk naturally—simply ask a question aloud, and the tutor responds instantly. No typing, no delays—just a smooth back-and-forth conversation like having a live teacher beside you.
               </AccordionContent>
             </AccordionItem>
 
@@ -126,7 +126,7 @@ export default function FAQPage() {
                 What subjects are available?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground leading-relaxed" data-testid="faq-content-4">
-                Nearly every subject and level is supported right now—from kindergarten to graduate school. Whether it's math, English, science, Spanish, or specialized study help, UW AI Tutor adapts to each learner's needs.
+                Nearly every subject and level is supported right now—from kindergarten to graduate school. Whether it's math, English, science, Spanish, or specialized study help, JIE Mastery adapts to each learner's needs.
               </AccordionContent>
             </AccordionItem>
 
@@ -135,16 +135,16 @@ export default function FAQPage() {
                 How do the family plans work?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground leading-relaxed" data-testid="faq-content-5">
-                One subscription covers everyone. Each plan includes unlimited student profiles, and families share a pool of voice-minutes. The <strong>Elite Family</strong> plan supports three concurrent devices so multiple kids can learn simultaneously.
+                One subscription covers everyone. Each plan includes unlimited student profiles, and families share a pool of tutoring hours. The <strong>Elite Family</strong> plan supports three concurrent devices so multiple kids can learn simultaneously.
               </AccordionContent>
             </AccordionItem>
 
             <AccordionItem value="faq-6" className="border rounded-lg px-6 bg-card">
               <AccordionTrigger className="text-lg font-medium hover:text-primary text-left" data-testid="faq-trigger-6">
-                What happens when we run out of minutes?
+                What happens when we run out of hours?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground leading-relaxed" data-testid="faq-content-6">
-                You can top up anytime with 60-minute add-on blocks for $19.99. The new minutes are added instantly and roll seamlessly into your family plan.
+                You can top up anytime with flexible hour packs: 1 hour for $8.99, 3 hours for $24.99, or 6 hours for $44.99. Top-up hours are added instantly and never expire — they roll seamlessly into your family plan.
               </AccordionContent>
             </AccordionItem>
 
@@ -168,7 +168,7 @@ export default function FAQPage() {
 
             <AccordionItem value="faq-9" className="border rounded-lg px-6 bg-card">
               <AccordionTrigger className="text-lg font-medium hover:text-primary text-left" data-testid="faq-trigger-9">
-                Can it replace a human tutor?
+                Can it replace a traditional tutor?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground leading-relaxed" data-testid="faq-content-9">
                 For many families, yes. It's always available, consistent, and affordable. You get expert-level guidance without scheduling hassles or expensive hourly rates.
