@@ -221,6 +221,7 @@ export default function AuthPage() {
           <div className="hidden lg:flex items-center gap-1 flex-1 justify-center">
             {[
               { label: "Features", path: "/features" },
+              { label: "Test Prep", path: "/test-prep" },
               { label: "Best Practices", path: "/best-practices" },
               { label: "Support", path: "/support" },
               { label: "Contact", path: "/contact" },
@@ -279,6 +280,7 @@ export default function AuthPage() {
           <div className="px-4 py-4 space-y-1">
             {[
               { label: "Features", path: "/features" },
+              { label: "Test Prep", path: "/test-prep" },
               { label: "Best Practices", path: "/best-practices" },
               { label: "Support", path: "/support" },
               { label: "Contact", path: "/contact" },

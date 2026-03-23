@@ -36,6 +36,7 @@ const RegistrationSuccessPage = lazy(() => import("@/pages/registration-success-
 const ProfilePage = lazy(() => import("@/pages/profile-page"));
 const PracticeLessonsPage = lazy(() => import("@/pages/practice-lessons-page"));
 const FeaturesAndBenefits = lazy(() => import("@/pages/features-benefits"));
+const TestPrepPage = lazy(() => import("@/pages/test-prep-page"));
 const BestPractices = lazy(() => import("@/pages/best-practices"));
 const LiveSupport = lazy(() => import("@/pages/live-support"));
 const ContactPage = lazy(() => import("@/pages/contact"));
@@ -68,6 +69,7 @@ function Router() {
         <LazyRoute path="/terms" component={TermsPage} />
         <LazyRoute path="/privacy" component={PrivacyPage} />
         <LazyRoute path="/features" component={FeaturesAndBenefits} />
+        <LazyRoute path="/test-prep" component={TestPrepPage} />
         <LazyRoute path="/best-practices" component={BestPractices} />
         <LazyRoute path="/support" component={LiveSupport} />
         <LazyRoute path="/contact" component={ContactPage} />
