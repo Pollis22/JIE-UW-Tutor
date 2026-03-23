@@ -171,7 +171,7 @@ export default function FeaturesAndBenefits() {
             </div>
 
             {/* Post-Grad Prep */}
-            <div className="flex flex-col md:flex-row-reverse items-center gap-8">
+            <div id="test-prep" className="flex flex-col md:flex-row-reverse items-center gap-8 scroll-mt-20">
               <div className="md:w-1/3 flex justify-center">
                 <BookOpen className="w-32 h-32 text-[#C5050C]" />
               </div>

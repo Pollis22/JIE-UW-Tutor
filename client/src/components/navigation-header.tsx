@@ -37,12 +37,34 @@ export function NavigationHeader() {
     });
   };
 
-  const isActive = (path: string) => location === path;
+  const isActive = (path: string) => {
+    const basePath = path.split("#")[0];
+    return location === basePath;
+  };
+
+  const navigateTo = (path: string) => {
+    if (path.includes("#")) {
+      const [basePath, hash] = path.split("#");
+      if (location === basePath) {
+        // Already on the page, just scroll to the anchor
+        document.getElementById(hash)?.scrollIntoView({ behavior: "smooth" });
+      } else {
+        // Navigate to the page, then scroll after a short delay
+        setLocation(basePath);
+        setTimeout(() => {
+          document.getElementById(hash)?.scrollIntoView({ behavior: "smooth" });
+        }, 500);
+      }
+    } else {
+      setLocation(path);
+    }
+  };
 
   const navLinks = [
     { label: "Tutor", path: "/tutor" },
     { label: "Dashboard", path: "/dashboard" },
     { label: "Features", path: "/features" },
+    { label: "Test Prep", path: "/features#test-prep" },
     { label: "Best Practices", path: "/best-practices" },
     { label: "Support", path: "/support" },
     { label: "Settings", path: "/settings" },
@@ -69,7 +91,7 @@ export function NavigationHeader() {
             {navLinks.map(item => (
               <button
                 key={item.path}
-                onClick={() => setLocation(item.path)}
+                onClick={() => navigateTo(item.path)}
                 style={{
                   padding: "6px 14px",
                   borderRadius: 6,
@@ -136,7 +158,7 @@ export function NavigationHeader() {
             {navLinks.map(item => (
               <button
                 key={item.path}
-                onClick={() => { setLocation(item.path); setMobileMenuOpen(false); }}
+                onClick={() => { navigateTo(item.path); setMobileMenuOpen(false); }}
                 style={{
                   display: "block",
                   width: "100%",

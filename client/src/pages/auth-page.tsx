@@ -37,6 +37,7 @@ const registerSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   plan: z.literal("elite"),
   marketingOptIn: z.boolean().default(false),
+  accessCode: z.string().min(1, "Access code is required"),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -166,6 +167,7 @@ export default function AuthPage() {
       accountName: "", studentName: "", studentAge: 20,
       gradeLevel: "college-adult", primarySubject: "general",
       email: "", password: "", plan: "elite", marketingOptIn: false,
+      accessCode: "",
     },
   });
 
@@ -219,14 +221,18 @@ export default function AuthPage() {
           <div className="hidden lg:flex items-center gap-1 flex-1 justify-center">
             {[
               { label: "Features", path: "/features" },
-              { label: "Test Prep", path: "/test-prep" },
+              { label: "Test Prep", path: "/features#test-prep" },
               { label: "Best Practices", path: "/best-practices" },
               { label: "Support", path: "/support" },
               { label: "Contact", path: "/contact" },
             ].map(item => (
               <button
                 key={item.path}
-                onClick={() => setLocation(item.path)}
+                onClick={() => {
+                  const [basePath, hash] = item.path.split("#");
+                  setLocation(basePath);
+                  if (hash) setTimeout(() => document.getElementById(hash)?.scrollIntoView({ behavior: "smooth" }), 500);
+                }}
                 style={{
                   padding: "6px 14px",
                   borderRadius: 6,
@@ -278,14 +284,19 @@ export default function AuthPage() {
           <div className="px-4 py-4 space-y-1">
             {[
               { label: "Features", path: "/features" },
-              { label: "Test Prep", path: "/test-prep" },
+              { label: "Test Prep", path: "/features#test-prep" },
               { label: "Best Practices", path: "/best-practices" },
               { label: "Support", path: "/support" },
               { label: "Contact", path: "/contact" },
             ].map(item => (
               <button
                 key={item.path}
-                onClick={() => { setLocation(item.path); setMobileMenuOpen(false); }}
+                onClick={() => {
+                  const [basePath, hash] = item.path.split("#");
+                  setLocation(basePath);
+                  if (hash) setTimeout(() => document.getElementById(hash)?.scrollIntoView({ behavior: "smooth" }), 500);
+                  setMobileMenuOpen(false);
+                }}
                 className="w-full text-left px-4 py-3 rounded-lg flex items-center gap-3"
                 style={{
                   fontFamily: "'Red Hat Text', sans-serif",
@@ -379,7 +390,7 @@ export default function AuthPage() {
             { icon: <Mic className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "Voice-First Learning", desc: "Speak naturally and get clear, conversational explanations. Like office hours that never close." },
             { icon: <Brain className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "Remembers Your Progress", desc: "Picks up where you left off. Knows your strengths and adapts to your gaps." },
             { icon: <FlaskConical className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "All Core Subjects", desc: "Chemistry, Calculus, Physics, Biology, History, Economics, CS, Writing — and more." },
-            { icon: <GraduationCap className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "Test Prep & Certifications", desc: "18 exams: SAT, ACT, GRE, GMAT, LSAT, MCAT, CPA, CFA, NCLEX — with Practice Mode and study guides." },
+            { icon: <GraduationCap className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "Postgrad Test Prep", desc: "GRE, GMAT, LSAT, MCAT, DAT, PCAT — targeted practice with instant feedback." },
           ].map((f, i) => (
             <div key={i} className="rounded-xl md:rounded-2xl p-5 md:p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-default" style={{ background: "#FFFFFF", border: "1px solid #E8E8E8" }}>
               <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl flex items-center justify-center mb-3 md:mb-4" style={{ background: "rgba(197,5,12,0.06)" }}>{f.icon}</div>
@@ -421,7 +432,6 @@ export default function AuthPage() {
             { feature: "Adapts teaching strategy", trad: "If you're lucky", gpt: false, jie: "Learns what works and adjusts automatically" },
             { feature: "Tracks mastery over time", trad: false, gpt: false, jie: "0–100% mastery scoring per concept" },
             { feature: "Every subject, one tutor", trad: false, gpt: "Any topic, no structure", jie: "Full course load — no scheduling specialists" },
-            { feature: "Test prep & certifications", trad: "Separate expensive service", gpt: false, jie: "18 exams with Practice Mode & study guides" },
             { feature: "Available 24/7", trad: false, gpt: true, jie: "Any time, any device, voice or text" },
             { feature: "Guides reasoning (Socratic)", trad: "Varies", gpt: false, jie: "Never gives answers — builds understanding" },
             { feature: "Voice conversations", trad: true, gpt: false, jie: "Natural voice in 25 languages" },
@@ -697,6 +707,16 @@ export default function AuthPage() {
                             {showRegisterPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                         </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={registerForm.control} name="accessCode" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel style={{ fontSize: 13, fontWeight: 600, color: "#3E3D3F" }}>Access Code</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter your access code" {...field} className="h-11 rounded-lg font-mono uppercase tracking-wider" 
+                          onChange={(e) => field.onChange(e.target.value.toUpperCase())} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
