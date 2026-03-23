@@ -64,7 +64,7 @@ export function NavigationHeader() {
     { label: "Tutor", path: "/tutor" },
     { label: "Dashboard", path: "/dashboard" },
     { label: "Features", path: "/features" },
-    { label: "Test Prep", path: "/features#test-prep" },
+    { label: "College Test Prep", path: "/features#test-prep" },
     { label: "Best Practices", path: "/best-practices" },
     { label: "Support", path: "/support" },
     { label: "Settings", path: "/settings" },
