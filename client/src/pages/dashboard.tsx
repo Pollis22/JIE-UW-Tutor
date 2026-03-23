@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { NavigationHeader } from "@/components/navigation-header";
 import { Switch } from "@/components/ui/switch";
 import { 
   User, 
@@ -45,7 +46,6 @@ import UsageAnalytics from "@/components/dashboard/usage-analytics";
 import SupportCenter from "@/components/dashboard/support-center";
 import { AssignmentsPanel } from "@/components/AssignmentsPanel";
 import { PracticeLessonsSection } from "@/components/dashboard/practice-lessons-section";
-import { GuideLibrary } from "@/components/GuideLibrary";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
@@ -179,43 +179,8 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top Navigation Bar */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setLocation("/")}
-                className="flex items-center gap-2"
-              >
-                <Home className="h-4 w-4" />
-                Back to Tutor
-              </Button>
-              <Separator orientation="vertical" className="h-6" />
-              <h1 className="text-2xl font-bold">Dashboard</h1>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <LanguageSelector variant="nav" />
-              <ThemeToggle />
-              <Button variant="ghost" size="icon">
-                <Bell className="h-5 w-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                className="flex items-center gap-2"
-              >
-                <LogOut className="h-4 w-4" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Global Navigation */}
+      <NavigationHeader />
 
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -411,14 +376,10 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <Tabs defaultValue="practice" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 mb-4">
+                    <TabsList className="grid w-full grid-cols-2 mb-4">
                       <TabsTrigger value="practice" data-testid="tab-practice-lessons">
                         <GraduationCap className="h-4 w-4 mr-2" />
                         Practice Lessons
-                      </TabsTrigger>
-                      <TabsTrigger value="guides" data-testid="tab-study-guides">
-                        <BookOpen className="h-4 w-4 mr-2" />
-                        Study Guides
                       </TabsTrigger>
                       <TabsTrigger value="uploads" data-testid="tab-your-documents">
                         <FileText className="h-4 w-4 mr-2" />
@@ -428,15 +389,6 @@ export default function DashboardPage() {
                     
                     <TabsContent value="practice">
                       <PracticeLessonsSection />
-                    </TabsContent>
-
-                    <TabsContent value="guides">
-                      <GuideLibrary
-                        gradeBand="College/Adult"
-                        onGuideAdded={() => {
-                          // Guide was added — user can switch to "Your Documents" to see it
-                        }}
-                      />
                     </TabsContent>
                     
                     <TabsContent value="uploads">

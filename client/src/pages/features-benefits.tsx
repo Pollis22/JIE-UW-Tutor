@@ -11,77 +11,15 @@ import {
   Zap,
   Users
 } from "lucide-react";
-import uwLogo from "@/assets/uw-madison-logo.png";
+import { NavigationHeader } from "@/components/navigation-header";
 
 export default function FeaturesAndBenefits() {
   const [, setLocation] = useLocation();
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Red top bar */}
-      <div style={{ height: 4, background: "#C5050C" }} />
-      
-      {/* Navigation */}
-      <nav style={{ background: "#FFFFFF", borderBottom: "1px solid #E8E8E8", position: "sticky", top: 0, zIndex: 50 }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <div className="flex items-center gap-4 cursor-pointer" onClick={() => setLocation("/auth")}>
-              <img src={uwLogo} alt="University of Wisconsin-Madison" style={{ height: 48 }} />
-              <div style={{ borderLeft: "1px solid #DAD7CB", paddingLeft: 12 }}>
-                <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontWeight: 700, fontSize: 16, color: "#282728", lineHeight: 1.1 }}>AI Tutor</div>
-                <div style={{ fontSize: 10, color: "#646569", fontWeight: 500, letterSpacing: 1, textTransform: "uppercase" }}>University of Wisconsin</div>
-              </div>
-            </div>
-
-            {/* Nav Links */}
-            <div className="hidden md:flex items-center gap-1">
-              {[
-                { label: "Features", path: "/features" },
-                { label: "Best Practices", path: "/best-practices" },
-                { label: "Support", path: "/support" },
-                { label: "Contact", path: "/contact" },
-              ].map(item => (
-                <button
-                  key={item.path}
-                  onClick={() => setLocation(item.path)}
-                  style={{
-                    padding: "6px 14px",
-                    borderRadius: 6,
-                    fontSize: 14,
-                    fontWeight: window.location.pathname === item.path ? 600 : 500,
-                    color: window.location.pathname === item.path ? "#C5050C" : "#646569",
-                    background: window.location.pathname === item.path ? "rgba(197,5,12,0.06)" : "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    fontFamily: "'Red Hat Text', sans-serif",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {item.label}
-                </button>
-              ))}
-              <button
-                onClick={() => setLocation("/auth")}
-                style={{
-                  padding: "6px 16px",
-                  borderRadius: 6,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "#FFFFFF",
-                  background: "#C5050C",
-                  border: "none",
-                  cursor: "pointer",
-                  fontFamily: "'Red Hat Text', sans-serif",
-                  marginLeft: 8,
-                }}
-              >
-                Sign In
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
+      {/* Global Navigation */}
+      <NavigationHeader />
 
       {/* Hero Section with Bascom Hall */}
       <div className="relative h-[500px] overflow-hidden">
@@ -162,7 +100,7 @@ export default function FeaturesAndBenefits() {
               <Award className="w-12 h-12 text-[#C5050C] mb-4" />
               <h3 className="text-xl font-bold mb-2">All Subjects</h3>
               <p className="text-gray-700">
-                From freshman courses to post-grad prep and professional certifications (GRE, LSAT, MCAT, CPA, NCLEX, and 13 more), we cover every discipline with direct teaching and practice drills.
+                From freshman courses to post-grad prep (GRE, LSAT, MCAT), we've got you covered across every discipline.
               </p>
             </div>
           </div>
@@ -238,40 +176,16 @@ export default function FeaturesAndBenefits() {
                 <BookOpen className="w-32 h-32 text-[#C5050C]" />
               </div>
               <div className="md:w-2/3">
-                <h3 className="text-2xl font-bold mb-4">College & Post-Graduate Test Prep — 18 Exams</h3>
+                <h3 className="text-2xl font-bold mb-4">Post-Graduate Test Prep</h3>
                 <p className="text-gray-700 text-lg mb-4">
-                  Direct teaching with exam-specific strategy coaching, practice question banks, and an adaptive Practice Mode that drills you and tracks progress. No Socratic questioning — just clear explanations and real practice.
+                  Preparing for your next step? We provide comprehensive support for all major graduate admissions tests.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-gray-700">
-                  <div>
-                    <p className="font-semibold text-[#C5050C] mb-1">College Admissions</p>
-                    <ul className="list-disc list-inside space-y-1 text-sm">
-                      <li><strong>SAT:</strong> Reading/Writing + Math (Digital adaptive)</li>
-                      <li><strong>ACT:</strong> English, Math, Reading, Science</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-[#C5050C] mb-1">Graduate Admissions</p>
-                    <ul className="list-disc list-inside space-y-1 text-sm">
-                      <li><strong>GRE / GMAT:</strong> Verbal, Quant, Writing</li>
-                      <li><strong>LSAT:</strong> Logic Games, Logical Reasoning</li>
-                      <li><strong>MCAT / DAT / PCAT / OAT</strong></li>
-                    </ul>
-                  </div>
-                  <div className="mt-2">
-                    <p className="font-semibold text-[#C5050C] mb-1">Professional Certifications</p>
-                    <ul className="list-disc list-inside space-y-1 text-sm">
-                      <li><strong>CPA / CFA / Series 7</strong></li>
-                      <li><strong>NCLEX-RN / PANCE</strong></li>
-                      <li><strong>FE / PE / Praxis / ASWB</strong></li>
-                    </ul>
-                  </div>
-                  <div className="mt-2 flex items-end">
-                    <a href="/test-prep" className="text-[#C5050C] font-semibold hover:underline text-sm">
-                      Learn more about Test Prep →
-                    </a>
-                  </div>
-                </div>
+                <ul className="list-disc list-inside text-gray-700 space-y-2">
+                  <li><strong>LSAT:</strong> Logical reasoning, analytical reasoning, reading comprehension</li>
+                  <li><strong>GRE:</strong> Quantitative, verbal, and analytical writing sections</li>
+                  <li><strong>MCAT:</strong> Biology, chemistry, physics, and critical analysis</li>
+                  <li><strong>GMAT:</strong> Quantitative, verbal, integrated reasoning</li>
+                </ul>
               </div>
             </div>
           </div>

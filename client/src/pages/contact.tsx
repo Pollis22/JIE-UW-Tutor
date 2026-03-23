@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Mail, MessageSquare, Clock } from "lucide-react";
-import uwLogo from "@/assets/uw-madison-logo.png";
+import { NavigationHeader } from "@/components/navigation-header";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -68,67 +68,8 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Red top bar */}
-      <div style={{ height: 4, background: "#C5050C" }} />
-      
-      {/* Navigation */}
-      <nav style={{ background: "#FFFFFF", borderBottom: "1px solid #E8E8E8" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4 cursor-pointer" onClick={() => setLocation("/auth")}>
-              <img src={uwLogo} alt="University of Wisconsin-Madison" style={{ height: 48 }} />
-              <div style={{ borderLeft: "1px solid #DAD7CB", paddingLeft: 12 }}>
-                <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontWeight: 700, fontSize: 16, color: "#282728" }}>AI Tutor</div>
-                <div style={{ fontSize: 10, color: "#646569", fontWeight: 500, letterSpacing: 1, textTransform: "uppercase" }}>University of Wisconsin</div>
-              </div>
-            </div>
-            <div className="hidden md:flex items-center gap-1">
-              {[
-                { label: "Features", path: "/features" },
-                { label: "Best Practices", path: "/best-practices" },
-                { label: "Support", path: "/support" },
-                { label: "Contact", path: "/contact" },
-              ].map(item => (
-                <button
-                  key={item.path}
-                  onClick={() => setLocation(item.path)}
-                  style={{
-                    padding: "6px 14px",
-                    borderRadius: 6,
-                    fontSize: 14,
-                    fontWeight: window.location.pathname === item.path ? 600 : 500,
-                    color: window.location.pathname === item.path ? "#C5050C" : "#646569",
-                    background: window.location.pathname === item.path ? "rgba(197,5,12,0.06)" : "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    fontFamily: "'Red Hat Text', sans-serif",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {item.label}
-                </button>
-              ))}
-              <button
-                onClick={() => setLocation("/auth")}
-                style={{
-                  padding: "6px 16px",
-                  borderRadius: 6,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "#FFFFFF",
-                  background: "#C5050C",
-                  border: "none",
-                  cursor: "pointer",
-                  fontFamily: "'Red Hat Text', sans-serif",
-                  marginLeft: 8,
-                }}
-              >
-                Sign In
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
+      {/* Global Navigation */}
+      <NavigationHeader />
 
       {/* Contact Content */}
       <div className="container mx-auto px-4 py-16">

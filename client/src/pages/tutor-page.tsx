@@ -6,7 +6,6 @@ import ConvaiHost, { type ConvaiMessage } from "@/components/convai-host";
 import { ConvaiTranscript } from "@/components/convai-transcript";
 import { RealtimeVoiceHost, type RealtimeVoiceHostHandle } from "@/components/realtime-voice-host";
 import { AssignmentsPanel } from "@/components/AssignmentsPanel";
-import { GuideLibrary } from "@/components/GuideLibrary";
 import { StudentSwitcher } from "@/components/StudentSwitcher";
 import { StudentProfilePanel } from "@/components/StudentProfilePanel";
 import { VerificationBanner } from "@/components/VerificationBanner";
@@ -15,19 +14,13 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { Clock, AlertCircle, Upload, File, X, Paperclip, LogOut, Settings, LayoutDashboard, User, Globe, Menu, BookOpen, GraduationCap, ChevronRight, ChevronDown } from "lucide-react";
+import { Clock, AlertCircle, Upload, File, X, Paperclip, BookOpen, GraduationCap, ChevronRight, ChevronDown } from "lucide-react";
+import { NavigationHeader } from "@/components/navigation-header";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SUPPORTED_LANGUAGES } from "@shared/languages";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import uwLogo from '@/assets/uw-madison-logo.png';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { UWHeroBanner } from '@/components/UWHeroBanner';
@@ -86,7 +79,6 @@ export default function TutorPage() {
   const memo = loadProgress();
   const [level, setLevel] = useState<AgentLevel>((memo.lastLevel as AgentLevel) || "k2");
   const [subject, setSubject] = useState(memo.lastSubject || "general");
-  const [practiceMode, setPracticeMode] = useState(false);
   const [studentName, setStudentName] = useState("");
   const [gradeText, setGradeText] = useState("");
   const [mounted, setMounted] = useState(false);
@@ -649,67 +641,18 @@ export default function TutorPage() {
       <TutorErrorBoundary>
         {/* Ambient neural network canvas - side margins only */}
         <AmbientBackground />
+        {/* Global Navigation */}
+        <NavigationHeader />
         {/* Show verification banner if email not verified */}
         {user && !user.emailVerified && <VerificationBanner />}
         <div className="tutor-page max-w-3xl mx-auto p-4 space-y-4" style={{ position: 'relative', zIndex: 1 }}>
-          {/* Header with Logo and Student Switcher */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex-1" />
-              <div className="flex items-center gap-3">
-                <img 
-                  src={uwLogo} 
-                  alt="UW AI Tutor Logo" 
-                  className="h-12 w-auto"
-                  data-testid="img-uw-logo"
-                />
-                <h1 id="page-title" className="text-2xl font-bold text-foreground">
-                  UW AI Tutor
-                </h1>
-              </div>
-              <div className="flex-1 flex justify-end items-center gap-2">
-                <StudentSwitcher
-                  selectedStudentId={selectedStudentId || undefined}
-                  onSelectStudent={handleStudentSwitch}
-                  onOpenProfile={handleOpenProfile}
-                />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" data-testid="button-user-menu">
-                      <Menu className="h-4 w-4 mr-1" />
-                      Menu
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setLocation("/dashboard")} data-testid="menu-item-dashboard">
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
-                      Dashboard
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setLocation("/settings")} data-testid="menu-item-settings">
-                      <Settings className="mr-2 h-4 w-4" />
-                      Settings
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={() => {
-                        logoutMutation.mutate(undefined, {
-                          onSuccess: () => {
-                            setLocation('/auth');
-                          }
-                        });
-                      }}
-                      data-testid="menu-item-signout"
-                    >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Sign Out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-            <p className="text-muted-foreground text-center">
-              Age-appropriate AI tutoring with voice conversation
-            </p>
+          {/* Student Switcher Row */}
+          <div className="flex items-center justify-end gap-2 mb-2">
+            <StudentSwitcher
+              selectedStudentId={selectedStudentId || undefined}
+              onSelectStudent={handleStudentSwitch}
+              onOpenProfile={handleOpenProfile}
+            />
           </div>
 
           {/* Usage Display */}
@@ -963,16 +906,6 @@ export default function TutorPage() {
                       selectedDocumentIds={selectedDocumentIds}
                       onDocumentSelectionChange={setSelectedDocumentIds}
                     />
-
-                    {/* Study Guide Library */}
-                    <div className="mt-4 pt-4 border-t border-border">
-                      <GuideLibrary
-                        gradeBand={level === 'k2' ? 'K-2' : level === 'g3_5' ? '3-5' : level === 'g6_8' ? '6-8' : level === 'g9_12' ? '9-12' : 'College/Adult'}
-                        onGuideAdded={(docId) => {
-                          setSelectedDocumentIds(prev => [...prev, docId]);
-                        }}
-                      />
-                    </div>
                   </>
                 )}
 
@@ -991,80 +924,6 @@ export default function TutorPage() {
                     <option value="g9_12">Grades 9–12</option>
                     <option value="college">College/Adult</option>
                   </select>
-
-                  <select
-                    id="subject"
-                    value={subject}
-                    onChange={e => setSubject(e.target.value)}
-                    className="px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="select-subject"
-                    disabled={sessionState !== 'idle'}
-                  >
-                    <option value="General">General / Homework Help</option>
-                    <option value="Mathematics">Mathematics</option>
-                    <option value="English">English / Language Arts</option>
-                    <option value="Science">Science</option>
-                    <option value="History">History / Social Studies</option>
-                    <option value="Spanish">Spanish</option>
-                    <option value="French">French</option>
-                    {(level === 'g9_12' || level === 'college') && (
-                      <>
-                        <option disabled>── Test Prep ──</option>
-                        <option value="SAT Prep">SAT Prep</option>
-                        <option value="ACT Prep">ACT Prep</option>
-                      </>
-                    )}
-                    {level === 'college' && (
-                      <>
-                        <option disabled>── Graduate Admissions ──</option>
-                        <option value="GRE Prep">GRE Prep</option>
-                        <option value="GMAT Prep">GMAT Prep</option>
-                        <option value="LSAT Prep">LSAT Prep</option>
-                        <option value="MCAT Prep">MCAT Prep</option>
-                        <option value="DAT Prep">DAT Prep</option>
-                        <option value="PCAT Prep">PCAT Prep</option>
-                        <option value="OAT Prep">OAT Prep</option>
-                        <option disabled>── Professional Certifications ──</option>
-                        <option value="CPA Prep">CPA Exam</option>
-                        <option value="CFA Prep">CFA Exam</option>
-                        <option value="Series 7 Prep">Series 7 / 66</option>
-                        <option value="NCLEX Prep">NCLEX-RN</option>
-                        <option value="FE Exam Prep">FE (Engineering)</option>
-                        <option value="PE Exam Prep">PE (Engineering)</option>
-                        <option value="Praxis Prep">Praxis (Teaching)</option>
-                        <option value="PANCE Prep">PANCE (Physician Asst)</option>
-                        <option value="ASWB Prep">ASWB (Social Work)</option>
-                        <option disabled>── College Courses ──</option>
-                        <option value="Organic Chemistry">Organic Chemistry</option>
-                        <option value="Statistics">Statistics</option>
-                        <option value="Computer Science">Computer Science</option>
-                        <option value="Physics">Physics</option>
-                        <option value="Economics">Economics</option>
-                        <option value="Accounting">Accounting</option>
-                        <option value="Psychology">Psychology</option>
-                        <option value="Engineering">Engineering</option>
-                        <option value="Nursing">Nursing</option>
-                        <option value="Business">Business</option>
-                      </>
-                    )}
-                  </select>
-
-                  {/* Practice Mode Toggle — only visible for test prep and cert subjects */}
-                  {(subject.includes('Prep') || subject.includes('Exam')) && (
-                    <label 
-                      className="flex items-center gap-2 px-3 py-2 border border-input bg-background rounded-md cursor-pointer select-none whitespace-nowrap"
-                      data-testid="toggle-practice-mode"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={practiceMode}
-                        onChange={e => setPracticeMode(e.target.checked)}
-                        disabled={sessionState !== 'idle'}
-                        className="rounded border-input"
-                      />
-                      <span className="text-sm font-medium">Practice Mode</span>
-                    </label>
-                  )}
 
                   <select 
                     id="language" 
@@ -1125,7 +984,6 @@ export default function TutorPage() {
                     studentId={selectedStudentId || undefined}
                     studentName={selectedStudent?.name || studentName}
                     subject={activeLesson?.subject || subject}
-                    practiceMode={practiceMode}
                     language={selectedLanguage}
                     ageGroup={level === 'k2' ? 'K-2' : level === 'g3_5' ? '3-5' : level === 'g6_8' ? '6-8' : level === 'g9_12' ? '9-12' : 'College/Adult'}
                     contextDocumentIds={selectedDocumentIds}

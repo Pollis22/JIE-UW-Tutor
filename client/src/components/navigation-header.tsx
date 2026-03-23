@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -10,11 +11,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { UserAvatar } from "@/components/UserAvatar";
+import { Menu, X } from "lucide-react";
 import uwLogo from "@/assets/uw-madison-logo.png";
 
 export function NavigationHeader() {
   const { user, logoutMutation } = useAuth();
   const [location, setLocation] = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const { data: dashboard } = useQuery<{
     user?: { name?: string; firstName?: string; initials?: string };
@@ -29,10 +32,22 @@ export function NavigationHeader() {
     'Student';
 
   const handleLogout = () => {
-    logoutMutation.mutate();
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => setLocation("/auth"),
+    });
   };
 
   const isActive = (path: string) => location === path;
+
+  const navLinks = [
+    { label: "Tutor", path: "/tutor" },
+    { label: "Dashboard", path: "/dashboard" },
+    { label: "Features", path: "/features" },
+    { label: "Best Practices", path: "/best-practices" },
+    { label: "Support", path: "/support" },
+    { label: "Settings", path: "/settings" },
+    ...(user?.role === "admin" ? [{ label: "Admin", path: "/admin" }] : []),
+  ];
 
   return (
     <nav style={{ background: "#FFFFFF", borderBottom: "1px solid #E8E8E8", position: "sticky", top: 0, zIndex: 50 }}>
@@ -49,17 +64,9 @@ export function NavigationHeader() {
             </div>
           </div>
 
-          {/* Nav Links */}
+          {/* Desktop Nav Links */}
           <div className="hidden md:flex items-center gap-1">
-            {[
-              { label: "Tutor", path: "/tutor" },
-              { label: "Dashboard", path: "/dashboard" },
-              { label: "Features", path: "/features" },
-              { label: "Best Practices", path: "/best-practices" },
-              { label: "Support", path: "/support" },
-              { label: "Settings", path: "/settings" },
-              ...(user?.role === "admin" ? [{ label: "Admin", path: "/admin" }] : []),
-            ].map(item => (
+            {navLinks.map(item => (
               <button
                 key={item.path}
                 onClick={() => setLocation(item.path)}
@@ -81,8 +88,9 @@ export function NavigationHeader() {
             ))}
           </div>
 
-          {/* User Menu */}
-          <div className="flex items-center gap-3">
+          {/* Right side: User Menu + Mobile Hamburger */}
+          <div className="flex items-center gap-2">
+            {/* User Avatar Dropdown (always visible) */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2 px-2">
@@ -108,9 +116,69 @@ export function NavigationHeader() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Mobile hamburger (visible below md) */}
+            <button
+              className="md:hidden p-2 rounded-md"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              style={{ border: "1px solid #E8E8E8", background: "transparent" }}
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" style={{ color: "#282728" }} /> : <Menu className="w-5 h-5" style={{ color: "#282728" }} />}
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Mobile dropdown menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden" style={{ borderTop: "1px solid #E8E8E8", background: "#FFFFFF" }}>
+          <div className="px-4 py-3 space-y-1">
+            {navLinks.map(item => (
+              <button
+                key={item.path}
+                onClick={() => { setLocation(item.path); setMobileMenuOpen(false); }}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "10px 14px",
+                  borderRadius: 6,
+                  fontSize: 15,
+                  fontWeight: isActive(item.path) ? 600 : 500,
+                  color: isActive(item.path) ? "#C5050C" : "#282728",
+                  background: isActive(item.path) ? "rgba(197,5,12,0.06)" : "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: "'Red Hat Text', sans-serif",
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+            <div style={{ borderTop: "1px solid #E8E8E8", marginTop: 8, paddingTop: 8 }}>
+              <button
+                onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "10px 14px",
+                  borderRadius: 6,
+                  fontSize: 15,
+                  fontWeight: 500,
+                  color: "#C5050C",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: "'Red Hat Text', sans-serif",
+                }}
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
