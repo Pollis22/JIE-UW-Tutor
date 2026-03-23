@@ -3,8 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocation } from "wouter";
 import { PublicMobileMenu } from "@/components/PublicMobileMenu";
-import jieLogo from "@/assets/jie-mastery-logo-sm.jpg";
-import { StartTrialButton } from "@/components/StartTrialButton";
+import uwLogo from "@/assets/uw-madison-logo.png";
 import {
   GraduationCap,
   BookOpen,
@@ -116,7 +115,7 @@ export default function TestPrepPage() {
   }, []);
 
   const handleCTA = () => setLocation("/auth?action=register");
-  const handlePricing = () => setLocation("/pricing");
+  
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -132,16 +131,15 @@ export default function TestPrepPage() {
               className="flex items-center space-x-3 cursor-pointer"
               onClick={() => setLocation("/")}
             >
-              <img src={jieLogo} alt="JIE Mastery" className="h-10 w-auto" />
-              <span className="text-xl font-bold text-foreground">JIE Mastery</span>
+              <img src={uwLogo} alt="University of Wisconsin-Madison" className="h-12 w-auto" />
+              <span className="text-xl font-bold text-foreground">UW AI Tutor</span>
             </div>
             <div className="hidden md:flex items-center space-x-6">
               {[
-                { label: "Benefits", path: "/benefits" },
+                { label: "Features", path: "/features" },
                 { label: "Test Prep", path: "/test-prep" },
                 { label: "FAQ", path: "/faq" },
                 { label: "Contact", path: "/contact" },
-                { label: "Pricing", path: "/pricing" },
               ].map((item) => (
                 <button
                   key={item.label}
@@ -157,11 +155,11 @@ export default function TestPrepPage() {
               ))}
             </div>
             <div className="hidden md:flex items-center space-x-3">
-              <Button variant="outline" onClick={handlePricing}>
-                View Pricing
+              <Button variant="outline" onClick={() => setLocation("/")}>
+                Go to Tutor
               </Button>
               <Button variant="default" onClick={handleCTA}>
-                Try JIE Mastery AI Tutor
+                Go to Tutor
               </Button>
             </div>
             <PublicMobileMenu onSignIn={() => setLocation("/auth?action=login")} />
@@ -184,9 +182,9 @@ export default function TestPrepPage() {
             No Socratic questioning. Just clear explanations and real practice.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <StartTrialButton size="lg" className="text-lg h-14 px-8" />
-            <Button size="lg" variant="outline" onClick={handlePricing} className="text-lg h-14 px-8">
-              View Plans
+            <Button size="lg" onClick={() => setLocation("/")} className="text-lg h-14 px-8">Start a Test Prep Session</Button>
+            <Button size="lg" variant="outline" onClick={() => setLocation("/features")} className="text-lg h-14 px-8">
+              See Features
             </Button>
           </div>
         </div>
@@ -231,7 +229,7 @@ export default function TestPrepPage() {
                 </ul>
                 <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
                   <p className="text-xs text-amber-700 dark:text-amber-300">
-                    <strong>Our recommendation:</strong> Use JIE Mastery as a supplement to your primary study plan. 
+                    <strong>Our recommendation:</strong> Use UW AI Tutor as a supplement to your primary study plan. 
                     It is most effective for concept review, strategy coaching, and practice drilling — especially 
                     when you are stuck on a specific topic or want extra reps before test day.
                   </p>
@@ -416,12 +414,12 @@ export default function TestPrepPage() {
             Start Preparing Today
           </h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
-            Your exam is not going to wait. Get 30 minutes free — no credit card required.
+            Your exam is not going to wait. Start preparing with your UW AI Tutor today.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <StartTrialButton size="lg" className="text-lg h-14 px-8" />
-            <Button size="lg" variant="outline" onClick={handlePricing} className="text-lg h-14 px-8">
-              See Plans & Pricing
+            <Button size="lg" onClick={() => setLocation("/")} className="text-lg h-14 px-8">Start a Test Prep Session</Button>
+            <Button size="lg" variant="outline" onClick={() => setLocation("/features")} className="text-lg h-14 px-8">
+              See Features
             </Button>
           </div>
         </div>
@@ -431,8 +429,8 @@ export default function TestPrepPage() {
       <footer className="border-t border-border py-8 px-4">
         <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center space-x-2">
-            <img src={jieLogo} alt="JIE Mastery" className="h-8 w-auto" />
-            <span className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} JIE Mastery AI, Inc. All rights reserved.</span>
+            <img src={uwLogo} alt="UW-Madison" className="h-10 w-auto" />
+            <span className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} University of Wisconsin–Madison · AI Tutor Program</span>
           </div>
           <div className="flex space-x-6">
             <a onClick={() => setLocation("/terms")} className="hover:text-primary cursor-pointer transition-colors text-sm text-muted-foreground">Terms</a>
