@@ -468,8 +468,7 @@ export function setupAuth(app: Express) {
           .min(1, "Password is required")
           .min(8, "Password must be at least 8 characters"),
         marketingOptIn: z.boolean().optional(),
-        accessCode: z.string()
-          .min(1, "Access code is required"),
+        accessCode: z.string().optional(),
       });
 
       console.log('[Register] ✓ Starting validation...');
@@ -508,42 +507,48 @@ export function setupAuth(app: Express) {
       }
       console.log('[Register] ✓ Email available');
 
-      // ── ACCESS CODE VALIDATION ──
-      const submittedCode = validation.data.accessCode.trim().toUpperCase();
-      console.log('[Register] 🔑 Validating access code:', submittedCode);
+      // ── ACCESS CODE VALIDATION (optional — only validates if provided) ──
+      let codeRecord: any = null;
+      if (validation.data.accessCode && validation.data.accessCode.trim()) {
+        const submittedCode = validation.data.accessCode.trim().toUpperCase();
+        console.log('[Register] 🔑 Validating access code:', submittedCode);
 
-      const [codeRecord] = await db.select().from(accessCodes)
-        .where(and(
-          eq(accessCodes.code, submittedCode),
-          eq(accessCodes.isActive, true),
-        ))
-        .limit(1);
+        const [foundCode] = await db.select().from(accessCodes)
+          .where(and(
+            eq(accessCodes.code, submittedCode),
+            eq(accessCodes.isActive, true),
+          ))
+          .limit(1);
 
-      if (!codeRecord) {
-        console.log('[Register] ❌ Access code not found or inactive:', submittedCode);
-        return res.status(400).json({
-          error: "Invalid access code",
-          field: "accessCode",
-        });
+        if (!foundCode) {
+          console.log('[Register] ❌ Access code not found or inactive:', submittedCode);
+          return res.status(400).json({
+            error: "Invalid access code",
+            field: "accessCode",
+          });
+        }
+
+        if (foundCode.expiresAt && new Date() > new Date(foundCode.expiresAt)) {
+          console.log('[Register] ❌ Access code expired:', submittedCode);
+          return res.status(400).json({
+            error: "This access code has expired. Please request a new one.",
+            field: "accessCode",
+          });
+        }
+
+        if (foundCode.maxUses && foundCode.timesUsed !== null && foundCode.timesUsed >= foundCode.maxUses) {
+          console.log('[Register] ❌ Access code max uses reached:', submittedCode);
+          return res.status(400).json({
+            error: "This access code has reached its usage limit.",
+            field: "accessCode",
+          });
+        }
+
+        codeRecord = foundCode;
+        console.log('[Register] ✓ Access code valid');
+      } else {
+        console.log('[Register] ℹ️ No access code provided — open registration');
       }
-
-      if (codeRecord.expiresAt && new Date() > new Date(codeRecord.expiresAt)) {
-        console.log('[Register] ❌ Access code expired:', submittedCode);
-        return res.status(400).json({
-          error: "This access code has expired. Please request a new one.",
-          field: "accessCode",
-        });
-      }
-
-      if (codeRecord.maxUses && codeRecord.timesUsed !== null && codeRecord.timesUsed >= codeRecord.maxUses) {
-        console.log('[Register] ❌ Access code max uses reached:', submittedCode);
-        return res.status(400).json({
-          error: "This access code has reached its usage limit.",
-          field: "accessCode",
-        });
-      }
-
-      console.log('[Register] ✓ Access code valid');
 
       // Auto-generate username from email (e.g., "john@example.com" → "john_abc123")
       const emailPrefix = validation.data.email.split('@')[0].toLowerCase();
@@ -588,14 +593,16 @@ export function setupAuth(app: Express) {
 
       console.log('[Register] ✅ User created successfully:', user.email);
 
-      // Increment access code usage
-      try {
-        await db.update(accessCodes)
-          .set({ timesUsed: (codeRecord.timesUsed || 0) + 1 })
-          .where(eq(accessCodes.id, codeRecord.id));
-        console.log('[Register] ✅ Access code usage incremented:', submittedCode);
-      } catch (codeUpdateError) {
-        console.error('[Register] ⚠️ Failed to increment access code usage (non-fatal):', codeUpdateError);
+      // Increment access code usage (only if a code was provided)
+      if (codeRecord) {
+        try {
+          await db.update(accessCodes)
+            .set({ timesUsed: (codeRecord.timesUsed || 0) + 1 })
+            .where(eq(accessCodes.id, codeRecord.id));
+          console.log('[Register] ✅ Access code usage incremented');
+        } catch (codeUpdateError) {
+          console.error('[Register] ⚠️ Failed to increment access code usage (non-fatal):', codeUpdateError);
+        }
       }
 
       // Auto-create default student profile so user can start tutoring immediately
