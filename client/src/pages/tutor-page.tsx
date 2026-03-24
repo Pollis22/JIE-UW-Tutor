@@ -77,7 +77,7 @@ export default function TutorPage() {
   const [scriptReady, setScriptReady] = useState(false);
 
   const memo = loadProgress();
-  const [level, setLevel] = useState<AgentLevel>((memo.lastLevel as AgentLevel) || "k2");
+  const [level, setLevel] = useState<AgentLevel>((memo.lastLevel as AgentLevel) || "college");
   const [subject, setSubject] = useState(memo.lastSubject || "general");
   const [studentName, setStudentName] = useState("");
   const [gradeText, setGradeText] = useState("");
@@ -918,10 +918,6 @@ export default function TutorPage() {
                     data-testid="select-level"
                     disabled={sessionState !== 'idle'}
                   >
-                    <option value="k2">Kindergarten–2</option>
-                    <option value="g3_5">Grades 3–5</option>
-                    <option value="g6_8">Grades 6–8</option>
-                    <option value="g9_12">Grades 9–12</option>
                     <option value="college">College/Adult</option>
                   </select>
 
