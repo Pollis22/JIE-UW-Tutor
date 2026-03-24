@@ -527,12 +527,12 @@ export function StudentProfilePanel({
                     <FormLabel>Grade Level</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="e.g., 5th Grade, College Sophomore"
-                        {...field}
+                        value="College/Adult"
+                        disabled
                         data-testid="input-student-grade"
                       />
                     </FormControl>
-                    <FormDescription>Optional grade or education level</FormDescription>
+                    <FormDescription>UW Tutor is configured for college-level instruction</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

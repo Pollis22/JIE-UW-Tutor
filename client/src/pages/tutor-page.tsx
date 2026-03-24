@@ -247,12 +247,9 @@ export default function TutorPage() {
     return 'college';
   };
 
-  // Auto-populate grade level from student profile
+  // UW is college-only — always use college level regardless of student profile
   useEffect(() => {
-    if (selectedStudent?.grade) {
-      const mappedLevel = mapGradeToLevel(selectedStudent.grade);
-      setLevel(mappedLevel);
-    }
+    setLevel('college');
   }, [selectedStudent?.grade]);
 
   // Fetch student's pinned documents for RAG context
