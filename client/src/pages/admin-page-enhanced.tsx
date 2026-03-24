@@ -71,8 +71,8 @@ interface AdminUser {
   gradeBand?: string;
   voiceMinutesRemaining?: number;
   purchasedMinutesBalance?: number;
-  minutesUsed?: number;
-  minutesLimit?: number;
+  subscriptionMinutesUsed?: number;
+  subscriptionMinutesLimit?: number;
   maxConcurrentLogins?: number;
   firstName?: string;
   lastName?: string;
@@ -174,8 +174,8 @@ interface TopUsageUser {
   studentName?: string;
   gradeBand?: string;
   status?: string;
-  minutesUsed?: number;
-  minutesLimit?: number;
+  subscriptionMinutesUsed?: number;
+  subscriptionMinutesLimit?: number;
   purchasedMinutesBalance?: number;
   isTrialActive?: boolean;
   trialMinutesUsed?: number;
@@ -769,7 +769,7 @@ export default function AdminPageEnhanced() {
                                     ) : (
                                       <>
                                         <div className="font-medium">
-                                          {userData.minutesUsed || 0} / {userData.minutesLimit || 0} min
+                                          {userData.subscriptionMinutesUsed || 0} / {userData.subscriptionMinutesLimit || 0} min
                                         </div>
                                         <div className="text-xs text-muted-foreground">
                                           +{userData.purchasedMinutesBalance || 0} purchased
@@ -1306,10 +1306,10 @@ export default function AdminPageEnhanced() {
                                   ) : (
                                     <>
                                       <div className="font-medium">
-                                        {user.minutesUsed || 0} / {user.minutesLimit || 0}
+                                        {user.subscriptionMinutesUsed || 0} / {user.subscriptionMinutesLimit || 0}
                                       </div>
                                       <div className="text-xs text-muted-foreground">
-                                        {user.minutesLimit ? Math.round(((user.minutesUsed || 0) / user.minutesLimit) * 100) : 0}% used
+                                        {user.subscriptionMinutesLimit ? Math.round(((user.subscriptionMinutesUsed || 0) / user.subscriptionMinutesLimit) * 100) : 0}% used
                                       </div>
                                     </>
                                   )}
