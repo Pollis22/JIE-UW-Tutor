@@ -950,8 +950,9 @@ router.get("/dashboard-summary", async (req, res) => {
 router.get("/admin/students", requireAdmin, async (req, res) => {
   try {
     const { search, riskLevel, sortBy } = req.query;
+    const today = new Date().toISOString().split("T")[0];
 
-    // Get all non-admin users who have at least one course
+    // Batch query 1: All non-admin users
     const allStudents = await db.select({
       id: users.id,
       email: users.email,
@@ -964,59 +965,107 @@ router.get("/admin/students", requireAdmin, async (req, res) => {
       .where(eq(users.isAdmin, false))
       .orderBy(desc(users.createdAt));
 
-    const enriched = await Promise.all(allStudents.map(async (student) => {
-      // Courses
-      const courses = await db.select().from(studentCourses)
-        .where(and(eq(studentCourses.userId, student.id), eq(studentCourses.isActive, true)));
+    if (allStudents.length === 0) {
+      return res.json({ students: [], total: 0 });
+    }
 
-      // Latest engagement score
-      const latestScore = await db.select().from(studentEngagementScores)
-        .where(and(eq(studentEngagementScores.userId, student.id), isNull(studentEngagementScores.courseId)))
-        .orderBy(desc(studentEngagementScores.weekStart))
-        .limit(1);
+    const studentIds = allStudents.map(s => s.id);
 
-      // Last session
-      const lastSession = await db.select().from(learningSessions)
-        .where(eq(learningSessions.userId, student.id))
-        .orderBy(desc(learningSessions.createdAt))
-        .limit(1);
+    // Batch query 2: Course counts and names per student (single query)
+    const courseData = await db.select({
+      userId: studentCourses.userId,
+      courseName: studentCourses.courseName,
+    }).from(studentCourses)
+      .where(eq(studentCourses.isActive, true));
 
-      // Task completion rate
-      const allTasks = await db.select({ count: count() }).from(studentTasks)
-        .where(eq(studentTasks.userId, student.id));
-      const completedTasks = await db.select({ count: count() }).from(studentTasks)
-        .where(and(eq(studentTasks.userId, student.id), eq(studentTasks.status, "completed")));
-      const totalTaskCount = allTasks[0]?.count || 0;
-      const completedTaskCount = completedTasks[0]?.count || 0;
+    const coursesByStudent = new Map<string, string[]>();
+    for (const c of courseData) {
+      const arr = coursesByStudent.get(c.userId) || [];
+      arr.push(c.courseName);
+      coursesByStudent.set(c.userId, arr);
+    }
+
+    // Batch query 3: Latest engagement scores (using DISTINCT ON for most recent per user)
+    const latestScores = await db.execute(sql`
+      SELECT DISTINCT ON (user_id) user_id, engagement_score, risk_level, trend, week_start
+      FROM student_engagement_scores
+      WHERE course_id IS NULL
+      ORDER BY user_id, week_start DESC
+    `);
+    const scoresByStudent = new Map<string, { engagementScore: number; riskLevel: string; trend: string }>();
+    for (const row of latestScores.rows as any[]) {
+      scoresByStudent.set(row.user_id, {
+        engagementScore: Number(row.engagement_score),
+        riskLevel: row.risk_level,
+        trend: row.trend,
+      });
+    }
+
+    // Batch query 4: Last session per student
+    const lastSessions = await db.execute(sql`
+      SELECT DISTINCT ON (user_id) user_id, created_at
+      FROM learning_sessions
+      ORDER BY user_id, created_at DESC
+    `);
+    const lastSessionByStudent = new Map<string, Date>();
+    for (const row of lastSessions.rows as any[]) {
+      lastSessionByStudent.set(row.user_id, row.created_at);
+    }
+
+    // Batch query 5: Task counts per student (total and completed in one query)
+    const taskCounts = await db.execute(sql`
+      SELECT user_id,
+        COUNT(*) as total_tasks,
+        COUNT(*) FILTER (WHERE status = 'completed') as completed_tasks
+      FROM student_tasks
+      GROUP BY user_id
+    `);
+    const tasksByStudent = new Map<string, { total: number; completed: number }>();
+    for (const row of taskCounts.rows as any[]) {
+      tasksByStudent.set(row.user_id, {
+        total: Number(row.total_tasks),
+        completed: Number(row.completed_tasks),
+      });
+    }
+
+    // Batch query 6: Upcoming deadline counts per student
+    const deadlineCounts = await db.execute(sql`
+      SELECT user_id, COUNT(*) as deadline_count
+      FROM student_calendar_events
+      WHERE status = 'upcoming' AND start_date >= ${today}
+      GROUP BY user_id
+    `);
+    const deadlinesByStudent = new Map<string, number>();
+    for (const row of deadlineCounts.rows as any[]) {
+      deadlinesByStudent.set(row.user_id, Number(row.deadline_count));
+    }
+
+    // Assemble enriched list in memory (no per-student queries)
+    let enriched = allStudents.map(student => {
+      const courses = coursesByStudent.get(student.id) || [];
+      const score = scoresByStudent.get(student.id);
+      const tasks = tasksByStudent.get(student.id);
+      const totalTaskCount = tasks?.total || 0;
+      const completedTaskCount = tasks?.completed || 0;
       const taskCompletionRate = totalTaskCount > 0 ? Math.round((completedTaskCount / totalTaskCount) * 100) : 0;
-
-      // Upcoming deadlines
-      const today = new Date().toISOString().split("T")[0];
-      const upcomingDeadlines = await db.select({ count: count() }).from(studentCalendarEvents)
-        .where(and(
-          eq(studentCalendarEvents.userId, student.id),
-          eq(studentCalendarEvents.status, "upcoming"),
-          gte(studentCalendarEvents.startDate, today)
-        ));
 
       return {
         ...student,
         courseCount: courses.length,
-        courseNames: courses.map(c => c.courseName),
-        engagementScore: latestScore[0] ? Number(latestScore[0].engagementScore) : null,
-        riskLevel: latestScore[0]?.riskLevel || null,
-        trend: latestScore[0]?.trend || null,
-        lastSessionDate: lastSession[0]?.createdAt || null,
-        upcomingDeadlines: upcomingDeadlines[0]?.count || 0,
+        courseNames: courses,
+        engagementScore: score?.engagementScore ?? null,
+        riskLevel: score?.riskLevel || null,
+        trend: score?.trend || null,
+        lastSessionDate: lastSessionByStudent.get(student.id) || null,
+        upcomingDeadlines: deadlinesByStudent.get(student.id) || 0,
         taskCompletionRate,
       };
-    }));
+    });
 
     // Apply filters
-    let filtered = enriched;
     if (search) {
       const s = (search as string).toLowerCase();
-      filtered = filtered.filter(st =>
+      enriched = enriched.filter(st =>
         (st.email || "").toLowerCase().includes(s) ||
         (st.firstName || "").toLowerCase().includes(s) ||
         (st.lastName || "").toLowerCase().includes(s) ||
@@ -1025,21 +1074,21 @@ router.get("/admin/students", requireAdmin, async (req, res) => {
       );
     }
     if (riskLevel) {
-      filtered = filtered.filter(st => st.riskLevel === riskLevel);
+      enriched = enriched.filter(st => st.riskLevel === riskLevel);
     }
 
     // Sort
     if (sortBy === "engagement") {
-      filtered.sort((a, b) => (b.engagementScore || 0) - (a.engagementScore || 0));
+      enriched.sort((a, b) => (b.engagementScore || 0) - (a.engagementScore || 0));
     } else if (sortBy === "lastActive") {
-      filtered.sort((a, b) => {
+      enriched.sort((a, b) => {
         if (!a.lastSessionDate) return 1;
         if (!b.lastSessionDate) return -1;
         return new Date(b.lastSessionDate).getTime() - new Date(a.lastSessionDate).getTime();
       });
     }
 
-    res.json({ students: filtered, total: filtered.length });
+    res.json({ students: enriched, total: enriched.length });
   } catch (error: any) {
     console.error("[Academic Admin] Error listing students:", error);
     res.status(500).json({ error: "Failed to list students" });
@@ -1093,9 +1142,9 @@ router.get("/admin/alerts", requireAdmin, async (req, res) => {
     const today = new Date();
     const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(today.getDate() - 7);
+    const todayStr = today.toISOString().split("T")[0];
     const threeDaysFromNow = new Date(today);
     threeDaysFromNow.setDate(today.getDate() + 3);
-    const todayStr = today.toISOString().split("T")[0];
     const threeDaysStr = threeDaysFromNow.toISOString().split("T")[0];
 
     // All non-admin users
@@ -1107,65 +1156,88 @@ router.get("/admin/alerts", requireAdmin, async (req, res) => {
       studentName: users.studentName,
     }).from(users).where(eq(users.isAdmin, false));
 
-    const alerts: Array<{
-      type: string;
-      student: any;
-      details: string;
-    }> = [];
+    if (allStudents.length === 0) {
+      return res.json({ alerts: [], total: 0 });
+    }
+
+    const studentMap = new Map(allStudents.map(s => [s.id, s]));
+
+    // Batch: students with active courses (only alert those actually using system)
+    const studentsWithCourses = await db.execute(sql`
+      SELECT DISTINCT user_id FROM student_courses WHERE is_active = true
+    `);
+    const hasCoursesSet = new Set((studentsWithCourses.rows as any[]).map(r => r.user_id));
+
+    // Batch: students with recent sessions (last 7 days)
+    const recentSessions = await db.execute(sql`
+      SELECT DISTINCT user_id FROM learning_sessions
+      WHERE created_at >= ${sevenDaysAgo}
+    `);
+    const hasRecentSessionSet = new Set((recentSessions.rows as any[]).map(r => r.user_id));
+
+    // Batch: latest engagement scores below 40
+    const lowScores = await db.execute(sql`
+      SELECT DISTINCT ON (user_id) user_id, engagement_score
+      FROM student_engagement_scores
+      WHERE course_id IS NULL
+      ORDER BY user_id, week_start DESC
+    `);
+    const lowScoreMap = new Map<string, number>();
+    for (const row of lowScores.rows as any[]) {
+      const score = Number(row.engagement_score);
+      if (score < 40) lowScoreMap.set(row.user_id, score);
+    }
+
+    // Batch: students with 3+ missed/overdue tasks
+    const missedTaskCounts = await db.execute(sql`
+      SELECT user_id, COUNT(*) as missed_count
+      FROM student_tasks
+      WHERE status NOT IN ('completed', 'skipped') AND due_date <= ${todayStr}
+      GROUP BY user_id
+      HAVING COUNT(*) >= 3
+    `);
+    const missedTaskMap = new Map<string, number>();
+    for (const row of missedTaskCounts.rows as any[]) {
+      missedTaskMap.set(row.user_id, Number(row.missed_count));
+    }
+
+    // Batch: upcoming exams within 3 days
+    const upcomingExams = await db.execute(sql`
+      SELECT user_id, title FROM student_calendar_events
+      WHERE event_type = 'exam' AND status = 'upcoming'
+        AND start_date >= ${todayStr} AND start_date <= ${threeDaysStr}
+    `);
+    const examsByStudent = new Map<string, string>();
+    for (const row of upcomingExams.rows as any[]) {
+      if (!examsByStudent.has(row.user_id)) {
+        examsByStudent.set(row.user_id, row.title as string);
+      }
+    }
+
+    // Assemble alerts
+    const alerts: Array<{ type: string; student: any; details: string }> = [];
 
     for (const student of allStudents) {
-      // No activity in 7+ days
-      const recentSession = await db.select().from(learningSessions)
-        .where(and(
-          eq(learningSessions.userId, student.id),
-          gte(learningSessions.createdAt, sevenDaysAgo)
-        ))
-        .limit(1);
-      if (recentSession.length === 0) {
-        // Check if they even have courses (only alert if they're actually using the system)
-        const hasCourses = await db.select({ count: count() }).from(studentCourses)
-          .where(and(eq(studentCourses.userId, student.id), eq(studentCourses.isActive, true)));
-        if ((hasCourses[0]?.count || 0) > 0) {
-          alerts.push({ type: "no_activity", student, details: "No tutoring sessions in 7+ days" });
-        }
+      const sid = student.id;
+
+      // No activity + has courses
+      if (!hasRecentSessionSet.has(sid) && hasCoursesSet.has(sid)) {
+        alerts.push({ type: "no_activity", student, details: "No tutoring sessions in 7+ days" });
       }
 
-      // Engagement score below 40
-      const latestScore = await db.select().from(studentEngagementScores)
-        .where(and(eq(studentEngagementScores.userId, student.id), isNull(studentEngagementScores.courseId)))
-        .orderBy(desc(studentEngagementScores.weekStart))
-        .limit(1);
-      if (latestScore.length > 0 && Number(latestScore[0].engagementScore) < 40) {
-        alerts.push({ type: "declining_engagement", student, details: `Engagement score: ${latestScore[0].engagementScore}` });
+      // Low engagement
+      if (lowScoreMap.has(sid)) {
+        alerts.push({ type: "declining_engagement", student, details: `Engagement score: ${lowScoreMap.get(sid)}` });
       }
 
-      // 3+ missed tasks
-      const missedTasks = await db.select({ count: count() }).from(studentTasks)
-        .where(and(
-          eq(studentTasks.userId, student.id),
-          ne(studentTasks.status, "completed"),
-          ne(studentTasks.status, "skipped"),
-          lte(studentTasks.dueDate, todayStr)
-        ));
-      if ((missedTasks[0]?.count || 0) >= 3) {
-        alerts.push({ type: "missed_deadlines", student, details: `${missedTasks[0]?.count} overdue tasks` });
+      // Missed deadlines
+      if (missedTaskMap.has(sid)) {
+        alerts.push({ type: "missed_deadlines", student, details: `${missedTaskMap.get(sid)} overdue tasks` });
       }
 
-      // Exam within 3 days, no recent study sessions
-      const upcomingExams = await db.select().from(studentCalendarEvents)
-        .where(and(
-          eq(studentCalendarEvents.userId, student.id),
-          eq(studentCalendarEvents.eventType, "exam"),
-          eq(studentCalendarEvents.status, "upcoming"),
-          gte(studentCalendarEvents.startDate, todayStr),
-          lte(studentCalendarEvents.startDate, threeDaysStr)
-        ));
-      if (upcomingExams.length > 0 && recentSession.length === 0) {
-        alerts.push({
-          type: "exam_unprepared",
-          student,
-          details: `Exam "${upcomingExams[0].title}" in ≤3 days with no recent sessions`
-        });
+      // Exam unprepared
+      if (examsByStudent.has(sid) && !hasRecentSessionSet.has(sid)) {
+        alerts.push({ type: "exam_unprepared", student, details: `Exam "${examsByStudent.get(sid)}" in ≤3 days with no recent sessions` });
       }
     }
 
@@ -1187,18 +1259,18 @@ router.post("/admin/nudge", requireAdmin, async (req, res) => {
     const emailService = new EmailService();
     await emailService.sendEmail({
       to: studentEmail,
-      subject: subject || "A message from your advisor — JIE Mastery SRM",
+      subject: subject || "A message from your academic advisor — UW AI Tutor",
       html: `
         <div style="font-family: 'Segoe UI', system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
           <div style="background: #282728; padding: 20px; border-radius: 8px 8px 0 0; border-bottom: 4px solid #C5050C;">
-            <h1 style="color: white; margin: 0; font-size: 20px;">JIE Mastery — SRM Support</h1>
+            <h1 style="color: white; margin: 0; font-size: 20px;">UW AI Tutor — Academic Support</h1>
           </div>
           <div style="background: #f8f9fa; padding: 24px; border-radius: 0 0 8px 8px;">
             <p style="font-size: 16px; line-height: 1.6; color: #333;">${message.replace(/\n/g, '<br>')}</p>
             <div style="margin-top: 24px; text-align: center;">
-              <a href="${process.env.APP_URL || 'https://jiemastery.ai'}/tutor"
+              <a href="${process.env.APP_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost:5000'}`}/tutor"
                  style="display: inline-block; background: #C5050C; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-                Study with JIE
+                Study with UW AI Tutor
               </a>
             </div>
           </div>
@@ -1279,33 +1351,68 @@ router.get("/admin/reporting/export", requireAdmin, async (req, res) => {
       studentName: users.studentName,
     }).from(users).where(eq(users.isAdmin, false));
 
+    // Batch: courses per student
+    const courseData = await db.select({
+      userId: studentCourses.userId,
+      courseName: studentCourses.courseName,
+    }).from(studentCourses).where(eq(studentCourses.isActive, true));
+    const coursesByStudent = new Map<string, string[]>();
+    for (const c of courseData) {
+      const arr = coursesByStudent.get(c.userId) || [];
+      arr.push(c.courseName);
+      coursesByStudent.set(c.userId, arr);
+    }
+
+    // Batch: latest engagement scores
+    const latestScores = await db.execute(sql`
+      SELECT DISTINCT ON (user_id) user_id, engagement_score, risk_level
+      FROM student_engagement_scores
+      WHERE course_id IS NULL
+      ORDER BY user_id, week_start DESC
+    `);
+    const scoresByStudent = new Map<string, { score: string; risk: string }>();
+    for (const row of latestScores.rows as any[]) {
+      scoresByStudent.set(row.user_id, { score: row.engagement_score, risk: row.risk_level });
+    }
+
+    // Batch: task counts
+    const taskCounts = await db.execute(sql`
+      SELECT user_id,
+        COUNT(*) FILTER (WHERE status = 'completed') as completed,
+        COUNT(*) FILTER (WHERE status IN ('pending', 'in_progress')) as pending
+      FROM student_tasks
+      GROUP BY user_id
+    `);
+    const tasksByStudent = new Map<string, { completed: number; pending: number }>();
+    for (const row of taskCounts.rows as any[]) {
+      tasksByStudent.set(row.user_id, { completed: Number(row.completed), pending: Number(row.pending) });
+    }
+
+    // Batch: last sessions
+    const lastSessions = await db.execute(sql`
+      SELECT DISTINCT ON (user_id) user_id, created_at
+      FROM learning_sessions
+      ORDER BY user_id, created_at DESC
+    `);
+    const lastSessionByStudent = new Map<string, string>();
+    for (const row of lastSessions.rows as any[]) {
+      lastSessionByStudent.set(row.user_id, new Date(row.created_at).toISOString().split("T")[0]);
+    }
+
     const rows: string[] = [
       "Student Name,Email,Courses,Engagement Score,Risk Level,Tasks Completed,Tasks Pending,Last Session"
     ];
 
     for (const student of allStudents) {
-      const courses = await db.select().from(studentCourses)
-        .where(and(eq(studentCourses.userId, student.id), eq(studentCourses.isActive, true)));
-      const latestScore = await db.select().from(studentEngagementScores)
-        .where(and(eq(studentEngagementScores.userId, student.id), isNull(studentEngagementScores.courseId)))
-        .orderBy(desc(studentEngagementScores.weekStart))
-        .limit(1);
-      const completedTasks = await db.select({ count: count() }).from(studentTasks)
-        .where(and(eq(studentTasks.userId, student.id), eq(studentTasks.status, "completed")));
-      const pendingTasks = await db.select({ count: count() }).from(studentTasks)
-        .where(and(eq(studentTasks.userId, student.id), or(eq(studentTasks.status, "pending"), eq(studentTasks.status, "in_progress"))));
-      const lastSession = await db.select().from(learningSessions)
-        .where(eq(learningSessions.userId, student.id))
-        .orderBy(desc(learningSessions.createdAt))
-        .limit(1);
-
       const name = student.studentName || `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.email;
-      const courseNames = courses.map(c => c.courseName).join("; ");
-      const score = latestScore[0] ? latestScore[0].engagementScore : "N/A";
-      const risk = latestScore[0]?.riskLevel || "N/A";
-      const lastDate = lastSession[0]?.createdAt ? new Date(lastSession[0].createdAt).toISOString().split("T")[0] : "Never";
+      const courseNames = (coursesByStudent.get(student.id) || []).join("; ");
+      const scoreData = scoresByStudent.get(student.id);
+      const score = scoreData?.score || "N/A";
+      const risk = scoreData?.risk || "N/A";
+      const tasks = tasksByStudent.get(student.id);
+      const lastDate = lastSessionByStudent.get(student.id) || "Never";
 
-      rows.push(`"${name}","${student.email}","${courseNames}",${score},${risk},${completedTasks[0]?.count || 0},${pendingTasks[0]?.count || 0},${lastDate}`);
+      rows.push(`"${name}","${student.email}","${courseNames}",${score},${risk},${tasks?.completed || 0},${tasks?.pending || 0},${lastDate}`);
     }
 
     res.setHeader("Content-Type", "text/csv");
@@ -1335,7 +1442,7 @@ router.post("/send-reminder", async (req, res) => {
     if (!user) return res.status(404).json({ error: "User not found" });
 
     const emailService = new EmailService();
-    const appUrl = process.env.APP_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'jiemastery.ai'}`;
+    const appUrl = process.env.APP_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost:5000'}`;
 
     await emailService.sendEmail({
       to: user.email,
@@ -1343,7 +1450,7 @@ router.post("/send-reminder", async (req, res) => {
       html: `
         <div style="font-family: 'Segoe UI', system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
           <div style="background: #282728; padding: 20px; border-radius: 8px 8px 0 0; border-bottom: 4px solid #C5050C;">
-            <h1 style="color: white; margin: 0; font-size: 20px;">JIE Mastery — SRM Reminder</h1>
+            <h1 style="color: white; margin: 0; font-size: 20px;">UW AI Tutor — Reminder</h1>
           </div>
           <div style="background: #f8f9fa; padding: 24px; border-radius: 0 0 8px 8px;">
             <p style="font-size: 18px; font-weight: 600; color: #333;">${reminder.message}</p>
@@ -1351,7 +1458,7 @@ router.post("/send-reminder", async (req, res) => {
             <div style="margin-top: 24px; text-align: center;">
               <a href="${appUrl}/tutor"
                  style="display: inline-block; background: #C5050C; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-                Study with JIE
+                Study with UW AI Tutor
               </a>
             </div>
           </div>
@@ -1404,7 +1511,7 @@ router.post("/send-parent-digest", async (req, res) => {
 
     const studentName = user.studentName || user.firstName || user.username;
     const emailService = new EmailService();
-    const appUrl = process.env.APP_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'jiemastery.ai'}`;
+    const appUrl = process.env.APP_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost:5000'}`;
 
     for (const share of parentShares) {
       const deadlinesList = upcomingEvents.map(e =>
@@ -1413,14 +1520,14 @@ router.post("/send-parent-digest", async (req, res) => {
 
       await emailService.sendEmail({
         to: share.parentEmail,
-        subject: `${studentName}'s Weekly SRM Summary — JIE Mastery`,
+        subject: `${studentName}'s Weekly Academic Summary — UW AI Tutor`,
         html: `
           <div style="font-family: 'Segoe UI', system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
             <div style="background: #282728; padding: 20px; border-radius: 8px 8px 0 0; border-bottom: 4px solid #C5050C;">
-              <h1 style="color: white; margin: 0; font-size: 20px;">JIE Mastery — Weekly Digest</h1>
+              <h1 style="color: white; margin: 0; font-size: 20px;">UW AI Tutor — Weekly Digest</h1>
             </div>
             <div style="background: #f8f9fa; padding: 24px; border-radius: 0 0 8px 8px;">
-              <h2 style="color: #333;">${studentName}'s SRM Summary</h2>
+              <h2 style="color: #333;">${studentName}'s Academic Summary</h2>
 
               <div style="background: white; padding: 16px; border-radius: 8px; margin: 16px 0;">
                 <h3 style="margin: 0 0 8px; color: #555;">Engagement Score</h3>
@@ -1446,7 +1553,7 @@ router.post("/send-parent-digest", async (req, res) => {
               </div>` : ''}
 
               <p style="text-align: center; color: #999; font-size: 12px; margin-top: 24px;">
-                This summary was shared by ${studentName} via <a href="${appUrl}">JIE Mastery</a>
+                This summary was shared by ${studentName} via <a href="${appUrl}">UW AI Tutor</a>
               </p>
             </div>
           </div>

@@ -570,7 +570,7 @@ export default function AdminAcademicTracker() {
               <Input
                 value={nudgeSubject}
                 onChange={e => setNudgeSubject(e.target.value)}
-                placeholder="A message from your advisor — JIE Mastery SRM"
+                placeholder="A message from your academic advisor — UW AI Tutor"
               />
             </div>
             <div>
@@ -590,7 +590,7 @@ export default function AdminAcademicTracker() {
                 if (showNudgeDialog && nudgeMessage) {
                   nudgeMutation.mutate({
                     studentEmail: showNudgeDialog.email,
-                    subject: nudgeSubject || "A message from your advisor — JIE Mastery SRM",
+                    subject: nudgeSubject || "A message from your academic advisor — UW AI Tutor",
                     message: nudgeMessage,
                   });
                 }
