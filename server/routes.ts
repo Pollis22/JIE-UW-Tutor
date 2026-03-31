@@ -624,6 +624,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const { default: trialRoutes } = await import('./routes/trial');
   app.use("/api/trial", trialRoutes);
 
+  // Academic Command Center routes (student-facing + admin)
+  const { academicRouter, adminAcademicRouter } = await import('./routes/academic');
+  app.use("/api/academic", academicRouter);
+  app.use("/api/admin/academic", adminAcademicRouter);
+
   // Legacy voice API routes (for compatibility)
   // Note: live-token endpoint is now handled in voiceRoutes
 

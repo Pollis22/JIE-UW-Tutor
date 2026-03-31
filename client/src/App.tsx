@@ -25,6 +25,8 @@ const AdminLogs = lazy(() => import("@/pages/admin-logs"));
 const AdminUserDetail = lazy(() => import("@/pages/admin-user-detail"));
 const AdminContacts = lazy(() => import("@/pages/admin/admin-contacts-page"));
 const AdminAgents = lazy(() => import("@/pages/admin/admin-agents-page"));
+const AcademicDashboard = lazy(() => import("@/pages/academic-dashboard"));
+const AdminAcademicTracker = lazy(() => import("@/pages/admin/admin-academic-tracker"));
 const TermsPage = lazy(() => import("@/pages/terms-page"));
 const PrivacyPage = lazy(() => import("@/pages/privacy-page"));
 const AdminSetupPage = lazy(() => import("@/pages/admin-setup-page"));
@@ -61,6 +63,8 @@ function Router() {
         <ProtectedRoute path="/admin/agents" component={AdminAgents} />
         <ProtectedRoute path="/admin/contacts" component={AdminContacts} />
         <ProtectedRoute path="/admin/logs" component={AdminLogs} />
+        <ProtectedRoute path="/admin/academic-tracker" component={AdminAcademicTracker} />
+        <ProtectedRoute path="/academic-dashboard" component={AcademicDashboard} />
         <LazyRoute path="/auth/registration-success" component={RegistrationSuccessPage} />
         <LazyRoute path="/forgot-password" component={ForgotPasswordPage} />
         <LazyRoute path="/reset-password" component={ResetPasswordPage} />
