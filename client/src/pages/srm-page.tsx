@@ -169,7 +169,7 @@ export default function SRMPage() {
             <SRMStep number={3} icon={<CheckSquare className="w-5 h-5" style={{ color: "#C5050C" }} />}
               title="Study Tasks Auto-Generate" desc="For every exam, the system creates study tasks at 7 days, 5 days, 3 days, and 1 day before — with escalating priority. Assignments get 5, 3, and 1 day reminders. You'll never be surprised again." />
             <SRMStep number={4} icon={<Mic className="w-5 h-5" style={{ color: "#C5050C" }} />}
-              title="Your Tutor Knows What's Coming" desc="Start a tutoring session and your AI tutor already knows: \"You have a Chemistry midterm in 3 days covering reaction mechanisms. Want to review that?\" No more explaining context — it's already loaded." />
+              title="Your Tutor Knows What's Coming" desc={'Start a tutoring session and your AI tutor already knows: "You have a Chemistry midterm in 3 days covering reaction mechanisms. Want to review that?" No more explaining context — it\'s already loaded.'} />
             <SRMStep number={5} icon={<BarChart3 className="w-5 h-5" style={{ color: "#C5050C" }} />}
               title="Track Your Engagement" desc="A 0–100 engagement score tracks your sessions, task completion, study time, and consistency. See your trend over weeks. Identify which courses need more focus before it's too late." />
           </div>
