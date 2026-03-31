@@ -526,8 +526,8 @@ export default function AuthPage() {
                  <span style={{ fontSize: 11, color: "#646569" }}>{row.gpt}</span>}
               </div>
               <div className="p-2.5 md:p-3" style={{ background: "rgba(197,5,12,0.03)" }}>
-                <div className="flex items-center justify-center gap-1.5">
-                  <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#28A745" }} />
+                <div className="flex items-start gap-1.5 pl-2">
+                  <CheckCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: "#28A745" }} />
                   <span style={{ fontSize: 11, color: "#282728", fontWeight: 500, textAlign: "left" }}>{row.jie}</span>
                 </div>
               </div>
