@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   X,
+  GraduationCap,
 } from "lucide-react";
 import { useState } from "react";
 import uwLogo from "@/assets/uw-madison-logo.png";
@@ -32,6 +33,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
     { name: "Agents", href: "/admin/agents", icon: Bot },
     { name: "Contacts", href: "/admin/contacts", icon: Mail },
+    { name: "SRM Tracker", href: "/admin/academic-tracker", icon: GraduationCap },
     { name: "Audit Logs", href: "/admin/logs", icon: ScrollText },
   ];
 

@@ -5121,6 +5121,20 @@ HONESTY INSTRUCTIONS:
               console.log(`[Custom Voice] No documents uploaded - using standard prompt`);
             }
             
+            // Append academic calendar context if available
+            if (state.userId) {
+              try {
+                const { getAcademicContextForVoice } = await import('./academic');
+                const academicCtx = await getAcademicContextForVoice(state.userId);
+                if (academicCtx) {
+                  state.systemInstruction += academicCtx;
+                  console.log(`[Custom Voice] 📅 Academic context appended for user ${state.userId}`);
+                }
+              } catch (e) {
+                console.warn(`[Custom Voice] Could not load academic context:`, e);
+              }
+            }
+
             // Generate enhanced personalized greeting with LANGUAGE SUPPORT
             let greeting: string = '';
             
@@ -7572,7 +7586,16 @@ DOCUMENT ACKNOWLEDGMENT RULE:
                   }
                   
                   console.log(`[Custom Voice] 📚 System instruction updated with ${state.uploadedDocuments.length} documents`);
-                  
+
+                  // Re-append academic context after mid-session prompt rebuild
+                  if (state.userId) {
+                    try {
+                      const { getAcademicContextForVoice } = await import('./academic');
+                      const academicCtx = await getAcademicContextForVoice(state.userId);
+                      if (academicCtx) state.systemInstruction += academicCtx;
+                    } catch (_) { /* skip */ }
+                  }
+
                   // Send acknowledgment via voice — content-focused, no filename listing
                   const ackMessage = `I've loaded your new document. What would you like to work on from it?`;
                   
