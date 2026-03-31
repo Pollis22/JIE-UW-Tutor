@@ -21,6 +21,7 @@ import { detectSafetyIssues, getStrikeMessage, shouldTerminateSession, SafetyDet
 import { sendAdminSafetyAlert, logSafetyIncident, SafetyAlertData, handleSafetyIncident, SafetyIncidentNotification, SafetyIncidentType } from '../services/safety-alert-service';
 import { safetyIncidents } from '@shared/schema';
 import { getRecentSessionSummaries } from '../services/memory-service';
+import { getAcademicContextForVoice } from './academic';
 import { getEndpointingProfile, ENDPOINTING_PROFILES, getKeytermsForUrl, sanitizeKeyterms, getSessionKeyterms, type BandName } from '../config/assemblyai-endpointing-profiles';
 import {
   type GradeBand,
@@ -5121,6 +5122,17 @@ HONESTY INSTRUCTIONS:
               console.log(`[Custom Voice] No documents uploaded - using standard prompt`);
             }
             
+            // Append academic calendar context (non-blocking — won't break voice if tables missing)
+            try {
+              const academicContext = await getAcademicContextForVoice(state.userId);
+              if (academicContext) {
+                state.systemInstruction += academicContext;
+                console.log(`[Custom Voice] Academic context appended (${academicContext.length} chars)`);
+              }
+            } catch (academicErr) {
+              console.log('[Custom Voice] Academic context unavailable (tables may not exist yet)');
+            }
+
             // Generate enhanced personalized greeting with LANGUAGE SUPPORT
             let greeting: string = '';
             

@@ -1138,3 +1138,178 @@ export const insertStudyGuideSchema = createInsertSchema(studyGuides).omit({
 
 export type StudyGuide = typeof studyGuides.$inferSelect;
 export type InsertStudyGuide = z.infer<typeof insertStudyGuideSchema>;
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Student Academic Command Center
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const studentCourses = pgTable("student_courses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  courseName: text("course_name").notNull(),
+  courseCode: text("course_code"),
+  instructor: text("instructor"),
+  semester: text("semester"),
+  syllabusText: text("syllabus_text"),
+  syllabusUploadedAt: timestamp("syllabus_uploaded_at"),
+  color: text("color"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_student_courses_user").on(table.userId),
+  index("idx_student_courses_active").on(table.userId, table.isActive),
+]);
+
+export const studentCalendarEvents = pgTable("student_calendar_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  courseId: varchar("course_id").references(() => studentCourses.id, { onDelete: 'set null' }),
+  title: text("title").notNull(),
+  eventType: text("event_type").$type<'exam' | 'assignment' | 'quiz' | 'project' | 'lab' | 'presentation' | 'study_session' | 'office_hours' | 'custom'>(),
+  description: text("description"),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  startTime: text("start_time"),
+  endTime: text("end_time"),
+  location: text("location"),
+  isAllDay: boolean("is_all_day").default(false),
+  isFromSyllabus: boolean("is_from_syllabus").default(true),
+  priority: text("priority").$type<'high' | 'medium' | 'low'>(),
+  status: text("status").$type<'upcoming' | 'completed' | 'missed' | 'rescheduled'>().default('upcoming'),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_calendar_events_user").on(table.userId),
+  index("idx_calendar_events_course").on(table.courseId),
+  index("idx_calendar_events_date").on(table.userId, table.startDate),
+]);
+
+export const studentTasks = pgTable("student_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  courseId: varchar("course_id").references(() => studentCourses.id, { onDelete: 'set null' }),
+  eventId: varchar("event_id").references(() => studentCalendarEvents.id, { onDelete: 'set null' }),
+  title: text("title").notNull(),
+  taskType: text("task_type").$type<'study' | 'homework' | 'reading' | 'review' | 'practice' | 'project_work' | 'custom'>(),
+  dueDate: date("due_date"),
+  priority: text("priority").$type<'high' | 'medium' | 'low'>(),
+  status: text("status").$type<'pending' | 'in_progress' | 'completed' | 'skipped'>().default('pending'),
+  estimatedMinutes: integer("estimated_minutes"),
+  actualMinutes: integer("actual_minutes"),
+  notes: text("notes"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_student_tasks_user").on(table.userId),
+  index("idx_student_tasks_course").on(table.courseId),
+  index("idx_student_tasks_event").on(table.eventId),
+  index("idx_student_tasks_status").on(table.userId, table.status),
+]);
+
+export const studentReminders = pgTable("student_reminders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  eventId: varchar("event_id").references(() => studentCalendarEvents.id, { onDelete: 'set null' }),
+  taskId: varchar("task_id").references(() => studentTasks.id, { onDelete: 'set null' }),
+  reminderType: text("reminder_type").$type<'exam_7day' | 'exam_3day' | 'exam_1day' | 'assignment_3day' | 'assignment_1day' | 'study_reminder' | 'custom'>(),
+  reminderDate: date("reminder_date"),
+  reminderTime: text("reminder_time"),
+  message: text("message"),
+  delivered: boolean("delivered").default(false),
+  deliveredAt: timestamp("delivered_at"),
+  deliveryMethod: text("delivery_method").$type<'in_app' | 'email' | 'both'>().default('in_app'),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_student_reminders_user").on(table.userId),
+  index("idx_student_reminders_date").on(table.reminderDate, table.delivered),
+]);
+
+export const studentEngagementScores = pgTable("student_engagement_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  courseId: varchar("course_id").references(() => studentCourses.id, { onDelete: 'set null' }),
+  weekStart: date("week_start"),
+  sessionsCompleted: integer("sessions_completed").default(0),
+  tasksCompleted: integer("tasks_completed").default(0),
+  tasksPending: integer("tasks_pending").default(0),
+  tasksMissed: integer("tasks_missed").default(0),
+  totalStudyMinutes: integer("total_study_minutes").default(0),
+  engagementScore: decimal("engagement_score").default('0'),
+  trend: text("trend").$type<'improving' | 'stable' | 'declining'>().default('stable'),
+  riskLevel: text("risk_level").$type<'on_track' | 'needs_attention' | 'at_risk' | 'critical'>().default('on_track'),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_engagement_scores_user").on(table.userId),
+  index("idx_engagement_scores_week").on(table.userId, table.weekStart),
+]);
+
+export const studentParentShares = pgTable("student_parent_shares", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  parentEmail: text("parent_email").notNull(),
+  parentName: text("parent_name"),
+  shareFrequency: text("share_frequency").$type<'per_event' | 'weekly' | 'daily'>().default('weekly'),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_parent_shares_user").on(table.userId),
+]);
+
+// Academic Command Center Relations
+export const studentCoursesRelations = relations(studentCourses, ({ one, many }) => ({
+  user: one(users, { fields: [studentCourses.userId], references: [users.id] }),
+  events: many(studentCalendarEvents),
+  tasks: many(studentTasks),
+  engagementScores: many(studentEngagementScores),
+}));
+
+export const studentCalendarEventsRelations = relations(studentCalendarEvents, ({ one, many }) => ({
+  user: one(users, { fields: [studentCalendarEvents.userId], references: [users.id] }),
+  course: one(studentCourses, { fields: [studentCalendarEvents.courseId], references: [studentCourses.id] }),
+  tasks: many(studentTasks),
+  reminders: many(studentReminders),
+}));
+
+export const studentTasksRelations = relations(studentTasks, ({ one }) => ({
+  user: one(users, { fields: [studentTasks.userId], references: [users.id] }),
+  course: one(studentCourses, { fields: [studentTasks.courseId], references: [studentCourses.id] }),
+  event: one(studentCalendarEvents, { fields: [studentTasks.eventId], references: [studentCalendarEvents.id] }),
+}));
+
+export const studentRemindersRelations = relations(studentReminders, ({ one }) => ({
+  user: one(users, { fields: [studentReminders.userId], references: [users.id] }),
+  event: one(studentCalendarEvents, { fields: [studentReminders.eventId], references: [studentCalendarEvents.id] }),
+  task: one(studentTasks, { fields: [studentReminders.taskId], references: [studentTasks.id] }),
+}));
+
+export const studentEngagementScoresRelations = relations(studentEngagementScores, ({ one }) => ({
+  user: one(users, { fields: [studentEngagementScores.userId], references: [users.id] }),
+  course: one(studentCourses, { fields: [studentEngagementScores.courseId], references: [studentCourses.id] }),
+}));
+
+export const studentParentSharesRelations = relations(studentParentShares, ({ one }) => ({
+  user: one(users, { fields: [studentParentShares.userId], references: [users.id] }),
+}));
+
+// Insert schemas
+export const insertStudentCourseSchema = createInsertSchema(studentCourses).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertStudentCalendarEventSchema = createInsertSchema(studentCalendarEvents).omit({ id: true, createdAt: true });
+export const insertStudentTaskSchema = createInsertSchema(studentTasks).omit({ id: true, createdAt: true });
+export const insertStudentReminderSchema = createInsertSchema(studentReminders).omit({ id: true, createdAt: true });
+export const insertStudentEngagementScoreSchema = createInsertSchema(studentEngagementScores).omit({ id: true, createdAt: true });
+export const insertStudentParentShareSchema = createInsertSchema(studentParentShares).omit({ id: true, createdAt: true });
+
+// Select types
+export type StudentCourse = typeof studentCourses.$inferSelect;
+export type InsertStudentCourse = z.infer<typeof insertStudentCourseSchema>;
+export type StudentCalendarEvent = typeof studentCalendarEvents.$inferSelect;
+export type InsertStudentCalendarEvent = z.infer<typeof insertStudentCalendarEventSchema>;
+export type StudentTask = typeof studentTasks.$inferSelect;
+export type InsertStudentTask = z.infer<typeof insertStudentTaskSchema>;
+export type StudentReminder = typeof studentReminders.$inferSelect;
+export type InsertStudentReminder = z.infer<typeof insertStudentReminderSchema>;
+export type StudentEngagementScore = typeof studentEngagementScores.$inferSelect;
+export type InsertStudentEngagementScore = z.infer<typeof insertStudentEngagementScoreSchema>;
+export type StudentParentShare = typeof studentParentShares.$inferSelect;
+export type InsertStudentParentShare = z.infer<typeof insertStudentParentShareSchema>;
