@@ -63,7 +63,7 @@ export function NavigationHeader() {
   const navLinks = [
     { label: "Tutor", path: "/tutor" },
     { label: "Dashboard", path: "/dashboard" },
-    { label: "SRM", path: "/academic-dashboard" },
+    { label: "Academic SRM", path: "/academic-dashboard" },
     { label: "Features", path: "/features" },
     { label: "College Test Prep", path: "/features#test-prep" },
     { label: "Best Practices", path: "/best-practices" },

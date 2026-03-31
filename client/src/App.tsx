@@ -42,6 +42,7 @@ const LiveSupport = lazy(() => import("@/pages/live-support"));
 const ContactPage = lazy(() => import("@/pages/contact"));
 const AcademicDashboard = lazy(() => import("@/pages/academic-dashboard"));
 const AdminAcademicTracker = lazy(() => import("@/pages/admin/admin-academic-tracker"));
+const SRMPage = lazy(() => import("@/pages/srm-page"));
 
 function Router() {
   return (
@@ -73,6 +74,7 @@ function Router() {
         <LazyRoute path="/terms" component={TermsPage} />
         <LazyRoute path="/privacy" component={PrivacyPage} />
         <LazyRoute path="/features" component={FeaturesAndBenefits} />
+        <LazyRoute path="/srm" component={SRMPage} />
         <LazyRoute path="/test-prep" component={TestPrepPage} />
         <LazyRoute path="/best-practices" component={BestPractices} />
         <LazyRoute path="/support" component={LiveSupport} />

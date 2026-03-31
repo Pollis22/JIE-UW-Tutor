@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Mic, Brain, ArrowRight, GraduationCap, FlaskConical, CheckCircle, X, Shield, Sparkles, TrendingUp, Clock, BookOpen, Menu } from "lucide-react";
+import { Eye, EyeOff, Mic, Brain, ArrowRight, GraduationCap, FlaskConical, CheckCircle, X, Shield, Sparkles, TrendingUp, Clock, BookOpen, Menu, Calendar } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -221,6 +221,7 @@ export default function AuthPage() {
           <div className="hidden lg:flex items-center gap-1 flex-1 justify-center">
             {[
               { label: "Features", path: "/features" },
+              { label: "Academic SRM", path: "/srm" },
               { label: "College Test Prep", path: "/features#test-prep" },
               { label: "Best Practices", path: "/best-practices" },
               { label: "Support", path: "/support" },
@@ -284,6 +285,7 @@ export default function AuthPage() {
           <div className="px-4 py-4 space-y-1">
             {[
               { label: "Features", path: "/features" },
+              { label: "Academic SRM", path: "/srm" },
               { label: "College Test Prep", path: "/features#test-prep" },
               { label: "Best Practices", path: "/best-practices" },
               { label: "Support", path: "/support" },
@@ -385,10 +387,11 @@ export default function AuthPage() {
             From freshman coursework to postgrad exam prep — your tutor adapts to wherever you are in your academic journey.
           </p>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-5">
           {[
             { icon: <Mic className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "Voice-First Learning", desc: "Speak naturally and get clear, conversational explanations. Like office hours that never close." },
             { icon: <Brain className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "Remembers Your Progress", desc: "Picks up where you left off. Knows your strengths and adapts to your gaps." },
+            { icon: <Calendar className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "Academic Command Center", desc: "Upload syllabi, get an auto-built calendar, smart study tasks, and a tutor that knows what's due." },
             { icon: <FlaskConical className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "All Core Subjects", desc: "Chemistry, Calculus, Physics, Biology, History, Economics, CS, Writing — and more." },
             { icon: <GraduationCap className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "Postgrad Test Prep", desc: "GRE, GMAT, LSAT, MCAT, DAT, PCAT — targeted practice with instant feedback." },
           ].map((f, i) => (
@@ -403,6 +406,72 @@ export default function AuthPage() {
 
       {/* Photo Collage */}
       <PhotoCollage />
+
+      {/* SRM SHOWCASE — Academic Command Center */}
+      <section className="py-12 md:py-20 px-4 md:px-12" style={{ background: "#FAFAFA" }}>
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-8 md:mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4" style={{ background: "rgba(197,5,12,0.08)", border: "1px solid rgba(197,5,12,0.15)" }}>
+              <Calendar className="w-3.5 h-3.5" style={{ color: "#C5050C" }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#C5050C", textTransform: "uppercase", letterSpacing: 1 }}>New: Student Relationship Management</span>
+            </div>
+            <h2 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: "clamp(24px, 4vw, 40px)", fontWeight: 800, color: "#282728", lineHeight: 1.15, marginBottom: 8 }}>
+              Like Having a Personal <span style={{ color: "#C5050C" }}>Academic Advisor</span>
+            </h2>
+            <p style={{ fontSize: 16, color: "#646569", maxWidth: 600, margin: "0 auto", lineHeight: 1.6 }}>
+              Upload your syllabi and your AI tutor becomes a proactive academic coach — knowing every deadline, every exam, and exactly where you need to focus.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-5 mb-10">
+            {[
+              { icon: <Calendar className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "Syllabus → Calendar in Seconds", desc: "Paste your syllabus and AI extracts every exam, assignment, quiz, and project date. Your entire semester appears on one calendar — instantly." },
+              { icon: <CheckCircle className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "Study Tasks That Write Themselves", desc: "7 days before an exam: \"Begin reviewing.\" 3 days: \"Intensive review.\" 1 day: \"Final review.\" Tasks auto-generate with escalating priority — no willpower needed." },
+              { icon: <Mic className="w-6 h-6" style={{ color: "#C5050C" }} />, title: "A Tutor That Knows Your Semester", desc: "Start a session and hear: \"You have an Organic Chemistry exam Friday. You've completed 2 of 4 prep tasks. Want to review mechanisms?\" Context-aware from day one." },
+            ].map((f, i) => (
+              <div key={i} className="rounded-2xl p-6 md:p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" style={{ background: "#FFFFFF", border: "1px solid #E8E8E8" }}>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4" style={{ background: "rgba(197,5,12,0.06)" }}>{f.icon}</div>
+                <h3 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 18, fontWeight: 700, marginBottom: 8, color: "#282728" }}>{f.title}</h3>
+                <p style={{ fontSize: 14, lineHeight: 1.65, color: "#646569" }}>{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-5 mb-8">
+            <div className="rounded-2xl p-6" style={{ background: "#FFFFFF", border: "1px solid #E8E8E8" }}>
+              <div className="flex items-start gap-4">
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(197,5,12,0.06)" }}>
+                  <TrendingUp className="w-5 h-5" style={{ color: "#C5050C" }} />
+                </div>
+                <div>
+                  <h4 style={{ fontFamily: "'Red Hat Display', sans-serif", fontWeight: 700, fontSize: 16, color: "#282728", marginBottom: 4 }}>Engagement Scoring (0–100)</h4>
+                  <p style={{ fontSize: 14, color: "#646569", lineHeight: 1.5 }}>A weekly score tracks your tutoring sessions, task completion, study time, and consistency. See at a glance which courses need more attention — before it's too late.</p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-2xl p-6" style={{ background: "#FFFFFF", border: "1px solid #E8E8E8" }}>
+              <div className="flex items-start gap-4">
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(197,5,12,0.06)" }}>
+                  <Shield className="w-5 h-5" style={{ color: "#C5050C" }} />
+                </div>
+                <div>
+                  <h4 style={{ fontFamily: "'Red Hat Display', sans-serif", fontWeight: 700, fontSize: 16, color: "#282728", marginBottom: 4 }}>Early Intervention for Advisors</h4>
+                  <p style={{ fontSize: 14, color: "#646569", lineHeight: 1.5 }}>Academic advisors and coaches see automated alerts when a student drops off — declining engagement, missed deadlines, or an exam approaching with zero prep. Intervention happens early.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <button
+              onClick={() => setLocation("/srm")}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-base transition-all hover:shadow-lg"
+              style={{ background: "#C5050C", color: "#FFFFFF", boxShadow: "0 4px 20px rgba(197,5,12,0.2)" }}>
+              Learn More About the SRM <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </section>
 
       {/* THREE-WAY COMPARISON */}
       <section className="py-12 md:py-20 px-4 md:px-12 max-w-7xl mx-auto" style={{ background: "#FFFFFF" }}>
@@ -431,6 +500,9 @@ export default function AuthPage() {
             { feature: "Remembers your sessions", trad: "Depends on the tutor", gpt: false, jie: "Builds a knowledge profile across every session" },
             { feature: "Adapts teaching strategy", trad: "If you're lucky", gpt: false, jie: "Learns what works and adjusts automatically" },
             { feature: "Tracks mastery over time", trad: false, gpt: false, jie: "0–100% mastery scoring per concept" },
+            { feature: "Academic calendar & planning", trad: false, gpt: false, jie: "Syllabus → auto-built calendar with study tasks" },
+            { feature: "Knows your upcoming exams", trad: "If you remember to mention it", gpt: false, jie: "Proactively opens sessions with what's due" },
+            { feature: "Engagement & risk scoring", trad: false, gpt: false, jie: "0–100 weekly score with advisor alerts" },
             { feature: "Every subject, one tutor", trad: false, gpt: "Any topic, no structure", jie: "Full course load — no scheduling specialists" },
             { feature: "Available 24/7", trad: false, gpt: true, jie: "Any time, any device, voice or text" },
             { feature: "Guides reasoning (Socratic)", trad: "Varies", gpt: false, jie: "Never gives answers — builds understanding" },
