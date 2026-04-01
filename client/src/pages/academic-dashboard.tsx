@@ -156,6 +156,9 @@ export default function AcademicDashboard() {
   const [selectedCourseForSyllabus, setSelectedCourseForSyllabus] = useState<string | null>(null);
   const [syllabusText, setSyllabusText] = useState("");
   const [taskFilter, setTaskFilter] = useState<{ courseId?: string; status?: string }>({});
+  const [addCourseStep, setAddCourseStep] = useState<"info" | "syllabus">("info");
+  const [newlyCreatedCourseId, setNewlyCreatedCourseId] = useState<string | null>(null);
+  const [addCourseSyllabusText, setAddCourseSyllabusText] = useState("");
 
   // Form state
   const [courseForm, setCourseForm] = useState({ courseName: "", courseCode: "", instructor: "", semester: "", color: COURSE_COLORS[0] });
@@ -832,52 +835,124 @@ export default function AcademicDashboard() {
 
       {/* ━━━ DIALOGS ━━━ */}
 
-      {/* Add Course Dialog */}
-      <Dialog open={showAddCourse} onOpenChange={setShowAddCourse}>
-        <DialogContent>
+      {/* Add Course Dialog — 2-step: course info → optional syllabus */}
+      <Dialog open={showAddCourse} onOpenChange={(open) => { setShowAddCourse(open); if (!open) setAddCourseStep("info"); }}>
+        <DialogContent className={addCourseStep === "syllabus" ? "max-w-2xl" : ""}>
           <DialogHeader>
-            <DialogTitle>Add Course</DialogTitle>
-            <DialogDescription>Add a new course to your SRM planner</DialogDescription>
+            <DialogTitle>{addCourseStep === "info" ? "Add Course" : "Upload Syllabus (Optional)"}</DialogTitle>
+            <DialogDescription>
+              {addCourseStep === "info"
+                ? "Add a new course to your SRM planner"
+                : "Paste your syllabus text and AI will extract all dates, exams, and assignments automatically."}
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Course Name *</Label>
-              <Input value={courseForm.courseName} onChange={e => setCourseForm(f => ({ ...f, courseName: e.target.value }))} placeholder="e.g. Organic Chemistry II" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Course Code</Label>
-                <Input value={courseForm.courseCode} onChange={e => setCourseForm(f => ({ ...f, courseCode: e.target.value }))} placeholder="e.g. CHEM 344" />
+
+          {addCourseStep === "info" ? (
+            <>
+              <div className="space-y-4">
+                <div>
+                  <Label>Course Name *</Label>
+                  <Input value={courseForm.courseName} onChange={e => setCourseForm(f => ({ ...f, courseName: e.target.value }))} placeholder="e.g. Organic Chemistry II" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Course Code</Label>
+                    <Input value={courseForm.courseCode} onChange={e => setCourseForm(f => ({ ...f, courseCode: e.target.value }))} placeholder="e.g. CHEM 344" />
+                  </div>
+                  <div>
+                    <Label>Semester</Label>
+                    <Input value={courseForm.semester} onChange={e => setCourseForm(f => ({ ...f, semester: e.target.value }))} placeholder="e.g. Spring 2026" />
+                  </div>
+                </div>
+                <div>
+                  <Label>Instructor</Label>
+                  <Input value={courseForm.instructor} onChange={e => setCourseForm(f => ({ ...f, instructor: e.target.value }))} placeholder="Professor name" />
+                </div>
+                <div>
+                  <Label>Color</Label>
+                  <div className="flex gap-2 mt-1">
+                    {COURSE_COLORS.map(c => (
+                      <button
+                        key={c}
+                        className={`w-8 h-8 rounded-full ${courseForm.color === c ? "ring-2 ring-offset-2 ring-primary" : ""}`}
+                        style={{ background: c }}
+                        onClick={() => setCourseForm(f => ({ ...f, color: c }))}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div>
-                <Label>Semester</Label>
-                <Input value={courseForm.semester} onChange={e => setCourseForm(f => ({ ...f, semester: e.target.value }))} placeholder="e.g. Spring 2026" />
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button variant="outline" onClick={() => setShowAddCourse(false)}>Cancel</Button>
+                <Button
+                  variant="outline"
+                  onClick={() => createCourseMutation.mutate(courseForm)}
+                  disabled={!courseForm.courseName || createCourseMutation.isPending}
+                >
+                  {createCourseMutation.isPending ? "Adding..." : "Add Course (Skip Syllabus)"}
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (!courseForm.courseName) return;
+                    try {
+                      const res = await apiRequest("POST", "/api/academic/courses", courseForm);
+                      const newCourse = await res.json();
+                      queryClient.invalidateQueries({ queryKey: ["/api/academic/courses"] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/academic/dashboard-summary"] });
+                      setNewlyCreatedCourseId(newCourse.id);
+                      setAddCourseStep("syllabus");
+                      toast({ title: "Course created! Now add your syllabus." });
+                    } catch (err: any) {
+                      toast({ title: "Error", description: err.message, variant: "destructive" });
+                    }
+                  }}
+                  disabled={!courseForm.courseName || createCourseMutation.isPending}
+                >
+                  <Sparkles className="h-4 w-4 mr-1" /> Next: Add Syllabus
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <div className="space-y-3">
+                <div className="bg-muted/50 rounded-lg p-3 text-sm">
+                  <p className="font-medium mb-1">How it works:</p>
+                  <p className="text-muted-foreground">Paste your syllabus text below. AI will extract all exams, assignments, quizzes, projects, and deadlines — then automatically create your calendar events, study tasks, and reminders.</p>
+                </div>
+                <Textarea
+                  value={addCourseSyllabusText}
+                  onChange={e => setAddCourseSyllabusText(e.target.value)}
+                  placeholder="Paste your full syllabus text here — include all dates, assignments, exams, and deadlines..."
+                  className="min-h-[280px] font-mono text-sm"
+                />
+                {addCourseSyllabusText && (
+                  <p className="text-xs text-muted-foreground">{addCourseSyllabusText.length.toLocaleString()} characters</p>
+                )}
               </div>
-            </div>
-            <div>
-              <Label>Instructor</Label>
-              <Input value={courseForm.instructor} onChange={e => setCourseForm(f => ({ ...f, instructor: e.target.value }))} placeholder="Professor name" />
-            </div>
-            <div>
-              <Label>Color</Label>
-              <div className="flex gap-2 mt-1">
-                {COURSE_COLORS.map(c => (
-                  <button
-                    key={c}
-                    className={`w-8 h-8 rounded-full ${courseForm.color === c ? "ring-2 ring-offset-2 ring-primary" : ""}`}
-                    style={{ background: c }}
-                    onClick={() => setCourseForm(f => ({ ...f, color: c }))}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddCourse(false)}>Cancel</Button>
-            <Button onClick={() => createCourseMutation.mutate(courseForm)} disabled={!courseForm.courseName || createCourseMutation.isPending}>
-              {createCourseMutation.isPending ? "Adding..." : "Add Course"}
-            </Button>
-          </DialogFooter>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button variant="outline" onClick={() => { setShowAddCourse(false); setAddCourseStep("info"); setAddCourseSyllabusText(""); setCourseForm({ courseName: "", courseCode: "", instructor: "", semester: "", color: COURSE_COLORS[courses.length % COURSE_COLORS.length] }); }}>
+                  Skip — I'll Add Later
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (newlyCreatedCourseId && addCourseSyllabusText) {
+                      processSyllabusMutation.mutate({ courseId: newlyCreatedCourseId, syllabusText: addCourseSyllabusText });
+                      setAddCourseStep("info");
+                      setAddCourseSyllabusText("");
+                      setCourseForm({ courseName: "", courseCode: "", instructor: "", semester: "", color: COURSE_COLORS[courses.length % COURSE_COLORS.length] });
+                    }
+                  }}
+                  disabled={!addCourseSyllabusText || processSyllabusMutation.isPending}
+                >
+                  {processSyllabusMutation.isPending ? (
+                    <><Sparkles className="h-4 w-4 mr-1 animate-pulse" /> Processing Syllabus...</>
+                  ) : (
+                    <><Sparkles className="h-4 w-4 mr-1" /> Process with AI</>
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
