@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, ChevronDown, Plus, Settings } from "lucide-react";
+import { User, ChevronDown, Settings } from "lucide-react";
 
 interface Student {
   id: string;
@@ -34,14 +34,43 @@ export function StudentSwitcher({
   onOpenProfile 
 }: StudentSwitcherProps) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
   const { data: students = [], isLoading } = useQuery<Student[]>({
     queryKey: ['/api/students'],
   });
 
-  // Auto-select last student or first available student on mount
+  // Auto-ensure default student profile exists on mount
+  const ensureDefaultMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/students/ensure-default', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) throw new Error('Failed to ensure student profile');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/students'] });
+      if (data.id && !selectedStudentId) {
+        onSelectStudent(data.id);
+        try { localStorage.setItem(LAST_STUDENT_KEY, data.id); } catch {}
+      }
+    },
+  });
+
+  // Auto-ensure on mount if no students exist
+  useEffect(() => {
+    if (!isLoading && students.length === 0 && !ensureDefaultMutation.isPending) {
+      ensureDefaultMutation.mutate();
+    }
+  }, [isLoading, students.length]);
+
+  // Auto-select student on mount
   useEffect(() => {
     if (isLoading || students.length === 0 || selectedStudentId) {
-      return; // Wait for data or skip if already selected
+      return;
     }
 
     // Try to restore last selected student
@@ -51,11 +80,9 @@ export function StudentSwitcher({
         onSelectStudent(lastSelected);
         return;
       }
-    } catch {
-      // Ignore storage errors
-    }
+    } catch {}
 
-    // Otherwise, auto-select the first student
+    // Auto-select the first (and only) student
     if (students.length > 0) {
       onSelectStudent(students[0].id);
     }
@@ -65,25 +92,21 @@ export function StudentSwitcher({
   const handleSelectStudent = (studentId: string) => {
     try {
       localStorage.setItem(LAST_STUDENT_KEY, studentId);
-    } catch {
-      // Ignore storage errors
-    }
+    } catch {}
     onSelectStudent(studentId);
   };
 
   const currentStudent = students.find(s => s.id === selectedStudentId);
   
-  // Use current student name, or fall back to user's default student name from profile
   const displayName = currentStudent?.name || user?.studentName || user?.firstName || "Student";
 
-  // Helper to render avatar based on type
+  // Helper to render avatar
   const renderAvatar = (student: Student | undefined, size: 'sm' | 'md' = 'sm') => {
     if (!student?.avatarUrl) {
       return <User className={size === 'sm' ? "h-4 w-4" : "h-5 w-5"} />;
     }
     
     if (student.avatarType === 'upload') {
-      // Render as image for uploaded avatars
       return (
         <img 
           src={student.avatarUrl} 
@@ -93,7 +116,6 @@ export function StudentSwitcher({
       );
     }
     
-    // Render as emoji for preset avatars
     return <span className={size === 'sm' ? "text-sm" : "text-base"}>{student.avatarUrl}</span>;
   };
 
@@ -113,7 +135,7 @@ export function StudentSwitcher({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[220px]">
-        <DropdownMenuLabel>Student Profiles</DropdownMenuLabel>
+        <DropdownMenuLabel>Your Profile</DropdownMenuLabel>
         <DropdownMenuSeparator />
         
         {isLoading && (
@@ -121,48 +143,32 @@ export function StudentSwitcher({
         )}
         
         {!isLoading && students.length === 0 && (
-          <DropdownMenuItem disabled>No students yet</DropdownMenuItem>
+          <DropdownMenuItem disabled>Setting up your profile...</DropdownMenuItem>
         )}
         
-        {students.map(student => (
-          <DropdownMenuItem
-            key={student.id}
-            onClick={() => handleSelectStudent(student.id)}
-            className="gap-2"
-            data-testid={`student-option-${student.id}`}
-          >
-            <div className="w-5 h-5 flex items-center justify-center">
-              {renderAvatar(student, 'md')}
-            </div>
-            <div className="flex flex-col">
-              <span>{student.name}</span>
-              {student.grade && (
-                <span className="text-xs text-muted-foreground">{student.grade}</span>
-              )}
-            </div>
-          </DropdownMenuItem>
-        ))}
-        
-        <DropdownMenuSeparator />
-        
-        <DropdownMenuItem
-          onClick={() => onOpenProfile()}
-          className="gap-2"
-          data-testid="button-create-student"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Create New Student</span>
-        </DropdownMenuItem>
-        
         {currentStudent && (
-          <DropdownMenuItem
-            onClick={() => onOpenProfile(currentStudent.id)}
-            className="gap-2"
-            data-testid="button-edit-student"
-          >
-            <Settings className="h-4 w-4" />
-            <span>Edit Profile</span>
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem className="gap-2" disabled>
+              <div className="w-5 h-5 flex items-center justify-center">
+                {renderAvatar(currentStudent, 'md')}
+              </div>
+              <div className="flex flex-col">
+                <span>{currentStudent.name}</span>
+                {currentStudent.grade && (
+                  <span className="text-xs text-muted-foreground">{currentStudent.grade}</span>
+                )}
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => onOpenProfile(currentStudent.id)}
+              className="gap-2"
+              data-testid="button-edit-student"
+            >
+              <Settings className="h-4 w-4" />
+              <span>Edit Profile</span>
+            </DropdownMenuItem>
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

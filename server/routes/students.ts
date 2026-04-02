@@ -81,6 +81,58 @@ router.get('/', async (req, res) => {
   }
 });
 
+// POST /api/students/ensure-default - Auto-create default student profile if none exists
+// For UW: one user = one student. Called on page load to ensure profile exists.
+router.post('/ensure-default', async (req, res) => {
+  try {
+    const user = req.user as any;
+    const students = await storage.getStudentsByOwner(user.id);
+
+    if (students.length > 0) {
+      // Student already exists — return it
+      const student = students[0];
+      return res.json({
+        ...student,
+        grade: student.gradeBand,
+        learningPace: student.pace,
+        encouragementLevel: student.encouragement,
+        created: false,
+      });
+    }
+
+    // No student exists — create one from user data
+    const studentName = user.studentName || user.firstName || user.parentName || 'Student';
+    const gradeBand = user.gradeLevel ? ({
+      'kindergarten-2': 'k-2',
+      'grades-3-5': '3-5',
+      'grades-6-8': '6-8',
+      'grades-9-12': '9-12',
+      'college-adult': 'college',
+    } as Record<string, string>)[user.gradeLevel] || 'college' : 'college';
+
+    const student = await storage.createStudent({
+      ownerUserId: user.id,
+      name: studentName,
+      gradeBand,
+      pace: 'normal',
+      encouragement: 'medium',
+    });
+
+    console.log(`[Students] ✅ Auto-created default student profile: ${studentName} (${gradeBand}) for user ${user.id}`);
+
+    res.status(201).json({
+      ...student,
+      grade: student.gradeBand,
+      learningPace: student.pace,
+      encouragementLevel: student.encouragement,
+      created: true,
+    });
+  } catch (error: any) {
+    console.error('[Students] ❌ ensure-default failed:', error);
+    res.status(500).json({ message: 'Error ensuring default student: ' + error.message });
+  }
+});
+
 // POST /api/students - Create a new student
 router.post('/', async (req, res) => {
   try {
