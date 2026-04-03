@@ -1,5 +1,5 @@
 /**
- * VisualPanel — UW / College Edition
+ * VisualPanel — College Edition
  * College-appropriate and advanced visuals only. K-5 visuals excluded.
  */
 import { useEffect, useState } from 'react';

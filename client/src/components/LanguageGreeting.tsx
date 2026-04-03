@@ -114,7 +114,7 @@ export default function LanguageGreeting({ language, userName, variant = "full" 
           {greet.greeting}{userName ? `, ${userName}` : ''}! 👋
         </h2>
         <p className="text-gray-600 text-sm">
-          {greet.welcome} to UW AI Tutor
+          {greet.welcome} to State University AI Tutor
         </p>
       </div>
     </div>

@@ -76,10 +76,10 @@ export function SessionFeedback({ sessionId, show }: Props) {
                 >
                   <CheckCircle className="h-8 w-8" style={{ color: UW_RED }} />
                   <p className="font-bold text-sm" style={{ color: UW_RED }}>
-                    Thank you, Badger! 🦡
+                    Thank you! 🦡
                   </p>
                   <p className="text-xs text-gray-500">
-                    Your feedback helps us improve the UW AI Tutor experience.
+                    Your feedback helps us improve the State University AI Tutor experience.
                   </p>
                 </motion.div>
               ) : (

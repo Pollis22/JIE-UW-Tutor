@@ -60,7 +60,7 @@ export function setupAuth(app: Express) {
   }
 
   // Environment-aware session cookie configuration
-  // Production: secure=true, sameSite='lax', domain='.jiemastery.ai' for iOS Safari compatibility
+  // Production: secure=true, sameSite='lax', domain='.stateuniversity-tutor.ai' for iOS Safari compatibility
   // Railway domain also works independently (no redirect)
   // Development: secure=false, sameSite='lax', no domain (host-only)
   const isProduction = process.env.NODE_ENV === 'production';
@@ -71,13 +71,13 @@ export function setupAuth(app: Express) {
   
   // Cookie domain configuration:
   // - Default: host-only cookies (no domain) - works for Railway and custom domains
-  // - Override: Set SESSION_COOKIE_DOMAIN=".jiemastery.ai" if cross-subdomain cookies needed
+  // - Override: Set SESSION_COOKIE_DOMAIN=".stateuniversity-tutor.ai" if cross-subdomain cookies needed
   // 
   // iOS Safari Fix relies primarily on:
   // - rolling: true (refreshes cookie on each request)
   // - maxAge: 30 days (longer persistence)
   // - sameSite: 'lax' (not 'strict' which breaks some iOS flows)
-  // - Canonical redirect to www.jiemastery.ai (ensures consistent host)
+  // - Canonical redirect to www.stateuniversity-tutor.ai (ensures consistent host)
   const cookieDomain = process.env.SESSION_COOKIE_DOMAIN || undefined;
 
   console.log('[Session] Cookie configuration:', {
@@ -1033,8 +1033,8 @@ export function setupAuth(app: Express) {
         }
       }
 
-      // Send lead notification to JIE internal (non-blocking)
-      const leadEmail = process.env.JIE_LEAD_NOTIFY_EMAIL || process.env.ADMIN_EMAIL || 'leads@jiemastery.ai';
+      // Send lead notification (internal) (non-blocking)
+      const leadEmail = process.env.JIE_LEAD_NOTIFY_EMAIL || process.env.ADMIN_EMAIL || 'leads@stateuniversity-tutor.ai';
       console.log('[Trial Signup] 📨 Sending lead notification to:', leadEmail);
       emailService.sendAdminNotification('New Trial Lead', {
         email: user.email,

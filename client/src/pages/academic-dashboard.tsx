@@ -723,7 +723,7 @@ export default function AcademicDashboard() {
                           {task.priority === "high" && <Badge className="bg-red-100 text-red-800 text-xs">High</Badge>}
                           {task.status === "in_progress" && <Badge className="bg-blue-100 text-blue-800 text-xs">In Progress</Badge>}
                           <Button variant="outline" size="sm" onClick={() => setLocation("/tutor")}>
-                            Study with JIE
+                            Study Now
                           </Button>
                         </div>
                       </CardContent>
@@ -799,7 +799,7 @@ export default function AcademicDashboard() {
               </CardHeader>
               <CardContent>
                 {engagementHistory.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">No history yet. Keep using JIE to build your streak!</p>
+                  <p className="text-muted-foreground text-center py-4">No history yet. Keep studying to build your streak!</p>
                 ) : (
                   <div className="flex gap-2 items-end h-40">
                     {engagementHistory.slice().reverse().map((entry: any, i: number) => {

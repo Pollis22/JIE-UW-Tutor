@@ -11,7 +11,7 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 
 // Use verified Resend domain - must match what's configured in Resend dashboard
 function getSafetyFromEmail(): string {
-  return process.env.RESEND_FROM_EMAIL || 'noreply@jiemastery.ai';
+  return process.env.RESEND_FROM_EMAIL || 'noreply@jiemastery.ai'; // TODO: Update domain for production deployment
 }
 
 export interface SafetyAlertData {
@@ -36,7 +36,7 @@ const ADMIN_ALERT_TRIGGERS = [
   'SEVERE_CONDUCT'
 ];
 
-// Safety incident types that require immediate JIE Support notification
+// Safety incident types that require immediate support notification
 const SAFETY_INCIDENT_TYPES = [
   'profanity',
   'self_harm',
@@ -84,13 +84,13 @@ export async function logSafetyIncident(data: SafetyAlertData): Promise<void> {
 }
 
 export async function sendAdminSafetyAlert(data: SafetyAlertData): Promise<boolean> {
-  const adminEmail = process.env.ADMIN_ALERT_EMAIL || 'pollis@jiemastery.com';
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL || 'pollis@stateuniversity-tutor.ai';
   
   if (!ADMIN_ALERT_TRIGGERS.includes(data.flagType)) {
     return false;
   }
 
-  const subject = `[JIE Mastery ALERT] ${data.flagType} - Session ${data.sessionId.slice(0, 8)}`;
+  const subject = `[State University AI Tutor ALERT] ${data.flagType} - Session ${data.sessionId.slice(0, 8)}`;
   
   const body = `
 SAFETY ALERT - Immediate Review Required
@@ -120,7 +120,7 @@ ${data.actionTaken}
 ---
 Review full transcript in admin dashboard.
 
-This is an automated alert from JIE Mastery Safety System.
+This is an automated alert from State University AI Tutor Safety System.
   `.trim();
 
   // Log the incident first
@@ -161,7 +161,7 @@ export async function sendParentAlert(data: SafetyAlertData): Promise<boolean> {
     return false;
   }
 
-  const subject = `[JIE Mastery] Tutoring Session Alert - ${data.studentName || 'Your Child'}`;
+  const subject = `[State University AI Tutor] Tutoring Session Alert - ${data.studentName || 'Your Child'}`;
   
   const body = `
 Dear Parent/Guardian,
@@ -175,12 +175,12 @@ ${getParentFriendlyDescription(data.flagType)}
 
 Session ID: ${data.sessionId.slice(0, 8)}...
 
-You can review the full transcript by logging into your JIE Mastery account.
+You can review the full transcript by logging into your State University AI Tutor account.
 
-If you have concerns, please contact us at support@jiemastery.com.
+If you have concerns, please contact us at support@stateuniversity-tutor.ai.
 
 Best regards,
-JIE Mastery Team
+State University AI Tutor Team
   `.trim();
 
   try {
@@ -244,11 +244,11 @@ function getParentFriendlyDescription(flagType: string): string {
 }
 
 /**
- * Send JIE Support notification for safety incidents
+ * Send Support notification for safety incidents
  * This sends an internal notification for all safety-related session terminations
  */
 export async function sendJIESupportNotification(data: SafetyIncidentNotification): Promise<boolean> {
-  const jieSuportEmail = process.env.JIE_SUPPORT_EMAIL || process.env.ADMIN_EMAIL || 'pollis@jiemastery.com';
+  const jieSuportEmail = process.env.JIE_SUPPORT_EMAIL || process.env.ADMIN_EMAIL || 'pollis@stateuniversity-tutor.ai';
   
   // Only notify for actual safety incidents
   if (!SAFETY_INCIDENT_TYPES.includes(data.incidentType)) {
@@ -271,8 +271,8 @@ export async function sendJIESupportNotification(data: SafetyIncidentNotificatio
   const isCritical = ['self_harm', 'violent_threat', 'harm_to_others'].includes(data.incidentType);
   
   const subject = isCritical 
-    ? `[JIE Mastery CRITICAL] ${incidentLabel} - Immediate Review Required`
-    : `[JIE Mastery SAFETY] ${incidentLabel} - Session ${data.sessionId.slice(0, 8)}`;
+    ? `[State University AI Tutor CRITICAL] ${incidentLabel} - Immediate Review Required`
+    : `[State University AI Tutor SAFETY] ${incidentLabel} - Session ${data.sessionId.slice(0, 8)}`;
   
   const timestamp = data.timestamp.toLocaleString('en-US', { 
     timeZone: 'America/Chicago',
@@ -282,7 +282,7 @@ export async function sendJIESupportNotification(data: SafetyIncidentNotificatio
   
   const body = `
 ${'='.repeat(60)}
-JIE MASTERY SAFETY INCIDENT REPORT
+STATE UNIVERSITY AI TUTOR SAFETY INCIDENT REPORT
 ${'='.repeat(60)}
 
 INCIDENT TYPE: ${incidentLabel}
@@ -315,12 +315,12 @@ NEXT STEPS
 3. Document any additional actions taken
 
 ${'='.repeat(60)}
-This is an automated alert from JIE Mastery Safety System.
+This is an automated alert from State University AI Tutor Safety System.
 Generated at: ${new Date().toISOString()}
 ${'='.repeat(60)}
   `.trim();
   
-  console.log(`[SafetyAlert] Sending JIE Support notification: ${incidentLabel} for session ${data.sessionId}`);
+  console.log(`[SafetyAlert] Sending Support notification: ${incidentLabel} for session ${data.sessionId}`);
   
   if (resend) {
     try {
@@ -331,10 +331,10 @@ ${'='.repeat(60)}
         text: body,
       });
       
-      console.log(`[SafetyAlert] ✅ JIE Support notified via email: ${incidentLabel}`);
+      console.log(`[SafetyAlert] ✅ Support notified via email: ${incidentLabel}`);
       return true;
     } catch (error) {
-      console.error('[SafetyAlert] ⚠️ Failed to send JIE Support email (non-fatal):', error);
+      console.error('[SafetyAlert] ⚠️ Failed to send Support email (non-fatal):', error);
       return false;
     }
   } else {
@@ -381,12 +381,12 @@ export async function handleSafetyIncident(data: SafetyIncidentNotification): Pr
   let parentNotified = false;
   let supportNotified = false;
   
-  // 1. Send JIE Support notification (always for safety incidents)
+  // 1. Send Support notification (always for safety incidents)
   try {
     await sendJIESupportNotification(data);
     supportNotified = true;
   } catch (error) {
-    console.error('[SafetyAlert] ⚠️ JIE Support notification failed (non-fatal):', error);
+    console.error('[SafetyAlert] ⚠️ Support notification failed (non-fatal):', error);
   }
   
   // 2. Send parent notification (if email available and not abuse-related)

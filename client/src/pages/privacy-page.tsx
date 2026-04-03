@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import uwLogo from '@/assets/uw-madison-logo.png';
+import suLogo from '@/assets/state-university-logo.png';
 
 export default function PrivacyPage() {
   const [, setLocation] = useLocation();
@@ -12,8 +12,8 @@ export default function PrivacyPage() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setLocation("/auth")}>
-              <img src={uwLogo} alt="UW AI Tutor" className="h-10 w-auto" />
-              <span className="text-xl font-bold text-foreground">UW AI Tutor Tutor</span>
+              <img src={suLogo} alt="State University AI Tutor" className="h-10 w-auto" />
+              <span className="text-xl font-bold text-foreground">State University AI Tutor Tutor</span>
             </div>
             <div className="flex items-center space-x-4">
               <Button 
@@ -21,7 +21,7 @@ export default function PrivacyPage() {
                 onClick={() => setLocation("/benefits")} 
                 data-testid="button-nav-benefits"
               >
-                Why UW AI Tutor AI Tutors
+                Why State University AI Tutor AI Tutors
               </Button>
               <Button 
                 variant="ghost" 
@@ -71,7 +71,7 @@ export default function PrivacyPage() {
 
           <div className="space-y-8 text-foreground">
             <p>
-              At UW AI Tutor AI Tutor, your family's privacy and safety come first. We are committed to protecting 
+              At State University AI Tutor AI Tutor, your family's privacy and safety come first. We are committed to protecting 
               the personal information of all users — especially children — in compliance with the Children's Online 
               Privacy Protection Act (COPPA) and other applicable privacy laws.
             </p>
@@ -135,9 +135,9 @@ export default function PrivacyPage() {
               <h2 className="text-2xl font-semibold mb-4">6. Contact Us</h2>
               <p>If you have questions or wish to exercise your privacy rights, please contact us at:</p>
               <p className="mt-4 space-y-2">
-                📧 <a href="mailto:support@jiemastery.ai" className="text-primary hover:underline">support@jiemastery.ai</a>
+                📧 <a href="mailto:support@stateuniversity-tutor.ai" className="text-primary hover:underline">support@stateuniversity-tutor.ai</a>
                 <br />
-                🌐 <a href="https://jiemastery.ai/privacy" className="text-primary hover:underline">https://jiemastery.ai/privacy</a>
+                🌐 <a href="https://stateuniversity-tutor.ai/privacy" className="text-primary hover:underline">https://stateuniversity-tutor.ai/privacy</a>
               </p>
             </section>
 

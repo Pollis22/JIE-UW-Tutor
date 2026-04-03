@@ -1,5 +1,5 @@
 /**
- * JIE Mastery AI Tutor Platform
+ * State University AI Tutor Platform
  * Copyright (c) 2025 JIE Mastery AI, Inc.
  * All Rights Reserved.
  * 
@@ -82,7 +82,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/students/ensure-default - Auto-create default student profile if none exists
-// For UW: one user = one student. Called on page load to ensure profile exists.
+// One user = one student. Called on page load to ensure profile exists.
 router.post('/ensure-default', async (req, res) => {
   try {
     const user = req.user as any;

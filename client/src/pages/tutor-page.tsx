@@ -21,9 +21,9 @@ import { SUPPORTED_LANGUAGES } from "@shared/languages";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import uwLogo from '@/assets/uw-madison-logo.png';
+import suLogo from '@/assets/state-university-logo.png';
 import { AmbientBackground } from '@/components/AmbientBackground';
-import { UWHeroBanner } from '@/components/UWHeroBanner';
+import { HeroBanner } from '@/components/HeroBanner';
 import { SessionFeedback } from '@/components/SessionFeedback';
 import { FeedbackWidget } from '@/components/FeedbackWidget';
 import tutorHero from "@/assets/tutor-hero.png";
@@ -254,7 +254,7 @@ export default function TutorPage() {
     return 'college';
   };
 
-  // UW is college-only — always use college level regardless of student profile
+  // College-only — always use college level regardless of student profile
   useEffect(() => {
     setLevel('college');
   }, [selectedStudent?.grade]);
@@ -701,8 +701,8 @@ export default function TutorPage() {
             </Card>
           )}
 
-          {/* UW Hero Banner — rotating campus slideshow with stats strip */}
-          <UWHeroBanner mounted={mounted} />
+          {/* Hero Banner — rotating campus slideshow with stats strip */}
+          <HeroBanner mounted={mounted} />
 
           {/* Post-session feedback — appears after session ends */}
           <SessionFeedback show={showFeedback && !mounted} />
@@ -720,7 +720,7 @@ export default function TutorPage() {
               <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors">
                 <h3 className="font-bold text-blue-900 dark:text-blue-100 flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-blue-600" />
-                  How to Use UW AI Tutor
+                  How to Use State University AI Tutor
                 </h3>
                 <ChevronDown className="h-5 w-5 text-blue-600 transition-transform duration-200 group-data-[state=open]:rotate-180" />
               </div>

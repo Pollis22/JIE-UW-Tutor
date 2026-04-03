@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
-import uwLogo from '@/assets/uw-madison-logo.png';
+import suLogo from '@/assets/state-university-logo.png';
 
 export default function UnsubscribePage() {
   const [location] = useLocation();
@@ -37,8 +37,8 @@ export default function UnsubscribePage() {
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
             <img 
-              src={uwLogo} 
-              alt="UW AI Tutor Logo" 
+              src={suLogo} 
+              alt="State University AI Tutor Logo" 
               className="h-16 w-auto"
             />
           </div>

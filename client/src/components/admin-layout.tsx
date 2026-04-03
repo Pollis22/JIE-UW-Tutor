@@ -14,7 +14,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { useState } from "react";
-import uwLogo from "@/assets/uw-madison-logo.png";
+import suLogo from "@/assets/state-university-logo.png";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -51,10 +51,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden">
                 {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
-              <img src={uwLogo} alt="UW-Madison" style={{ height: 40 }} />
+              <img src={suLogo} alt="State University" style={{ height: 40 }} />
               <div>
                 <h1 className="text-xl font-bold" style={{ fontFamily: "'Red Hat Display', sans-serif" }}>Admin Dashboard</h1>
-                <p className="text-xs" style={{ color: "#999" }}>UW AI Tutor</p>
+                <p className="text-xs" style={{ color: "#999" }}>State University AI Tutor</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">

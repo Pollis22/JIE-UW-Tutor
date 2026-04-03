@@ -98,11 +98,11 @@ router.post('/api/feedback', async (req: any, res) => {
     try {
       const { emailService } = await import('../services/email-service');
       await emailService.sendEmail({
-        to: 'pollis@jiemastery.ai',
-        subject: `[UW Feedback] ${categoryLabels[category]} — UW AI Tutor`,
+        to: 'pollis@stateuniversity-tutor.ai',
+        subject: `[Feedback] ${categoryLabels[category]} — State University AI Tutor`,
         html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
           <div style="background:#C5050C;padding:20px 24px;border-radius:12px 12px 0 0;">
-            <h1 style="color:white;margin:0;font-size:18px;">📬 UW Tutor Feedback</h1>
+            <h1 style="color:white;margin:0;font-size:18px;">📬 State University Tutor Feedback</h1>
             <p style="color:rgba(255,255,255,0.8);margin:4px 0 0;font-size:12px;">${now}</p>
           </div>
           <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;padding:20px 24px;">
@@ -112,10 +112,10 @@ router.post('/api/feedback', async (req: any, res) => {
             <div style="background:#f9fafb;border-left:4px solid #C5050C;padding:14px 16px;border-radius:0 8px 8px 0;margin-top:12px;">
               <p style="margin:0;font-size:14px;line-height:1.6;white-space:pre-wrap;">${message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
             </div>
-            <p style="margin:16px 0 0;font-size:11px;color:#9ca3af;text-align:center;">UW AI Tutor • Feedback Widget</p>
+            <p style="margin:16px 0 0;font-size:11px;color:#9ca3af;text-align:center;">State University AI Tutor • Feedback Widget</p>
           </div>
         </div>`,
-        text: `UW TUTOR FEEDBACK\nCategory: ${categoryLabels[category]}\nRating: ${ratingDisplay}\n${userInfo}\nTime: ${now}\n\nMessage:\n${message}`,
+        text: `STATE UNIVERSITY TUTOR FEEDBACK\nCategory: ${categoryLabels[category]}\nRating: ${ratingDisplay}\n${userInfo}\nTime: ${now}\n\nMessage:\n${message}`,
       });
     } catch (emailErr: any) {
       console.error('[Feedback Widget] Email failed:', emailErr.message);

@@ -219,7 +219,7 @@ export default function SubscribePage() {
               <Button variant="outline" onClick={() => setLocation("/pricing")} data-testid="button-back-to-pricing">
                 Back to Pricing
               </Button>
-              <a href="mailto:support@jiemastery.ai" className="text-sm text-muted-foreground hover:text-primary" data-testid="link-contact-support">
+              <a href="mailto:support@stateuniversity-tutor.ai" className="text-sm text-muted-foreground hover:text-primary" data-testid="link-contact-support">
                 Contact Support
               </a>
             </div>

@@ -1,7 +1,7 @@
 /**
  * Study Guide Library Routes
  * 
- * Serves JIE-provided study materials that students can add to their document library.
+ * Serves curated study materials that students can add to their document library.
  * When a student adds a guide, it creates a user_documents record + document_chunks
  * so the guide appears in their AssignmentsPanel with the standard checkbox flow.
  * 
@@ -76,7 +76,7 @@ router.get('/library', async (req, res) => {
     // Annotate with "already added" flag
     const annotatedGuides = guides.map(g => ({
       ...g,
-      alreadyAdded: addedGuideNames.has(`[JIE Guide] ${g.title}`),
+      alreadyAdded: addedGuideNames.has(`[Study Guide] ${g.title}`),
     }));
 
     // Group by category for frontend display
@@ -128,7 +128,7 @@ router.post('/add-to-library', async (req, res) => {
     }
 
     // Check if user already has this guide
-    const guideName = `[JIE Guide] ${guide.title}`;
+    const guideName = `[Study Guide] ${guide.title}`;
     const existing = await db.select({ id: userDocuments.id })
       .from(userDocuments)
       .where(and(
@@ -147,7 +147,7 @@ router.post('/add-to-library', async (req, res) => {
     }
 
     // Create a user_documents record for this guide
-    // No expiration — JIE guides don't expire
+    // No expiration — study guides don't expire
     const document = await storage.uploadDocument(userId, {
       originalName: guideName,
       fileName: `jie-guide-${guide.id}.txt`,
@@ -157,7 +157,7 @@ router.post('/add-to-library', async (req, res) => {
       subject: guide.subject || undefined,
       grade: undefined,
       title: guide.title,
-      description: guide.description || `JIE Study Guide: ${guide.subcategory || guide.category}`,
+      description: guide.description || `Study Guide: ${guide.subcategory || guide.category}`,
       language: 'en',
       processingStatus: 'ready', // Pre-processed — no extraction needed
     });

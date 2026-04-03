@@ -66,7 +66,7 @@ export default function LiveSupport() {
                 How do I access my account?
               </summary>
               <p className="mt-4 text-gray-700 ml-7">
-                Log in using your UW email address and the access code provided to you. If you've forgotten your access code, please contact support via live chat.
+                Log in using your university email address and the access code provided to you. If you've forgotten your access code, please contact support via live chat.
               </p>
             </details>
 
