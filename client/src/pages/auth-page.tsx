@@ -153,7 +153,7 @@ export default function AuthPage() {
   });
 
   useEffect(() => {
-    if (user) setLocation("/tutor");
+    if (user) setLocation(user.isAdmin ? "/admin" : "/tutor");
   }, [user, setLocation]);
 
   const loginForm = useForm<LoginForm>({
