@@ -467,7 +467,7 @@ export default function AdminAcademicTracker() {
                                 <div className="text-xs text-muted-foreground">{alert.details}</div>
                               </div>
                               <div className="flex gap-2">
-                                <Button variant="outline" size="sm" onClick={() => setSelectedStudent(alert.student.id)}>
+                                <Button variant="outline" size="sm" onClick={() => { setSelectedStudent(alert.student.id); setActiveTab("students"); }}>
                                   <Eye className="h-3 w-3 mr-1" /> View
                                 </Button>
                                 <Button variant="outline" size="sm" onClick={() => setShowNudgeDialog({ email: alert.student.email, name: getName(alert.student) })}>
@@ -578,7 +578,7 @@ export default function AdminAcademicTracker() {
               <Textarea
                 value={nudgeMessage}
                 onChange={e => setNudgeMessage(e.target.value)}
-                placeholder="Hi! We noticed you haven't been active recently. UW AI Tutor is here to help you succeed..."
+                placeholder="Hi! We noticed you haven't been active recently. Your UW AI Tutor is here to help you succeed..."
                 className="min-h-[150px]"
               />
             </div>
