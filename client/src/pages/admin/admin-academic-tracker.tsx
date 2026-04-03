@@ -578,7 +578,7 @@ export default function AdminAcademicTracker() {
               <Textarea
                 value={nudgeMessage}
                 onChange={e => setNudgeMessage(e.target.value)}
-                placeholder="Hi! We noticed you haven't been active recently. JIE is here to help you succeed..."
+                placeholder="Hi! We noticed you haven't been active recently. UW AI Tutor is here to help you succeed..."
                 className="min-h-[150px]"
               />
             </div>
