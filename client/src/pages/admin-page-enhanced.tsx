@@ -404,12 +404,13 @@ export default function AdminPageEnhanced() {
 
           {/* Tab Navigation */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
               <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
               <TabsTrigger value="sessions" data-testid="tab-sessions">Sessions</TabsTrigger>
               <TabsTrigger value="safety-incidents" data-testid="tab-safety-incidents">Safety</TabsTrigger>
               <TabsTrigger value="usage" data-testid="tab-usage">Usage</TabsTrigger>
+              <TabsTrigger value="srm-tracker" data-testid="tab-srm-tracker">SRM Tracker</TabsTrigger>
             </TabsList>
 
             {/* Overview Tab */}
@@ -1362,6 +1363,17 @@ export default function AdminPageEnhanced() {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* SRM Tracker Tab — embedded iframe */}
+            <TabsContent value="srm-tracker">
+              <div className="w-full" style={{ height: "calc(100vh - 220px)" }}>
+                <iframe
+                  src="/admin/academic-tracker"
+                  className="w-full h-full border-0 rounded-lg"
+                  title="SRM Student Tracker"
+                />
+              </div>
             </TabsContent>
           </Tabs>
         </div>
