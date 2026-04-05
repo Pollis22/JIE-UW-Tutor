@@ -1,12 +1,17 @@
-/**
- * VisualPanel — UW / College Edition
- * College-appropriate and advanced visuals only. K-5 visuals excluded.
- */
-import { useEffect, useState } from 'react';
+import { useRef } from 'react';
 import { X } from 'lucide-react';
 
 // ─── Visual Tag Registry ───────────────────────────────────────────────────
 export const VISUAL_TAGS = [
+  // Math — Early (K-5)
+  'math_counting_1_20',
+  'math_simple_addition_table',
+  'math_simple_subtraction_table',
+  'math_multiplication_table',
+  'math_fractions',
+  'math_place_value',
+  'math_number_line',
+  'math_shapes_basic',
   // Math — Intermediate / Advanced
   'math_area_model',
   'math_order_of_operations',
@@ -24,7 +29,6 @@ export const VISUAL_TAGS = [
   'math_linear_algebra',
   'math_probability_stats',
   'math_logarithms',
-  'math_fractions',
   // Math — Formula & Reference Images (WebP)
   'math_order_of_operations_visual',
   'math_quadratic_formula',
@@ -42,11 +46,18 @@ export const VISUAL_TAGS = [
   'math_systems_of_equations',
   'math_polynomial_operations',
   // Writing / ELA
+  'writing_paragraph_structure',
   'writing_essay_outline',
+  'writing_story_elements',
   'writing_figurative_language',
   // Grammar / Reading
+  'grammar_sentence_parts',
+  'grammar_parts_of_speech',
+  'reading_main_idea',
+  'reading_compare_contrast',
+  'reading_cause_effect',
   'reading_text_structure',
-  // English — College Level
+  // English — College
   'english_thesis_development',
   'english_argument_structure',
   'english_research_paper_structure',
@@ -58,6 +69,7 @@ export const VISUAL_TAGS = [
   'english_parts_of_speech_advanced',
   'english_logical_fallacies',
   // Language — Alphabets & Systems
+  'lang_alphabet_english',
   'lang_alphabet_spanish',
   'lang_alphabet_french',
   'lang_alphabet_japanese',
@@ -72,7 +84,10 @@ export const VISUAL_TAGS = [
   'lang_chinese_tones',
   // Science
   'science_cell_diagram',
+  'science_water_cycle',
+  'science_food_chain',
   'science_scientific_method',
+  'science_states_of_matter',
   'science_human_body_systems',
   'science_solar_system',
   'periodic_table_simplified',
@@ -86,7 +101,10 @@ export const VISUAL_TAGS = [
   'physics_formulas',
   'physics_thermodynamics',
   // History / Social Studies
+  'history_timeline',
+  'history_cause_effect_chain',
   'history_three_branches',
+  'history_map_compass',
   // Geography — Maps
   'geography_continents',
   'geography_usa_map',
@@ -110,16 +128,18 @@ export const VISUAL_TAGS = [
   'polisci_bill_of_rights',
   'polisci_world_governments',
   // Study Skills
+  'study_skills_kwl',
+  'study_skills_concept_map',
   'study_skills_cornell_notes',
   'study_blooms_taxonomy',
   'study_time_management',
-  // Chemistry (WebP)
+  // Chemistry (WebP Images)
   'chemistry_molecular_shapes',
   'chemistry_organic_functional_groups',
   'chemistry_periodic_trends',
   'chemistry_ph_scale',
   'chemistry_types_of_bonds',
-  // Economics (WebP)
+  // Economics (WebP Images)
   'economics_banking_system',
   'economics_business_cycle',
   'economics_circular_flow',
@@ -127,7 +147,7 @@ export const VISUAL_TAGS = [
   'economics_stock_market_basics',
   'economics_taxes_types',
   'economics_trade_balance',
-  // Geography (WebP)
+  // Geography (WebP Images)
   'geography_biomes_world',
   'geography_country_capitals',
   'geography_landforms',
@@ -137,7 +157,7 @@ export const VISUAL_TAGS = [
   'geography_tectonic_plates',
   'geography_time_zones',
   'geography_us_regions',
-  // History (WebP)
+  // History (WebP Images)
   'history_amendments_visual',
   'history_ancient_civilizations_map',
   'history_civil_rights_timeline',
@@ -148,14 +168,14 @@ export const VISUAL_TAGS = [
   'history_industrial_revolution',
   'history_us_expansion_map',
   'history_world_wars_map',
-  // Language (WebP)
+  // Language (WebP Images)
   'lang_chinese_radicals',
   'lang_german_cases',
   'lang_ipa_chart',
   'lang_japanese_common_phrases',
   'lang_japanese_hiragana_chart',
   'lang_spanish_common_phrases',
-  // Math (WebP)
+  // Math (WebP Images)
   'math_3d_shapes',
   'math_angles_types',
   'math_circle_parts',
@@ -171,7 +191,7 @@ export const VISUAL_TAGS = [
   'math_slope_types',
   'math_telling_time',
   'math_vector_addition',
-  // Physics (WebP)
+  // Physics (WebP Images)
   'physics_circuit_symbols',
   'physics_doppler_effect',
   'physics_electricity_flow',
@@ -180,10 +200,10 @@ export const VISUAL_TAGS = [
   'physics_pendulum_energy',
   'physics_projectile_motion',
   'physics_wave_types',
-  // Reading (WebP)
+  // Reading (WebP Images)
   'reading_genres_bookshelf',
   'reading_story_mountain',
-  // Science (WebP)
+  // Science (WebP Images)
   'science_animal_cell',
   'science_brain_regions',
   'science_cloud_types',
@@ -202,7 +222,7 @@ export const VISUAL_TAGS = [
   'science_volcano_cross_section',
   'science_water_cycle_illustrated',
   'science_weather_map_symbols',
-  // Space (WebP)
+  // Space (WebP Images)
   'space_asteroid_belt',
   'space_earth_detailed',
   'space_galaxy_types',
@@ -212,13 +232,13 @@ export const VISUAL_TAGS = [
   'space_planet_sizes',
   'space_solar_system_distances',
   'space_sun_diagram',
-  // Study Skills (WebP)
+  // Study Skills (WebP Images)
   'study_essay_writing_process',
   'study_growth_mindset',
   'study_note_taking_methods',
   'study_pomodoro_technique',
   'study_test_taking_strategies',
-  // Writing (WebP)
+  // Writing (WebP Images)
   'writing_persuasive_structure',
   'writing_types_comparison',
 ] as const;
@@ -3312,7 +3332,6 @@ const VISUAL_LABELS: Record<VisualTag, string> = {
   english_logical_fallacies: 'Logical Fallacies',
   study_blooms_taxonomy: "Bloom's Taxonomy",
   study_time_management: 'Time Management Strategies',
-  math_fractions: 'Fractions Reference',
   // Math — Formula Images
   math_order_of_operations_visual: 'Order of Operations (PEMDAS)',
   math_quadratic_formula: 'The Quadratic Formula',
@@ -3339,18 +3358,25 @@ interface VisualPanelProps {
 }
 
 export function VisualPanel({ visualTag, onDismiss }: VisualPanelProps) {
-  const [visible, setVisible] = useState(false);
+  // Latch the last valid visual tag so brief null flickers during re-renders
+  // don't cause the panel to disappear. Only an explicit dismiss clears it.
+  const latchedTagRef = useRef<VisualTag | null>(null);
 
-  useEffect(() => {
-    if (visualTag) setVisible(true);
-    else setVisible(false);
-  }, [visualTag]);
+  if (visualTag) {
+    latchedTagRef.current = visualTag;
+  }
 
-  if (!visualTag || !visible) return null;
+  const activeTag = latchedTagRef.current;
+  if (!activeTag) return null;
 
-  const label = VISUAL_LABELS[visualTag] ?? visualTag;
-  const content = renderVisual(visualTag);
+  const label = VISUAL_LABELS[activeTag] ?? activeTag;
+  const content = renderVisual(activeTag);
   if (!content) return null;
+
+  const handleDismiss = () => {
+    latchedTagRef.current = null;
+    onDismiss();
+  };
 
   return (
     <div className="mx-2 mb-3 border border-border rounded-xl bg-background shadow-md overflow-hidden animate-in slide-in-from-top-2 duration-300">
@@ -3359,7 +3385,7 @@ export function VisualPanel({ visualTag, onDismiss }: VisualPanelProps) {
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">📊 Visual Aid</span>
           <span className="text-sm font-bold text-foreground">{label}</span>
         </div>
-        <button onClick={onDismiss} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Dismiss visual">
+        <button onClick={handleDismiss} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Dismiss visual">
           <X className="h-4 w-4" />
         </button>
       </div>
