@@ -570,7 +570,7 @@ export default function AdminAcademicTracker() {
               <Input
                 value={nudgeSubject}
                 onChange={e => setNudgeSubject(e.target.value)}
-                placeholder="A message from your academic advisor — UW AI Tutor"
+                placeholder="A message from your academic advisor — State University AI Tutor"
               />
             </div>
             <div>
@@ -578,7 +578,7 @@ export default function AdminAcademicTracker() {
               <Textarea
                 value={nudgeMessage}
                 onChange={e => setNudgeMessage(e.target.value)}
-                placeholder="Hi! We noticed you haven't been active recently. Your UW AI Tutor is here to help you succeed..."
+                placeholder="Hi! We noticed you haven't been active recently. Your State University AI Tutor is here to help you succeed..."
                 className="min-h-[150px]"
               />
             </div>
@@ -590,7 +590,7 @@ export default function AdminAcademicTracker() {
                 if (showNudgeDialog && nudgeMessage) {
                   nudgeMutation.mutate({
                     studentEmail: showNudgeDialog.email,
-                    subject: nudgeSubject || "A message from your academic advisor — UW AI Tutor",
+                    subject: nudgeSubject || "A message from your academic advisor — State University AI Tutor",
                     message: nudgeMessage,
                   });
                 }

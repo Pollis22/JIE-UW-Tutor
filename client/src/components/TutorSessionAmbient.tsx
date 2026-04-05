@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import uwLogo from "@/assets/uw-madison-logo.png";
+import suLogo from "@/assets/state-university-logo.png";
 import buckyClassroom from "@/assets/campus/bucky-classroom.png";
 import buckyLecture from "@/assets/campus/bucky-lecture.png";
 import studentLibrary from "@/assets/campus/student-library.png";
@@ -14,17 +14,17 @@ const TIPS = [
   { icon: "✏️", text: "Take notes while you listen — writing helps lock in learning." },
   { icon: "🌍", text: "Need help in another language? Just ask your tutor to switch." },
   { icon: "⏸️", text: "Need a moment? Just pause — your tutor will wait for you." },
-  { icon: "🏆", text: "On Wisconsin! Your success starts with every question you ask." },
+  { icon: "🏆", text: "Your success starts with every question you ask." },
 ];
 
 const GALLERY = [
-  { src: buckyClassroom, caption: "Learning at UW–Madison" },
+  { src: buckyClassroom, caption: "Learning at State University" },
   { src: buckyLecture, caption: "Expert instruction, your schedule" },
   { src: studentLibrary, caption: "Study smarter, not harder" },
-  { src: bascomHall, caption: "Badger pride, academic excellence" },
+  { src: bascomHall, caption: "Campus pride, academic excellence" },
 ];
 
-// UW crimson
+// Brand crimson
 const UW_RED = "#C5050C";
 
 interface Props {
@@ -38,7 +38,7 @@ export function TutorSessionAmbient({ isSpeaking = false, isConnected = false, h
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [pulseRing, setPulseRing] = useState(false);
   const [visible, setVisible] = useState(true);
-  // Logo flash state — shows UW logo prominently on first connect
+  // Logo flash state — shows logo prominently on first connect
   const [showLogoFlash, setShowLogoFlash] = useState(false);
   const [logoFlashDone, setLogoFlashDone] = useState(false);
 
@@ -73,7 +73,7 @@ export function TutorSessionAmbient({ isSpeaking = false, isConnected = false, h
     }
   }, [isSpeaking]);
 
-  // UW logo flash — triggers once when isConnected first becomes true
+  // Logo flash — triggers once when isConnected first becomes true
   useEffect(() => {
     if (isConnected && !logoFlashDone) {
       setShowLogoFlash(true);
@@ -96,7 +96,7 @@ export function TutorSessionAmbient({ isSpeaking = false, isConnected = false, h
         overflow: "hidden",
       }}
     >
-      {/* UW Logo Flash — centered overlay on first connect */}
+      {/* Logo Flash — centered overlay on first connect */}
       <div
         style={{
           position: "absolute",
@@ -113,8 +113,8 @@ export function TutorSessionAmbient({ isSpeaking = false, isConnected = false, h
       >
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
           <img
-            src={uwLogo}
-            alt="UW–Madison"
+            src={suLogo}
+            alt="State University"
             style={{
               width: 140,
               height: "auto",
@@ -134,12 +134,12 @@ export function TutorSessionAmbient({ isSpeaking = false, isConnected = false, h
               opacity: 0.9,
             }}
           >
-            On Wisconsin!
+            State University
           </span>
         </div>
       </div>
 
-      {/* JIE Orb / status indicator */}
+      {/* Orb / status indicator */}
       <div
         className="relative flex flex-col items-center gap-2"
         style={{ opacity: showLogoFlash ? 0.2 : 1, transition: "opacity 0.4s ease" }}
@@ -168,7 +168,7 @@ export function TutorSessionAmbient({ isSpeaking = false, isConnected = false, h
               border: `2px solid rgba(197,5,12,0.2)`,
             }}
           >
-            <img src={uwLogo} alt="UW" style={{ width: 44, height: "auto", objectFit: "contain" }} />
+            <img src={suLogo} alt="State University" style={{ width: 44, height: "auto", objectFit: "contain" }} />
           </div>
         </div>
 

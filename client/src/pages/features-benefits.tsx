@@ -25,7 +25,7 @@ export default function FeaturesAndBenefits() {
       <div className="relative h-[500px] overflow-hidden">
         <img 
           src="/bascom-hall.png" 
-          alt="Bascom Hall - University of Wisconsin-Madison" 
+          alt="State University campus" 
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#C5050C]/80 via-[#C5050C]/60 to-[#C5050C]/90 flex items-center justify-center">

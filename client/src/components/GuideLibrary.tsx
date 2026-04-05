@@ -1,5 +1,5 @@
 /**
- * GuideLibrary — Browse and add JIE-provided study guides
+ * GuideLibrary — Browse and add curated study guides
  * 
  * Appears as a tab in the AssignmentsPanel or as a standalone panel.
  * Students browse by category, preview guides, and click "Add to My Documents"
@@ -127,7 +127,7 @@ export function GuideLibrary({ gradeBand = 'College/Adult', onGuideAdded }: Guid
       {/* Header */}
       <div className="flex items-center gap-2 mb-2">
         <BookOpen className="h-5 w-5 text-primary" />
-        <h3 className="font-semibold text-base">JIE Study Guide Library</h3>
+        <h3 className="font-semibold text-base">Study Guide Library</h3>
       </div>
       <p className="text-sm text-muted-foreground -mt-2">
         Add guides to your documents, then select them before starting a session.

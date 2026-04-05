@@ -374,7 +374,7 @@ function evaluateObservationFlags(obs: any): ObservationFlag[] {
 
   // FLAG 3: Consistently brief engagement
   if (obs.avg_engagement_score < 1.5 && sessions >= 7) {
-    const rawObs = `${name}'s average engagement score across ${sessions} sessions is ${obs.avg_engagement_score.toFixed(1)} out of 5. This score reflects how much ${name} elaborates in responses relative to tutor prompts within JIE Mastery sessions.`;
+    const rawObs = `${name}'s average engagement score across ${sessions} sessions is ${obs.avg_engagement_score.toFixed(1)} out of 5. This score reflects how much ${name} elaborates in responses relative to tutor prompts within State University AI Tutor sessions.`;
     const rawSugg = `Starting sessions with a subject or topic ${name} feels most confident in may help build momentum. Shorter sessions (10-15 minutes) with a clear, achievable goal can also encourage fuller participation over time.`;
 
     const obsCheck = sanitizeObservationText(rawObs);

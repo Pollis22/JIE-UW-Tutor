@@ -1,5 +1,5 @@
 /**
- * JIE Mastery AI Tutor Platform
+ * State University AI Tutor Platform
  * Copyright (c) 2025 JIE Mastery AI, Inc.
  * All Rights Reserved.
  * 
@@ -21,7 +21,7 @@ function getResendClient() {
 
 // Get the "from" email address - can be overridden via env var
 function getFromEmail(): string {
-  return process.env.RESEND_FROM_EMAIL || 'noreply@jiemastery.ai';
+  return process.env.RESEND_FROM_EMAIL || 'noreply@jiemastery.ai'; // TODO: Update domain for production deployment
 }
 
 export class EmailService {
@@ -94,7 +94,7 @@ export class EmailService {
       await resend.emails.send({
         from: fromEmail,
         to: user.email,
-        subject: 'Welcome to JIE Mastery Tutor!',
+        subject: 'Welcome to State University AI Tutor!',
         html: `
           <h1>Welcome, ${user.parentName}!</h1>
           <p>Thank you for creating an account for ${user.studentName}.</p>
@@ -201,7 +201,7 @@ export class EmailService {
     try {
       const resend = getResendClient();
       const fromEmail = getFromEmail();
-      const adminEmail = process.env.ADMIN_EMAIL || 'support@jiemastery.ai';
+      const adminEmail = process.env.ADMIN_EMAIL || 'support@stateuniversity-tutor.ai';
       
       // Format amount as currency (treat 0 as valid, only N/A for undefined/null)
       const formattedAmount = typeof data.amount === 'number' ? `$${data.amount.toFixed(2)}` : 'N/A';
@@ -285,7 +285,7 @@ export class EmailService {
           </div>
           
           <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 16px;">
-            JIE Mastery AI Tutor - Admin Notification System
+            State University AI Tutor - Admin Notification System
           </p>
         </div>
       `;
@@ -313,7 +313,7 @@ export class EmailService {
     try {
       const resend = getResendClient();
       const fromEmail = getFromEmail();
-      const adminEmail = process.env.ADMIN_EMAIL || 'support@jiemastery.ai';
+      const adminEmail = process.env.ADMIN_EMAIL || 'support@stateuniversity-tutor.ai';
       
       const { customerEmail, customerName, planName, amountPaid, invoiceNumber, invoiceUrl, renewalDate } = params;
       
@@ -342,10 +342,10 @@ export class EmailService {
               <td align="center" style="padding: 40px 20px;">
                 <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
                   
-                  <!-- Header with Logo and JIE Branding -->
+                  <!-- Header with Logo and Branding -->
                   <tr>
                     <td style="background: linear-gradient(135deg, #C41E3A 0%, #8B0000 100%); padding: 30px; text-align: center;">
-                      <img src="${logoUrl}" alt="JIE Mastery" width="150" style="max-width: 150px; height: auto;">
+                      <img src="${logoUrl}" alt="State University AI Tutor" width="150" style="max-width: 150px; height: auto;">
                       <h1 style="color: #ffffff; margin: 20px 0 0; font-size: 28px; font-weight: 600;">
                         Subscription Renewed!
                       </h1>
@@ -437,7 +437,7 @@ export class EmailService {
                   <tr>
                     <td style="background-color: #1a1a1a; padding: 25px; text-align: center;">
                       <p style="margin: 0; color: #ffffff; font-size: 14px; font-weight: 600;">
-                        JIE Mastery AI Tutor
+                        State University AI Tutor
                       </p>
                       <p style="margin: 10px 0 0; color: #999; font-size: 12px;">
                         Admin Notification - ${new Date().getFullYear()}
@@ -454,7 +454,7 @@ export class EmailService {
       `;
       
       const text = `
-JIE MASTERY - SUBSCRIPTION RENEWED
+STATE UNIVERSITY AI TUTOR - SUBSCRIPTION RENEWED
 
 Recurring Revenue: +$${amountPaid.toFixed(2)}
 Plan: ${planName}
@@ -531,7 +531,7 @@ Customer minutes have been reset for the new billing cycle.
             <div class="content">
               <p>Hi ${user.name}!</p>
               
-              <p>Thank you for signing up for JIE Mastery! Your payment has been processed successfully.</p>
+              <p>Thank you for signing up for State University AI Tutor! Your payment has been processed successfully.</p>
               
               <p><strong>Please verify your email address</strong> to activate your account and start using the AI tutor.</p>
               
@@ -556,13 +556,13 @@ Customer minutes have been reset for the new billing cycle.
                 ${verificationUrl}
               </div>
               
-              <p>If you didn't create an account with JIE Mastery, you can safely ignore this email.</p>
+              <p>If you didn't create an account with State University AI Tutor, you can safely ignore this email.</p>
               
-              <p>Welcome to the family!<br><strong>The JIE Mastery Team</strong></p>
+              <p>Welcome to the family!<br><strong>The State University AI Tutor Team</strong></p>
             </div>
             
             <div class="footer">
-              <p><strong>JIE Mastery AI Tutor</strong> | Patent Pending System</p>
+              <p><strong>State University AI Tutor</strong> | Patent Pending System</p>
               <p>Questions? Reply to this email for support.</p>
             </div>
           </div>
@@ -572,7 +572,7 @@ Customer minutes have been reset for the new billing cycle.
       
       const text = `Hi ${user.name}!
 
-Thank you for signing up for JIE Mastery! Your payment has been processed successfully.
+Thank you for signing up for State University AI Tutor! Your payment has been processed successfully.
 
 Please verify your email address to activate your account:
 
@@ -583,12 +583,12 @@ Once verified, you'll have immediate access to voice tutoring, study materials, 
 If you didn't create an account, you can ignore this email.
 
 Welcome to the family!
-The JIE Mastery Team`;
+The State University AI Tutor Team`;
       
       await resend.emails.send({
         from: fromEmail,
         to: user.email,
-        subject: '✓ Verify Your Email - JIE Mastery',
+        subject: '✓ Verify Your Email - State University AI Tutor',
         html,
         text
       });
@@ -648,7 +648,7 @@ The JIE Mastery Team`;
             <div class="content">
               <p>Hi ${params.name}!</p>
               
-              <p>You signed up for JIE Mastery but haven't started your free trial yet. Your <strong>30 minutes of free AI tutoring</strong> is ready and waiting!</p>
+              <p>You signed up for State University AI Tutor but haven't started your free trial yet. Your <strong>30 minutes of free AI tutoring</strong> is ready and waiting!</p>
               
               <div class="cta-box">
                 <a href="${ctaUrl}" class="cta-button">
@@ -666,13 +666,13 @@ The JIE Mastery Team`;
                 </ul>
               </div>
               
-              <p style="color: #666; font-size: 14px;">If you didn't sign up for JIE Mastery, you can safely ignore this email.</p>
+              <p style="color: #666; font-size: 14px;">If you didn't sign up for State University AI Tutor, you can safely ignore this email.</p>
               
-              <p>We'd love to help you learn!<br><strong>The JIE Mastery Team</strong></p>
+              <p>We'd love to help you learn!<br><strong>The State University AI Tutor Team</strong></p>
             </div>
             
             <div class="footer">
-              <p><strong>JIE Mastery AI Tutor</strong> | Patent Pending System</p>
+              <p><strong>State University AI Tutor</strong> | Patent Pending System</p>
               <p>Questions? Reply to this email for support.</p>
             </div>
           </div>
@@ -682,7 +682,7 @@ The JIE Mastery Team`;
       
       const text = `Hi ${params.name}!
 
-You signed up for JIE Mastery but haven't started your free trial yet. Your 30 minutes of free AI tutoring is ready and waiting!
+You signed up for State University AI Tutor but haven't started your free trial yet. Your 30 minutes of free AI tutoring is ready and waiting!
 
 ${ctaText}: ${ctaUrl}
 
@@ -694,12 +694,12 @@ Here's what you'll get:
 
 If you didn't sign up, you can ignore this email.
 
-The JIE Mastery Team`;
+The State University AI Tutor Team`;
       
       await resend.emails.send({
         from: fromEmail,
         to: params.email,
-        subject: 'Your JIE Mastery free trial is waiting',
+        subject: 'Your State University AI Tutor free trial is waiting',
         html,
         text
       });
@@ -742,7 +742,7 @@ The JIE Mastery Team`;
 <p style="word-break: break-all; color: #666; font-size: 14px;"><a href="${resetUrl}" target="_blank" style="color: #dc2626;">${resetUrl}</a></p>
 <p style="color: #666; font-size: 14px; margin-top: 30px;">This password reset link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.</p>
 <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-<p style="color: #999; font-size: 12px;">JIE Mastery AI Tutor<br><a href="https://jiemastery.ai" target="_blank" style="color: #dc2626;">jiemastery.ai</a></p>
+<p style="color: #999; font-size: 12px;">State University AI Tutor<br><a href="https://stateuniversity-tutor.ai" target="_blank" style="color: #dc2626;">stateuniversity-tutor.ai</a></p>
 </body>
 </html>`;
 
@@ -757,14 +757,14 @@ ${resetUrl}
 
 This password reset link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.
 
-JIE Mastery AI Tutor
-jiemastery.ai
+State University AI Tutor
+stateuniversity-tutor.ai
       `;
 
       await resend.emails.send({
         from: fromEmail,
         to: user.email,
-        subject: 'Reset Your Password - JIE Mastery Tutor',
+        subject: 'Reset Your Password - State University AI Tutor',
         html,
         text
       });
@@ -784,7 +784,7 @@ jiemastery.ai
     try {
       const resend = getResendClient();
       const fromEmail = getFromEmail();
-      const adminEmail = process.env.ADMIN_EMAIL || 'support@jiemastery.ai';
+      const adminEmail = process.env.ADMIN_EMAIL || 'support@stateuniversity-tutor.ai';
       
       // Send to admin
       await resend.emails.send({
@@ -807,7 +807,7 @@ jiemastery.ai
       await resend.emails.send({
         from: fromEmail,
         to: contact.email,
-        subject: 'We Received Your Message - JIE Mastery Tutor',
+        subject: 'We Received Your Message - State University AI Tutor',
         html: `
           <h1>Thank You for Contacting Us</h1>
           <p>Hi ${contact.name},</p>
@@ -817,7 +817,7 @@ jiemastery.ai
           <hr>
           <p style="white-space: pre-wrap;">${contact.message}</p>
           <hr>
-          <p>Best regards,<br>JIE Mastery Tutor Team</p>
+          <p>Best regards,<br>State University AI Tutor Team</p>
           <p style="margin-top:24px;color:#666;font-size:14px;">
             <a href="${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/unsubscribe?email=${contact.email}">Unsubscribe from marketing emails</a>
           </p>
@@ -836,7 +836,7 @@ jiemastery.ai
   // ==========================================
 
   private getAdminEmail(): string {
-    return process.env.ADMIN_EMAIL || 'support@jiemastery.ai';
+    return process.env.ADMIN_EMAIL || 'support@stateuniversity-tutor.ai';
   }
 
   // Customer Cancellation Email
@@ -906,13 +906,13 @@ jiemastery.ai
               
               <p style="color: #666;">We'd love to know why you're leaving so we can improve. Just reply to this email with any feedback - it really helps!</p>
               
-              <p>Thank you for being part of JIE Mastery. We hope to see you again!</p>
+              <p>Thank you for being part of State University AI Tutor. We hope to see you again!</p>
               
-              <p>Warmly,<br>The JIE Mastery Team</p>
+              <p>Warmly,<br>The State University AI Tutor Team</p>
             </div>
             
             <div class="footer">
-              <p><strong>JIE Mastery AI Tutor</strong></p>
+              <p><strong>State University AI Tutor</strong></p>
               <p>Questions? Reply to this email.</p>
             </div>
           </div>
@@ -923,7 +923,7 @@ jiemastery.ai
       await resend.emails.send({
         from: fromEmail,
         to: email,
-        subject: 'Your JIE Mastery Subscription Has Been Canceled',
+        subject: 'Your State University AI Tutor Subscription Has Been Canceled',
         html,
         text: `Hi ${firstName},\n\nYour ${planName} subscription has been canceled.\n\nYour access continues until: ${accessEndDate}\n\nReactivate anytime: ${this.getBaseUrl()}/dashboard?tab=subscription`
       });
@@ -1136,11 +1136,11 @@ jiemastery.ai
                 </p>
               </div>
               
-              <p style="margin-top: 20px;">The JIE Mastery Team</p>
+              <p style="margin-top: 20px;">The State University AI Tutor Team</p>
             </div>
             
             <div class="footer">
-              <p><strong>JIE Mastery AI Tutor</strong></p>
+              <p><strong>State University AI Tutor</strong></p>
             </div>
           </div>
         </body>
@@ -1323,11 +1323,11 @@ jiemastery.ai
               </div>
               
               <p style="margin-top: 20px;">Questions? Just reply to this email.</p>
-              <p>The JIE Mastery Team</p>
+              <p>The State University AI Tutor Team</p>
             </div>
             
             <div class="footer">
-              <p><strong>JIE Mastery AI Tutor</strong></p>
+              <p><strong>State University AI Tutor</strong></p>
             </div>
           </div>
         </body>
@@ -1518,11 +1518,11 @@ jiemastery.ai
                 </p>
               </div>
               
-              <p style="margin-top: 20px;">The JIE Mastery Team</p>
+              <p style="margin-top: 20px;">The State University AI Tutor Team</p>
             </div>
             
             <div class="footer">
-              <p><strong>JIE Mastery AI Tutor</strong></p>
+              <p><strong>State University AI Tutor</strong></p>
             </div>
           </div>
         </body>
@@ -1692,11 +1692,11 @@ jiemastery.ai
               
               <p>We're excited to have you back! If you have any questions, just reply to this email.</p>
               
-              <p>Happy learning!<br><strong>The JIE Mastery Team</strong></p>
+              <p>Happy learning!<br><strong>The State University AI Tutor Team</strong></p>
             </div>
             
             <div class="footer">
-              <p><strong>JIE Mastery AI Tutor</strong></p>
+              <p><strong>State University AI Tutor</strong></p>
             </div>
           </div>
         </body>
@@ -1706,7 +1706,7 @@ jiemastery.ai
       await resend.emails.send({
         from: fromEmail,
         to: email,
-        subject: `🎉 Welcome Back to JIE Mastery!`,
+        subject: `🎉 Welcome Back to State University AI Tutor!`,
         html,
         text: `Welcome back, ${firstName}!\n\nYour ${planName} subscription is now active with ${minutes} minutes per month.\n\nStart learning: ${this.getBaseUrl()}/tutor`
       });
@@ -1844,7 +1844,7 @@ jiemastery.ai
       });
       
       await resend.emails.send({
-        from: `JIE Mastery <${fromEmail}>`,
+        from: `State University AI Tutor <${fromEmail}>`,
         to: data.parentEmail,
         subject: `${data.studentName}'s Tutoring Session Summary - ${data.subject}`,
         html: `
@@ -1918,7 +1918,7 @@ jiemastery.ai
               </div>
               
               <div class="footer">
-                <p style="margin: 0;">JIE Mastery AI Tutor</p>
+                <p style="margin: 0;">State University AI Tutor</p>
                 <p style="margin: 8px 0 0;">You're receiving this because ${data.studentName} completed a tutoring session.</p>
                 <p style="margin: 8px 0 0;"><a href="${this.getBaseUrl()}/settings" style="color: #6b7280;">Manage email preferences</a></p>
               </div>
@@ -1945,7 +1945,7 @@ Keep up the great work!
 View full transcript: ${this.getBaseUrl()}/dashboard
 
 --
-JIE Mastery AI Tutor`
+State University AI Tutor`
       });
       
       console.log('[EmailService] ✅ Session summary email sent to:', data.parentEmail);
@@ -2179,7 +2179,7 @@ Summary for parent:`
             </div>
 
             <div class="footer">
-              <p>JIE Mastery AI Tutor</p>
+              <p>State University AI Tutor</p>
               <p>You received this because your family had tutoring sessions ${timePeriod}.</p>
               <p><a href="${this.getBaseUrl()}/dashboard/preferences" style="color: #6b7280;">Manage email preferences</a></p>
             </div>
@@ -2358,9 +2358,9 @@ Summary for parent:`
             </div>
 
             <div class="footer">
-              <p>JIE Mastery AI Tutor &bull; Personalized Learning for Every Student</p>
+              <p>State University AI Tutor &bull; Personalized Learning for Every Student</p>
               <p style="font-size:10px; color:#9ca3af; margin-top:8px;">
-                This report is auto-generated by JIE Mastery AI and has not been reviewed by a licensed educator, 
+                This report is auto-generated by State University AI Tutor and has not been reviewed by a licensed educator, 
                 psychologist, or medical professional. Performance metrics reflect in-session interactions only and 
                 should not be interpreted as formal academic assessments. For concerns about your child's learning 
                 or development, consult a qualified professional.
@@ -2375,7 +2375,7 @@ Summary for parent:`
       `;
 
       await resend.emails.send({
-        from: `JIE Mastery <${fromEmail}>`,
+        from: `State University AI Tutor <${fromEmail}>`,
         to: data.parentEmail,
         subject: `${data.studentName}'s Session Report - ${data.subject} - ${formattedDate}`,
         html

@@ -1,5 +1,5 @@
 /**
- * UW AI Tutor — University of Wisconsin–Madison
+ * State University AI Tutor
  * Powered by JIE Mastery AI, Inc.
  */
 

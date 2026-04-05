@@ -60,7 +60,7 @@ export default function DashboardPage() {
     console.log('[Dashboard] activeTab state is now:', activeTab);
   }, [activeTab]);
 
-  // Tracking disabled for UW deployment
+  // Tracking disabled for State University deployment
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get('session_id');
@@ -252,7 +252,7 @@ export default function DashboardPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Plan</span>
                   <Badge variant="default">
-                    {"UW Student"}
+                    {"Student"}
                   </Badge>
                 </div>
 

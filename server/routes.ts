@@ -3942,7 +3942,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate code: use custom or auto-generate
       const code = customCode
         ? customCode.trim().toUpperCase()
-        : `UW-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        : `SU-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
       // 24-hour expiration
       const expiresAt = new Date();

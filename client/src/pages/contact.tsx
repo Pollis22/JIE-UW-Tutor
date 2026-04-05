@@ -94,7 +94,7 @@ export default function ContactPage() {
                   <CardTitle className="text-lg">Email Us</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600">support@jiemastery.ai</p>
+                  <p className="text-sm text-gray-600">support@stateuniversity-tutor.ai</p>
                 </CardContent>
               </Card>
 

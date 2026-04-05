@@ -8,12 +8,12 @@ interface Node {
   r: number;
   opacity: number;
   symbol?: string;
-  isWisconsin?: boolean;
+  isCampus?: boolean;
 }
 
-// Academic symbols mixed with subtle UW phrases
+// Academic symbols mixed with subtle campus phrases
 const SYMBOLS = ['∑', '∫', 'π', 'Δ', '∞', '≈', '√', 'α', 'β', 'θ', 'λ', '∂', 'φ', '∇', '≡'];
-const UW_PHRASES = ['On Wisconsin', 'On Wisconsin', 'W', 'W'];
+const CAMPUS_PHRASES = ['Go State', 'Go State', 'SU', 'SU'];
 
 export function AmbientBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -37,8 +37,8 @@ export function AmbientBackground() {
     const NODE_COUNT = 55;
     for (let i = 0; i < NODE_COUNT; i++) {
       const roll = Math.random();
-      const isWisconsin = roll > 0.82; // ~18% chance of UW phrase
-      const isSymbol = !isWisconsin && roll > 0.55;
+      const isCampus = roll > 0.82; // ~18% chance of campus phrase
+      const isSymbol = !isCampus && roll > 0.55;
       nodes.push({
         x: Math.random() * window.innerWidth,
         y: Math.random() * window.innerHeight,
@@ -46,12 +46,12 @@ export function AmbientBackground() {
         vy: (Math.random() - 0.5) * 0.22,
         r: 2 + Math.random() * 3,
         opacity: 0.07 + Math.random() * 0.13,
-        symbol: isWisconsin
-          ? UW_PHRASES[Math.floor(Math.random() * UW_PHRASES.length)]
+        symbol: isCampus
+          ? CAMPUS_PHRASES[Math.floor(Math.random() * CAMPUS_PHRASES.length)]
           : isSymbol
           ? SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]
           : undefined,
-        isWisconsin,
+        isCampus,
       });
     }
 
@@ -69,7 +69,7 @@ export function AmbientBackground() {
         if (n.y < 0 || n.y > canvas.height) n.vy *= -1;
       });
 
-      // Connections — UW crimson tint
+      // Connections — crimson tint
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
           const a = nodes[i], b = nodes[j];
@@ -90,7 +90,7 @@ export function AmbientBackground() {
         }
       }
 
-      // Nodes + symbols + UW phrases
+      // Nodes + symbols + campus phrases
       nodes.forEach(n => {
         const inSide = Math.abs(n.x - cx) > CENTER_MARGIN * 0.45;
         if (!inSide) return;
@@ -103,8 +103,8 @@ export function AmbientBackground() {
           : 1;
         const alpha = n.opacity * Math.max(0, Math.min(1, fade));
 
-        if (n.isWisconsin) {
-          // "On Wisconsin" — slightly larger, italic, UW crimson
+        if (n.isCampus) {
+          // Campus phrase — slightly larger, italic, crimson
           const fontSize = n.symbol === 'W' ? 18 : 11;
           ctx.font = `italic bold ${fontSize}px Georgia, serif`;
           ctx.fillStyle = `rgba(197, 5, 12, ${alpha * 0.85})`;

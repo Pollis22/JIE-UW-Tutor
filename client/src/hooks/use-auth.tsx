@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         // Server error
         if (res.status === 500) {
-          throw new Error("Server error. Please try again in a moment or contact support at hello@jiemastery.ai");
+          throw new Error("Server error. Please try again in a moment or contact support at hello@stateuniversity-tutor.ai");
         }
         // Generic error
         throw new Error(data.error || data.message || "Login failed. Please try again.");

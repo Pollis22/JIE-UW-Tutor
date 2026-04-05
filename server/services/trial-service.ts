@@ -938,7 +938,7 @@ export class TrialService {
 <tr>
 <td style="padding:40px;">
 <h1 style="margin:0 0 20px 0;color:#dc2626;font-size:28px;font-weight:bold;font-family:Arial,Helvetica,sans-serif;">Start Your Free Trial!</h1>
-<p style="margin:0 0 30px 0;color:#333333;font-size:16px;line-height:24px;font-family:Arial,Helvetica,sans-serif;">Thank you for your interest in JIE Mastery AI Tutor. Click the button below to verify your email and start your 5-minute free trial.</p>
+<p style="margin:0 0 30px 0;color:#333333;font-size:16px;line-height:24px;font-family:Arial,Helvetica,sans-serif;">Thank you for your interest in State University AI Tutor. Click the button below to verify your email and start your 5-minute free trial.</p>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 30px 0;">
 <tr>
 <td align="center">
@@ -969,7 +969,7 @@ export class TrialService {
 
     const textContent = `Start Your Free Trial!
 
-Thank you for your interest in JIE Mastery AI Tutor.
+Thank you for your interest in State University AI Tutor.
 
 Click the link below to verify your email and start your 5-minute free trial:
 
@@ -981,7 +981,7 @@ If you didn't request this, you can safely ignore this email.`;
 
     await this.emailService.sendEmail({
       to: email,
-      subject: 'Verify your email for JIE Mastery Free Trial',
+      subject: 'Verify your email for State University AI Tutor Free Trial',
       html: htmlContent,
       text: textContent,
     });
@@ -1023,7 +1023,7 @@ If you didn't request this, you can safely ignore this email.`;
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:8px;max-width:600px;">
 <tr>
 <td style="padding:30px;">
-<h2 style="margin:0 0 20px 0;color:#dc2626;font-size:22px;">New JIE Mastery Free Trial Started</h2>
+<h2 style="margin:0 0 20px 0;color:#dc2626;font-size:22px;">New State University AI Tutor Free Trial Started</h2>
 <table role="presentation" cellpadding="8" cellspacing="0" border="0" style="margin-bottom:20px;width:100%;">
 <tr>
 <td style="color:#666;font-size:14px;width:120px;"><strong>Email:</strong></td>
@@ -1054,7 +1054,7 @@ If you didn't request this, you can safely ignore this email.`;
 </body>
 </html>`;
 
-    const textContent = `New JIE Mastery Free Trial Started
+    const textContent = `New State University AI Tutor Free Trial Started
 
 Email: ${email}
 Status: ${status.charAt(0).toUpperCase() + status.slice(1)}
@@ -1065,7 +1065,7 @@ View in Admin Panel: ${adminPanelLink}`;
 
     await this.emailService.sendEmail({
       to: adminEmail,
-      subject: 'New JIE Mastery Free Trial Started',
+      subject: 'New State University AI Tutor Free Trial Started',
       html: htmlContent,
       text: textContent,
     });
@@ -1280,7 +1280,7 @@ View in Admin Panel: ${adminPanelLink}`;
       // Check if trial is exhausted
       if (!entitlement.hasAccess) {
         console.log('[TrialService] requestMagicLink: trial exhausted, reason:', entitlement.reason);
-        return { ok: false, code: 'TRIAL_EXHAUSTED', error: 'Your trial has ended. Please sign up to continue using JIE Mastery.' };
+        return { ok: false, code: 'TRIAL_EXHAUSTED', error: 'Your trial has ended. Please sign up to continue using State University AI Tutor.' };
       }
 
       // INSTANT RESUME: Trial is verified AND active - return instant resume (NO magic link email)
@@ -1467,7 +1467,7 @@ View in Admin Panel: ${adminPanelLink}`;
 <tr>
 <td style="padding:40px;">
 <h1 style="margin:0 0 20px 0;color:#16a34a;font-size:28px;font-weight:bold;">Your Trial Has Been Extended!</h1>
-<p style="margin:0 0 20px 0;color:#333333;font-size:16px;line-height:24px;">Great news! We've added <strong>${extensionMinutes} more minutes</strong> to your JIE Mastery AI Tutor trial.</p>
+<p style="margin:0 0 20px 0;color:#333333;font-size:16px;line-height:24px;">Great news! We've added <strong>${extensionMinutes} more minutes</strong> to your State University AI Tutor trial.</p>
 <p style="margin:0 0 30px 0;color:#333333;font-size:16px;line-height:24px;">Continue your learning journey right where you left off.</p>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 30px 0;">
 <tr>
@@ -1488,7 +1488,7 @@ View in Admin Panel: ${adminPanelLink}`;
 
     const textContent = `Your Trial Has Been Extended!
 
-Great news! We've added ${extensionMinutes} more minutes to your JIE Mastery AI Tutor trial.
+Great news! We've added ${extensionMinutes} more minutes to your State University AI Tutor trial.
 
 Continue your learning journey: ${resumeUrl}
 
@@ -1498,7 +1498,7 @@ Ready to unlock unlimited learning? View our plans: ${baseUrl}/pricing`;
       const emailService = new EmailService();
       await emailService.sendEmail({
         to: email,
-        subject: 'Your JIE Mastery Trial Has Been Extended!',
+        subject: 'Your State University AI Tutor Trial Has Been Extended!',
         html: htmlContent,
         text: textContent,
       });
@@ -1636,7 +1636,7 @@ Ready to unlock unlimited learning? View our plans: ${baseUrl}/pricing`;
 <tr>
 <td style="padding:40px;">
 <h1 style="margin:0 0 20px 0;color:#dc2626;font-size:28px;font-weight:bold;font-family:Arial,Helvetica,sans-serif;">Continue Your Free Trial</h1>
-<p style="margin:0 0 30px 0;color:#333333;font-size:16px;line-height:24px;font-family:Arial,Helvetica,sans-serif;">Click the button below to sign in and continue your JIE Mastery AI Tutor free trial.</p>
+<p style="margin:0 0 30px 0;color:#333333;font-size:16px;line-height:24px;font-family:Arial,Helvetica,sans-serif;">Click the button below to sign in and continue your State University AI Tutor free trial.</p>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 30px 0;">
 <tr>
 <td align="center">
@@ -1667,7 +1667,7 @@ Ready to unlock unlimited learning? View our plans: ${baseUrl}/pricing`;
 
     const textContent = `Continue Your Free Trial
 
-Click the link below to sign in and continue your JIE Mastery AI Tutor free trial:
+Click the link below to sign in and continue your State University AI Tutor free trial:
 
 ${magicUrl}
 
@@ -1677,7 +1677,7 @@ If you didn't request this, you can safely ignore this email.`;
 
     await this.emailService.sendEmail({
       to: email,
-      subject: 'Continue Your JIE Mastery Free Trial',
+      subject: 'Continue Your State University AI Tutor Free Trial',
       html: htmlContent,
       text: textContent,
     });
@@ -1858,8 +1858,8 @@ If you didn't request this, you can safely ignore this email.`;
     console.log(`[TrialService] Sending reminder email #${reminderNumber} to: ${email}`);
 
     const subject = reminderNumber === 1 
-      ? 'Reminder: Complete your JIE Mastery Free Trial signup'
-      : 'Final Reminder: Your JIE Mastery Free Trial is waiting';
+      ? 'Reminder: Complete your State University AI Tutor Free Trial signup'
+      : 'Final Reminder: Your State University AI Tutor Free Trial is waiting';
 
     const urgencyText = reminderNumber === 1
       ? 'You started signing up for your free trial but haven\'t verified your email yet.'

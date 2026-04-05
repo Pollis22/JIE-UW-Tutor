@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
-import uwLogo from '@/assets/uw-madison-logo.png';
+import suLogo from '@/assets/state-university-logo.png';
 
 export default function TermsPage() {
   const [, setLocation] = useLocation();
@@ -12,8 +12,8 @@ export default function TermsPage() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setLocation("/auth")}>
-              <img src={uwLogo} alt="UW AI Tutor" className="h-10 w-auto" />
-              <span className="text-xl font-bold text-foreground">UW AI Tutor Tutor</span>
+              <img src={suLogo} alt="State University AI Tutor" className="h-10 w-auto" />
+              <span className="text-xl font-bold text-foreground">State University AI Tutor Tutor</span>
             </div>
             <div className="flex items-center space-x-4">
               <Button variant="ghost" onClick={() => setLocation("/pricing")} data-testid="button-nav-pricing">
@@ -32,16 +32,16 @@ export default function TermsPage() {
         <div className="prose prose-slate dark:prose-invert max-w-none">
           <h1 className="text-4xl font-bold mb-2">Terms and Conditions</h1>
           <p className="text-muted-foreground mb-8">Effective Date: October 3, 2025</p>
-          <p className="text-xl font-semibold mb-8">UW AI Tutor AI - AI-Powered Educational Tutoring Services</p>
+          <p className="text-xl font-semibold mb-8">State University AI Tutor AI - AI-Powered Educational Tutoring Services</p>
 
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4">1. Acceptance of Terms</h2>
-            <p>By creating an account, subscribing to, or using UW AI Tutor AI ("Service," "we," "us," or "our"), you agree to be bound by these Terms and Conditions. If you do not agree, you may not use our Service.</p>
+            <p>By creating an account, subscribing to, or using State University AI Tutor AI ("Service," "we," "us," or "our"), you agree to be bound by these Terms and Conditions. If you do not agree, you may not use our Service.</p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4">2. Description of Service</h2>
-            <p>UW AI Tutor AI provides AI-powered voice tutoring in Math, English, Science, and Spanish for students from Kindergarten through College/Adult levels. Our Service includes:</p>
+            <p>State University AI Tutor AI provides AI-powered voice tutoring in Math, English, Science, and Spanish for students from Kindergarten through College/Adult levels. Our Service includes:</p>
             <ul className="list-disc pl-6 space-y-2">
               <li>Real-time voice conversations with AI tutors</li>
               <li>Progress tracking and learning analytics</li>
@@ -100,7 +100,7 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4">6. Cancellation and Refunds</h2>
             <h3 className="text-xl font-semibold mb-2">6.1 Cancellation by User</h3>
-            <p>You may cancel your subscription at any time through your account settings or by contacting customer support at info@jiemastery.ai. Cancellation takes effect at the end of your current billing period. You will retain access to your remaining minutes until that date.</p>
+            <p>You may cancel your subscription at any time through your account settings or by contacting customer support at info@stateuniversity-tutor.ai. Cancellation takes effect at the end of your current billing period. You will retain access to your remaining minutes until that date.</p>
             
             <h3 className="text-xl font-semibold mb-2 mt-4">6.2 No Refunds for Partial Months</h3>
             <p>We do not provide refunds for partial subscription periods. If you cancel mid-cycle, you will not be charged for subsequent periods, but no refund will be issued for the current period.</p>
@@ -138,7 +138,7 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4">8. Intellectual Property</h2>
             <h3 className="text-xl font-semibold mb-2">8.1 Our Content</h3>
-            <p>All content provided by UW AI Tutor AI, including AI tutor responses, interface design, and software, is our intellectual property and protected by copyright and other laws.</p>
+            <p>All content provided by State University AI Tutor AI, including AI tutor responses, interface design, and software, is our intellectual property and protected by copyright and other laws.</p>
             
             <h3 className="text-xl font-semibold mb-2 mt-4">8.2 Limited License</h3>
             <p>We grant you a limited, non-exclusive, non-transferable license to use the Service for personal, educational purposes only.</p>
@@ -156,7 +156,7 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4">10. Limitation of Liability</h2>
             <h3 className="text-xl font-semibold mb-2">10.1 Damages</h3>
-            <p>To the maximum extent permitted by law, UW AI Tutor AI shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including loss of profits, data, or educational opportunities.</p>
+            <p>To the maximum extent permitted by law, State University AI Tutor AI shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including loss of profits, data, or educational opportunities.</p>
             
             <h3 className="text-xl font-semibold mb-2 mt-4">10.2 Maximum Liability</h3>
             <p>Our total liability to you for any claim arising from use of the Service shall not exceed the amount you paid us in the 12 months preceding the claim.</p>
@@ -215,7 +215,7 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4">16. Miscellaneous</h2>
             <h3 className="text-xl font-semibold mb-2">16.1 Entire Agreement</h3>
-            <p>These Terms constitute the entire agreement between you and UW AI Tutor AI regarding the Service.</p>
+            <p>These Terms constitute the entire agreement between you and State University AI Tutor AI regarding the Service.</p>
             
             <h3 className="text-xl font-semibold mb-2 mt-4">16.2 Severability</h3>
             <p>If any provision is found unenforceable, the remaining provisions remain in effect.</p>
@@ -225,7 +225,7 @@ export default function TermsPage() {
             
             <h3 className="text-xl font-semibold mb-2 mt-4">16.4 Contact Information</h3>
             <p>For questions about these Terms, contact us at:<br />
-            Email: info@jiemastery.ai</p>
+            Email: info@stateuniversity-tutor.ai</p>
           </section>
 
           <section className="mb-8">
@@ -373,7 +373,7 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4">11. Contact Us</h2>
             <p>For privacy questions or to exercise your rights:<br />
-            Email: info@jiemastery.ai</p>
+            Email: info@stateuniversity-tutor.ai</p>
             <p className="mt-4 text-muted-foreground">Last Updated: October 3, 2025</p>
           </section>
         </div>
@@ -383,7 +383,7 @@ export default function TermsPage() {
       <footer className="bg-card border-t border-border py-8">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <p className="text-muted-foreground">&copy; 2025 UW AI Tutor Tutor. All rights reserved.</p>
+            <p className="text-muted-foreground">&copy; 2025 State University AI Tutor Tutor. All rights reserved.</p>
             <div className="flex space-x-6">
               <button
                 onClick={() => setLocation("/terms")}
