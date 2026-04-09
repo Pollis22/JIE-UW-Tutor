@@ -4,12 +4,11 @@ import { IncomingMessage } from 'http';
 import { Socket } from 'net';
 import { startDeepgramStream, DeepgramConnection } from "../services/deepgram-service";
 import { generateTutorResponse, generateTutorResponseStreaming, StreamingCallbacks } from "../services/ai-service";
-import { generateSpeech, prewarmTTS } from "../services/tts-service";
+import { generateSpeech } from "../services/tts-service";
 import { db } from "../db";
 import { realtimeSessions, contentViolations, userSuspensions, documentChunks } from "@shared/schema";
 import { eq, and, or, gte } from "drizzle-orm";
 import { getTutorPersonality } from "../config/tutor-personalities";
-import { getSpecializationPromptBlock, getPracticeModePromptBlock } from '../config/subject-specializations';
 import { moderateContent, shouldWarnUser, getModerationResponse } from "../services/content-moderation";
 import { storage } from "../storage";
 import { validateWsSession, rejectWsUpgrade } from '../middleware/ws-session-validator';
@@ -101,13 +100,13 @@ import {
 
 // ============================================
 // FEATURE FLAG: STT PROVIDER SELECTION
-// Set STT_PROVIDER=deepgram to use Deepgram Nova-3
+// Set STT_PROVIDER=deepgram to use Deepgram Nova-2
 // Set STT_PROVIDER=assemblyai (or leave unset) to use AssemblyAI Universal-Streaming (DEFAULT)
 // ============================================
 const USE_ASSEMBLYAI = process.env.STT_PROVIDER !== 'deepgram';
 console.log('[STT] Provider config:', process.env.STT_PROVIDER);
 console.log('[STT] USE_ASSEMBLYAI flag:', USE_ASSEMBLYAI);
-console.log(`[STT] Provider: ${USE_ASSEMBLYAI ? 'AssemblyAI Universal-Streaming' : 'Deepgram Nova-3'}`);
+console.log(`[STT] Provider: ${USE_ASSEMBLYAI ? 'AssemblyAI Universal-Streaming' : 'Deepgram Nova-2'}`);
 
 // ============================================
 // ASSEMBLYAI UNIVERSAL-STREAMING (RFC APPROVED)
@@ -312,22 +311,9 @@ function isShortDeclarative(text: string): boolean {
   return words.length < 8 && !isQuickAnswer(text);
 }
 
-// LANGUAGE PRACTICE: Helper to detect language-learning sessions
-// In these sessions, non-lexical sounds ("ah", "oh", "er") and single letters
-// are valid practice utterances and should NOT be filtered out.
-function isLanguagePracticeSession(subject?: string): boolean {
-  if (!subject) return false;
-  const languageSubjects = [
-    'Spanish', 'French', 'German', 'Italian', 'Portuguese', 'Russian',
-    'Chinese', 'Japanese', 'Korean', 'Arabic', 'Hindi', 'English as a Second Language',
-    'ESL', 'Language Arts', 'Foreign Language', 'World Languages'
-  ];
-  return languageSubjects.some(lang => subject.toLowerCase().includes(lang.toLowerCase()));
-}
-
 // P0: Centralized transcript drop decision — replaces ALL raw char-length gates
 // Allows legitimate short lexical answers like "no", "ok", "I", "2", "5", "a", "y"
-function shouldDropTranscript(text: string, state: { isSessionEnded: boolean; sessionFinalizing: boolean; subject?: string }): { drop: boolean; reason: string } {
+function shouldDropTranscript(text: string, state: { isSessionEnded: boolean; sessionFinalizing: boolean }): { drop: boolean; reason: string } {
   if (!text || !text.trim()) {
     return { drop: true, reason: 'empty' };
   }
@@ -335,11 +321,6 @@ function shouldDropTranscript(text: string, state: { isSessionEnded: boolean; se
     return { drop: true, reason: 'session_ended' };
   }
   const trimmed = text.trim();
-  
-  // LANGUAGE PRACTICE: In language-learning sessions, sounds like "ah", "oh", "er"
-  // are valid pronunciation practice and should not be filtered as non-lexical.
-  const isLanguageSession = isLanguagePracticeSession(state.subject);
-  
   const NON_LEXICAL_DROP = [
     /^(um+|uh+|hmm+|hm+|ah+|oh+|er+|erm+)$/i,
     /^\[.*\]$/,
@@ -347,11 +328,6 @@ function shouldDropTranscript(text: string, state: { isSessionEnded: boolean; se
   ];
   for (const pattern of NON_LEXICAL_DROP) {
     if (pattern.test(trimmed)) {
-      // Bypass non-lexical filter for language practice sessions
-      if (isLanguageSession && /^(ah+|oh+|er+|erm+)$/i.test(trimmed)) {
-        console.log(`[LanguagePractice] ✅ Allowing non-lexical "${trimmed}" in language session (subject: ${state.subject})`);
-        return { drop: false, reason: 'valid_language_practice' };
-      }
       return { drop: true, reason: 'non_lexical' };
     }
   }
@@ -496,127 +472,6 @@ async function getAssemblyAIStreamingToken(): Promise<string> {
   return data.token;
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// STT ARCHITECTURE FIX: Ring buffer, epoch fencing, ForceEndpoint, replay
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const PCM_RING_CAPACITY_FRAMES = 47; // ~3s at ~64ms/frame (2048-byte PCM16 @ 16kHz mono)
-const STT_REPLAY_FRAME_INTERVAL_MS = 20;
-const STT_REPLAY_FRAME_COUNT = 16; // ~1s replay window (was 12/~800ms)
-// Speech watchdog removed — fresh STT per listening window eliminates stale connections.
-// Only the 30s fallback deadman remains as a safety net.
-const STT_FALLBACK_DEADMAN_MS = 30000;
-
-class PcmRingBuffer {
-  private readonly frames: Buffer[] = [];
-  private readonly capacityFrames: number;
-
-  constructor(capacityFrames: number = PCM_RING_CAPACITY_FRAMES) {
-    this.capacityFrames = capacityFrames;
-  }
-
-  push(frame: Buffer): void {
-    this.frames.push(Buffer.from(frame));
-    if (this.frames.length > this.capacityFrames) {
-      this.frames.splice(0, this.frames.length - this.capacityFrames);
-    }
-  }
-
-  tail(frameCount: number): Buffer[] {
-    if (frameCount <= 0) return [];
-    return this.frames.slice(-frameCount).map((f) => Buffer.from(f));
-  }
-
-  clear(): void {
-    this.frames.length = 0;
-  }
-
-  get size(): number {
-    return this.frames.length;
-  }
-}
-
-function sttSleep(ms: number): Promise<void> {
-  return new Promise<void>((resolve) => setTimeout(resolve, ms));
-}
-
-function sendAssemblyAIControl(
-  sessionState: SessionState,
-  controlType: 'ForceEndpoint' | 'Terminate',
-  expectedEpoch: number = sessionState.sttEpoch,
-): boolean {
-  if (expectedEpoch !== sessionState.sttEpoch) return false;
-  const ws = sessionState.assemblyAIWs;
-  if (!ws || ws.readyState !== WebSocket.OPEN) return false;
-  try {
-    ws.send(JSON.stringify({ type: controlType }));
-    console.log(`[AssemblyAI] Sent ${controlType} session=${sessionState.sessionId?.substring(0, 8)} epoch=${expectedEpoch}`);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function sendAssemblyAIForceEndpoint(sessionState: SessionState, expectedEpoch?: number): boolean {
-  return sendAssemblyAIControl(sessionState, 'ForceEndpoint', expectedEpoch);
-}
-
-function sendAssemblyAITerminate(sessionState: SessionState, expectedEpoch?: number): boolean {
-  return sendAssemblyAIControl(sessionState, 'Terminate', expectedEpoch);
-}
-
-/**
- * Cleanly close the current STT connection when entering TUTOR_SPEAKING.
- * The connection will be re-opened fresh when entering LISTENING.
- * This eliminates the stale-connection problem entirely.
- */
-function teardownSttConnection(sessionState: SessionState, reason: string): void {
-  const epoch = sessionState.sttEpoch;
-  console.log(`[STT] teardown reason=${reason} epoch=${epoch} session=${sessionState.sessionId?.substring(0, 8)}`);
-
-  // Flush and terminate gracefully
-  sendAssemblyAIForceEndpoint(sessionState, epoch);
-  sendAssemblyAITerminate(sessionState, epoch);
-
-  // Close the WebSocket
-  const ws = sessionState.assemblyAIWs;
-  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
-    try { ws.close(4001, `teardown:${reason}`); } catch {}
-  }
-
-  // Clear state — connection will be re-created on LISTENING entry
-  sessionState.assemblyAIWs = null;
-  sessionState.sttConnected = false;
-  sessionState.sttBeginReceived = false;
-  sessionState.reconnectInFlight = false;
-  sessionState.sttLastUserSpeechSentAtMs = 0;
-}
-
-async function replayRecentAudioAfterBegin(
-  sessionState: SessionState,
-  expectedEpoch: number,
-): Promise<void> {
-  if (expectedEpoch !== sessionState.sttEpoch) return;
-  if (!sessionState.sttBeginReceived) return;
-  const ws = sessionState.assemblyAIWs;
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
-
-  const replayFrames = sessionState.sttAudioRingBuffer.tail(STT_REPLAY_FRAME_COUNT);
-  if (replayFrames.length === 0) return;
-
-  console.log(`[STT] replaying ${replayFrames.length} frames after Begin epoch=${expectedEpoch}`);
-  for (const frame of replayFrames) {
-    if (expectedEpoch !== sessionState.sttEpoch) return;
-    const currentWs = sessionState.assemblyAIWs;
-    if (!currentWs || currentWs.readyState !== WebSocket.OPEN) return;
-    try {
-      currentWs.send(frame);
-      await sttSleep(STT_REPLAY_FRAME_INTERVAL_MS);
-    } catch {
-      return;
-    }
-  }
-}
-
 function createAssemblyAIConnection(
   language: string,
   onTranscript: (text: string, endOfTurn: boolean, confidence: number) => void,
@@ -698,9 +553,10 @@ function createAssemblyAIConnection(
   const isNonEnglish = language && NON_ENGLISH_LANGUAGES.some(
     lang => language.toLowerCase().startsWith(lang) || language.toLowerCase() === lang
   );
-  // speech_model omitted — let AssemblyAI use default streaming model.
-  // u3-rt-pro stalled mid-turn, 'universal' returned 1011.
-  console.log(`[AssemblyAI v3] 🌍 Language detection: input="${language}" isNonEnglish=${isNonEnglish} model=default (no override)`);
+  const speechModel = isNonEnglish
+    ? 'universal-streaming-multilingual'
+    : 'universal-streaming-english';
+  console.log(`[AssemblyAI v3] 🌍 Language detection: input="${language}" isNonEnglish=${isNonEnglish} model=${speechModel}`);
   
   // Get token and connect asynchronously
   // A) Use routed base URL for lowest latency
@@ -748,6 +604,7 @@ function createAssemblyAIConnection(
     const urlParams = new URLSearchParams({
       sample_rate: '16000',
       encoding: 'pcm_s16le',
+      speech_model: speechModel,
       format_turns: 'true',
       ...endpointingParams,
     });
@@ -769,7 +626,7 @@ function createAssemblyAIConnection(
     // A) Use routed base URL
     const wsUrl = `${baseUrl}/v3/ws?${urlParams.toString()}`;
     console.log('[AssemblyAI v3] 🌐 Connecting to:', wsUrl);
-    console.log('[AssemblyAI v3] Speech model: default (no override)');
+    console.log('[AssemblyAI v3] Speech model:', speechModel);
     console.log('[AssemblyAI v3] Turn commit mode:', ASSEMBLYAI_TURN_COMMIT_MODE);
     console.log('[AssemblyAI CONNECT URL]', wsUrl);
     
@@ -944,7 +801,6 @@ function createAssemblyAIConnection(
               state.eotDeferredConfidence = confidence;
               // Store current transcript in state so deferred timer has latest
               state.lastAccumulatedTranscript = confirmedTranscript;
-              state.lastAccumulatedTranscriptSetAt = Date.now();
               state.lastAccumulatedConfidence = confidence;
               state.eotDeferTimerId = setTimeout(() => {
                 state.eotDeferTimerId = undefined;
@@ -953,23 +809,8 @@ function createAssemblyAIConnection(
                 // Read LATEST transcript from state — not the stale closure capture
                 const latestTranscript = state.lastAccumulatedTranscript.trim();
                 const latestConf = state.lastAccumulatedConfidence || confidence;
-                // DEFERRED EOT CONFIDENCE FLOOR: Don't commit genuinely low-confidence turns.
-                // The deferred timer was meant to wait for more speech; if nothing better
-                // arrived, only commit if confidence is at least 0.40 OR transcript is long
-                // enough (5+ words) to be clearly real speech regardless of confidence.
-                // EXCEPTION: Single high-word-confidence words (like "jupiter" at 0.96 word conf
-                // but 0.37 turn conf) should pass — turn confidence is unreliable for short answers.
-                const deferredWordCount = latestTranscript.split(/\s+/).filter(w => w.length > 0).length;
-                const NON_LEXICAL_PATTERN = /^(um+|uh+|hmm+|hm+|er+|erm+|mhm+)$/i;
-                const isNonLexical = NON_LEXICAL_PATTERN.test(latestTranscript.trim().toLowerCase());
-                // CONFIDENCE FLOOR: Always accept real words. The 900ms deferral already
-                // filters noise — if a coherent word survives 900ms with end_of_turn:true,
-                // it's real speech. Only reject pure filler (um/uh/hmm).
-                // Previous versions dropped "Beetlejuice" (1 word, 0.23 conf), "I said beetlejuice"
-                // (3 words, 0.23 conf), "jupiter" (1 word, 0.37 conf) — all legitimate answers.
-                const meetsConfidenceFloor = !isNonLexical;
-                if (latestTranscript && !state.currentTurnCommitted && meetsConfidenceFloor) {
-                  console.log(`[AssemblyAI v3] ✅ Deferred EOT firing now with: "${latestTranscript.substring(0, 60)}" (conf=${latestConf.toFixed(2)} words=${deferredWordCount})`);
+                if (latestTranscript && !state.currentTurnCommitted) {
+                  console.log(`[AssemblyAI v3] ✅ Deferred EOT firing now with: "${latestTranscript.substring(0, 60)}"`);
                   if (turnOrder !== undefined) {
                     state.committedTurnOrders.add(turnOrder);
                   }
@@ -978,10 +819,6 @@ function createAssemblyAIConnection(
                   state.firstEotTimestamp = undefined;
                   state.currentTurnCommitted = false;
                   onTranscript(latestTranscript, true, latestConf);
-                } else if (latestTranscript && !state.currentTurnCommitted && !meetsConfidenceFloor) {
-                  console.log(`[AssemblyAI v3] 🚫 Deferred EOT DROPPED: conf=${latestConf.toFixed(2)} < 0.40 and words=${deferredWordCount} < 5 — likely noise/fragment: "${latestTranscript.substring(0, 60)}"`);
-                  // NOTE: Noise coaching tracking happens in the main WS handler (onTranscript callback),
-                  // NOT here — `state` in this scope is AssemblyAIState, not SessionState.
                 }
               }, LOW_CONF_DEFER_MS);
               return; // Don't commit yet — wait for deferral or a higher-confidence EOT
@@ -1012,10 +849,6 @@ function createAssemblyAIConnection(
             
             // first_eot: Trigger Claude on FIRST end_of_turn=true, ignore formatted version
             console.log('[AssemblyAI v3] ✅ first_eot mode - committing on first EOT:', confirmedTranscript);
-            // Store confidence so downstream min-word gate can use it
-            state.lastAccumulatedConfidence = confidence;
-            state.lastAccumulatedTranscript = confirmedTranscript;
-            state.lastAccumulatedTranscriptSetAt = Date.now();
             // Mark this turn as committed to prevent double trigger from formatted version
             if (turnOrder !== undefined) {
               state.committedTurnOrders.add(turnOrder);
@@ -1174,27 +1007,21 @@ const STT_SEND_FAILURE_WATCHDOG_THRESHOLD = 50;
 const STT_SEND_FAILURE_LOG_RATE_LIMIT_MS = 1000;
 const STT_SEND_FAILURE_LOG_MAX_PER_FRAME = 10;
 
-function sendAudioToAssemblyAI(ws: WebSocket | null, audioBuffer: Buffer, state?: AssemblyAIState, sessionState?: SessionState, isSpeechFrame: boolean = false): boolean {
-  // Always keep the ring buffer warm (PcmRingBuffer handles overflow internally).
-  // During tutor playback, only retain frames classified as speech for barge-in replay.
+function sendAudioToAssemblyAI(ws: WebSocket | null, audioBuffer: Buffer, state?: AssemblyAIState, sessionState?: SessionState): boolean {
   if (sessionState) {
-    if (sessionState.phase !== 'TUTOR_SPEAKING' || isSpeechFrame) {
-      sessionState.sttAudioRingBuffer.push(audioBuffer);
-    }
+    sessionState.sttLastAudioForwardAtMs = Date.now();
+    markProgress(sessionState);
   }
-
-  // Phase 1 guard: do NOT forward audio during tutor playback
-  if (sessionState && (sessionState.phase === 'TUTOR_SPEAKING' || sessionState.tutorAudioPlaying)) {
-    return false;
-  }
-
-  // Epoch + connection readiness checks
-  if (sessionState && (!sessionState.sttBeginReceived || sessionState.reconnectInFlight)) {
-    return false;
-  }
-
+  
   if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
-    if (sessionState) trackSendFailure(sessionState);
+    if (sessionState) {
+      sessionState.sttAudioRingBuffer.push(audioBuffer);
+      if (sessionState.sttAudioRingBuffer.length > 16) {
+        sessionState.sttAudioRingBuffer.shift();
+      }
+      // P0.4: Track send failures
+      trackSendFailure(sessionState);
+    }
     return false;
   }
   
@@ -1210,7 +1037,13 @@ function sendAudioToAssemblyAI(ws: WebSocket | null, audioBuffer: Buffer, state?
   }
   
   if (ws.readyState !== WebSocket.OPEN) {
-    if (sessionState) trackSendFailure(sessionState);
+    if (sessionState) {
+      sessionState.sttAudioRingBuffer.push(audioBuffer);
+      if (sessionState.sttAudioRingBuffer.length > 16) {
+        sessionState.sttAudioRingBuffer.shift();
+      }
+      trackSendFailure(sessionState);
+    }
     return false;
   }
   
@@ -1225,16 +1058,6 @@ function sendAudioToAssemblyAI(ws: WebSocket | null, audioBuffer: Buffer, state?
     sessionState.sttSendFailureStartedAt = 0;
   }
   
-  // Update liveness timestamp only on actual successful send (after readyState=OPEN confirmed)
-  if (sessionState) {
-    const now = Date.now();
-    sessionState.sttLastAudioForwardAtMs = now;
-    markProgress(sessionState);
-    if (isSpeechFrame) {
-      sessionState.sttLastUserSpeechSentAtMs = now;
-    }
-  }
-
   if (!didLogFirstAssemblyAIAudio) {
     console.log('[AssemblyAI] 🎵 First audio chunk bytes:', audioBuffer.length);
     didLogFirstAssemblyAIAudio = true;
@@ -1336,26 +1159,11 @@ interface GradeBandTimingConfig {
 }
 
 const GRADE_BAND_TIMING: Record<string, GradeBandTimingConfig> = {
-  // ── BARGE-IN PHILOSOPHY ──────────────────────────────────────────────────
-  // Sharp impulse noise (desk tap, toy drop, chair scrape) creates a brief
-  // high-RMS transient that dies within 50-150ms. Real speech — even a short
-  // word from a young child — sustains 250ms+. The bargeInConfirmDurationMs
-  // is the primary gate: it must exceed typical impulse duration at every band.
-  // consecutiveFramesRequired adds a second check: multiple consecutive audio
-  // frames above threshold, not just a single spike.
-  // ─────────────────────────────────────────────────────────────────────────
-  // K2: Very patient — kids are extremely fidgety. High threshold, many frames,
-  // long confirm. A child's voice is weaker and more variable so debounce stays high.
-  'K2':   { bargeInDebounceMs: 600, bargeInDecayMs: 300, bargeInCooldownMs: 850, shortBurstMinMs: 300, postAudioBufferMs: 2000, minMsAfterAudioStartForBargeIn: 800, continuationGraceMs: 1400, continuationHedgeGraceMs: 3000, bargeInPlaybackThreshold: 0.18, consecutiveFramesRequired: 5, bargeInConfirmDurationMs: 600 },
-  // G3-5: Slightly less patient but still strong impulse protection.
-  'G3-5': { bargeInDebounceMs: 500, bargeInDecayMs: 260, bargeInCooldownMs: 750, shortBurstMinMs: 260, postAudioBufferMs: 1800, minMsAfterAudioStartForBargeIn: 600, continuationGraceMs: 1200, continuationHedgeGraceMs: 2800, bargeInPlaybackThreshold: 0.16, consecutiveFramesRequired: 4, bargeInConfirmDurationMs: 500 },
-  // G6-8: Middle school — still active but more intentional when speaking.
-  'G6-8': { bargeInDebounceMs: 400, bargeInDecayMs: 200, bargeInCooldownMs: 650, shortBurstMinMs: 220, postAudioBufferMs: 1500, minMsAfterAudioStartForBargeIn: 500, continuationGraceMs: 1000, continuationHedgeGraceMs: 2500, bargeInPlaybackThreshold: 0.14, consecutiveFramesRequired: 3, bargeInConfirmDurationMs: 400 },
-  // G9-12 and ADV: Aligned to G6-8. Validated in testing — G6-8 naturally handles
-  // impulse noise via silence_decay (taps expire in ~250ms, well under the 400ms confirm)
-  // while Silero client VAD remains the fast path for genuine voice interruption.
-  'G9-12': { bargeInDebounceMs: 400, bargeInDecayMs: 200, bargeInCooldownMs: 650, shortBurstMinMs: 220, postAudioBufferMs: 1500, minMsAfterAudioStartForBargeIn: 500, continuationGraceMs: 1000, continuationHedgeGraceMs: 2500, bargeInPlaybackThreshold: 0.14, consecutiveFramesRequired: 3, bargeInConfirmDurationMs: 400 },
-  'ADV':   { bargeInDebounceMs: 400, bargeInDecayMs: 200, bargeInCooldownMs: 650, shortBurstMinMs: 220, postAudioBufferMs: 1500, minMsAfterAudioStartForBargeIn: 500, continuationGraceMs: 1000, continuationHedgeGraceMs: 2500, bargeInPlaybackThreshold: 0.14, consecutiveFramesRequired: 3, bargeInConfirmDurationMs: 400 },
+  'K2': { bargeInDebounceMs: 600, bargeInDecayMs: 300, bargeInCooldownMs: 850, shortBurstMinMs: 300, postAudioBufferMs: 2000, minMsAfterAudioStartForBargeIn: 800, continuationGraceMs: 1400, continuationHedgeGraceMs: 3000, bargeInPlaybackThreshold: 0.15, consecutiveFramesRequired: 4, bargeInConfirmDurationMs: 600 },
+  'G3-5': { bargeInDebounceMs: 500, bargeInDecayMs: 260, bargeInCooldownMs: 750, shortBurstMinMs: 260, postAudioBufferMs: 1800, minMsAfterAudioStartForBargeIn: 600, continuationGraceMs: 1200, continuationHedgeGraceMs: 2800, bargeInPlaybackThreshold: 0.14, consecutiveFramesRequired: 3, bargeInConfirmDurationMs: 500 },
+  'G6-8': { bargeInDebounceMs: 400, bargeInDecayMs: 200, bargeInCooldownMs: 650, shortBurstMinMs: 220, postAudioBufferMs: 1500, minMsAfterAudioStartForBargeIn: 500, continuationGraceMs: 1000, continuationHedgeGraceMs: 2500, bargeInPlaybackThreshold: 0.12, consecutiveFramesRequired: 3, bargeInConfirmDurationMs: 400 },
+  'G9-12': { bargeInDebounceMs: 150, bargeInDecayMs: 220, bargeInCooldownMs: 300, shortBurstMinMs: 140, postAudioBufferMs: 1400, minMsAfterAudioStartForBargeIn: 150, continuationGraceMs: 900, continuationHedgeGraceMs: 2200, bargeInPlaybackThreshold: 0.10, consecutiveFramesRequired: 2, bargeInConfirmDurationMs: 120 },
+  'ADV': { bargeInDebounceMs: 100, bargeInDecayMs: 250, bargeInCooldownMs: 200, shortBurstMinMs: 100, postAudioBufferMs: 1000, minMsAfterAudioStartForBargeIn: 100, continuationGraceMs: 800, continuationHedgeGraceMs: 2000, bargeInPlaybackThreshold: 0.08, consecutiveFramesRequired: 1, bargeInConfirmDurationMs: 80 },
 };
 const DEFAULT_GRADE_BAND_TIMING: GradeBandTimingConfig = GRADE_BAND_TIMING['G6-8'];
 
@@ -1421,7 +1229,6 @@ interface SessionState {
   studentName: string;
   ageGroup: string;
   subject: string; // SESSION: Tutoring subject (Math, English, Science, etc.)
-  practiceMode: boolean; // SESSION: Whether practice drill mode is active
   language: string; // LANGUAGE: Tutoring language code (e.g., 'en', 'es', 'fr')
   detectedLanguage: string; // LANGUAGE: Auto-detected spoken language from Deepgram
   speechSpeed: number; // User's speech speed preference from settings
@@ -1476,7 +1283,6 @@ interface SessionState {
     severity: 'info' | 'warning' | 'alert' | 'critical';
   }>; // SAFETY: Track safety incidents in session
   terminatedForSafety: boolean; // SAFETY: Whether session was ended due to safety violations
-  useFallbackLLM: boolean; // FALLBACK: Session switched to OpenAI after Claude failures
   parentEmail?: string; // SAFETY: Parent email for alerts
   hasGreeted: boolean; // GREETING: Prevent duplicate greetings on reconnect
   hasAcknowledgedDocs: boolean; // DOCS: One-time doc acknowledgment flag per session
@@ -1531,7 +1337,6 @@ interface SessionState {
   // FIX 1A: STT activity tracking to prevent premature turn firing
   lastSttActivityAt: number;
   lastAccumulatedTranscript: string;
-  lastAccumulatedTranscriptSetAt: number; // When transcript last changed — for stability check
   lastAccumulatedConfidence: number; // Track latest EOT confidence for state-based commit
   audioFrameCount: number; // LOG REDUCTION: Count audio frames for sampled logging
   bargeInCandidate: {
@@ -1556,7 +1361,7 @@ interface SessionState {
   sttReconnectTimerId: NodeJS.Timeout | null;
   sttDeadmanTimerId: NodeJS.Timeout | null;
   sttConnectionId: number;
-  sttAudioRingBuffer: PcmRingBuffer;
+  sttAudioRingBuffer: Buffer[];
   sttDisconnectedSinceMs: number | null;
   // P0.3: Session-sticky keyterms disable after 3005 config error
   sttKeytermsDisabledForSession: boolean;
@@ -1566,29 +1371,12 @@ interface SessionState {
   sttSendFailureLoggedAt: number;
   sttSendFailureTotalDropped: number;
   sttSendFailureStartedAt: number;
-  // STT AUDIO GATING: Prevent forwarding echo/noise during tutor playback
-  sttBeginReceived: boolean;
-  sttLastUserSpeechSentAtMs: number;
-  // STT EPOCH FENCING: Prevent stale callback race conditions
-  sttEpoch: number;
-  reconnectInFlight: boolean;
-  // SPEECH WATCHDOG: Detect VAD speech with no STT transcripts
-  speechWatchdogTimerId: NodeJS.Timeout | null;
-  speechWatchdogSegments: number; // VAD speech segments since last transcript
   // NO-PROGRESS WATCHDOG: Detect stalled sessions and auto-recover
   lastProgressAt: number;
   watchdogTimerId: NodeJS.Timeout | null;
   watchdogRecoveries: number;
   lastWatchdogRecoveryAt: number;
   watchdogDisabled: boolean;
-  // STT LIFECYCLE: Reconnect function stored on state for cross-scope access
-  sttReconnectFn: (() => void) | null;
-  // TRIAL MINUTE ENFORCEMENT: Periodic check to end session when trial minutes exhausted
-  trialMinuteCheckTimerId: NodeJS.Timeout | null;
-  trialMinuteWarned: boolean; // Whether 2-minute warning has been sent
-  // NOISE COACHING: Track dropped turns to detect persistently noisy sessions
-  droppedTurnTimestamps: number[]; // Rolling timestamps of noise-dropped turns
-  lastNoiseCoachingAtMs: number;  // Last time tutor gave noise coaching message
 }
 
 // Helper to send typed WebSocket events
@@ -1596,90 +1384,6 @@ function sendWsEvent(ws: WebSocket, type: string, payload: Record<string, unknow
   if (ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type, ...payload }));
     console.log(`[WS Event] ${type}`, payload.turnId || '');
-  }
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// NOISE COACHING: Detect persistently noisy sessions and have
-// the tutor proactively suggest a quieter environment or text mode.
-// Triggers when N turns are dropped in a rolling window.
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const NOISE_COACHING_WINDOW_MS = 60_000;   // 60-second rolling window
-const NOISE_COACHING_DROP_THRESHOLD = 4;   // 4 dropped turns triggers coaching
-const NOISE_COACHING_COOLDOWN_MS = 180_000; // 3 minutes between coaching messages
-
-async function trackDroppedTurnForNoiseCoaching(
-  ws: WebSocket,
-  state: SessionState
-): Promise<void> {
-  if (state.isSessionEnded || state.sessionFinalizing) return;
-
-  // Defensive guard: ensure droppedTurnTimestamps exists (prevents crash if called with wrong state type)
-  if (!Array.isArray(state.droppedTurnTimestamps)) {
-    console.warn(`[NoiseCoaching] ⚠️ droppedTurnTimestamps missing or invalid — skipping (state keys: ${Object.keys(state).slice(0, 5).join(', ')}...)`);
-    return;
-  }
-
-  const now = Date.now();
-
-  // Add this drop to the rolling window
-  state.droppedTurnTimestamps.push(now);
-
-  // Prune drops outside the window
-  state.droppedTurnTimestamps = state.droppedTurnTimestamps.filter(
-    ts => now - ts < NOISE_COACHING_WINDOW_MS
-  );
-
-  const recentDrops = state.droppedTurnTimestamps.length;
-  const timeSinceLastCoaching = now - state.lastNoiseCoachingAtMs;
-
-  console.log(`[NoiseCoaching] Drops in ${NOISE_COACHING_WINDOW_MS / 1000}s window: ${recentDrops}/${NOISE_COACHING_DROP_THRESHOLD}, cooldown: ${Math.max(0, NOISE_COACHING_COOLDOWN_MS - timeSinceLastCoaching)}ms remaining`);
-
-  if (recentDrops < NOISE_COACHING_DROP_THRESHOLD) return;
-  if (timeSinceLastCoaching < NOISE_COACHING_COOLDOWN_MS) return;
-
-  // Check that the session isn't already processing a turn
-  if (state.isProcessing || state.phase === 'TUTOR_SPEAKING' || state.phase === 'AWAITING_RESPONSE') {
-    console.log(`[NoiseCoaching] Skipping — session busy (phase=${state.phase}, isProcessing=${state.isProcessing})`);
-    return;
-  }
-
-  state.lastNoiseCoachingAtMs = now;
-  state.droppedTurnTimestamps = []; // Reset after coaching fires
-  console.log(`[NoiseCoaching] 📢 Threshold reached — injecting noise coaching message`);
-
-  const coachingText = `I'm picking up some background noise that's making it harder for me to hear you clearly. If you can, moving to a quieter spot would help a lot. You can also switch to text mode by clicking the keyboard icon — that way background noise won't affect us at all.`;
-
-  // Add to transcript
-  state.transcript.push({
-    speaker: 'tutor',
-    text: coachingText,
-    timestamp: new Date().toISOString(),
-    messageId: crypto.randomUUID(),
-  });
-
-  // Send transcript message to client
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({
-      type: 'transcript',
-      speaker: 'tutor',
-      text: coachingText,
-    }));
-  }
-
-  // Generate and send TTS audio
-  try {
-    const audioBuffer = await generateSpeech(coachingText, state.ageGroup, state.speechSpeed);
-    if (audioBuffer && audioBuffer.length > 0 && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'audio',
-        data: audioBuffer.toString('base64'),
-        mimeType: 'audio/pcm;rate=16000',
-      }));
-      console.log(`[NoiseCoaching] ✅ Coaching audio sent`);
-    }
-  } catch (err) {
-    console.error('[NoiseCoaching] ❌ Failed to generate coaching audio:', err);
   }
 }
 
@@ -1709,7 +1413,6 @@ function creditSttActivity(state: SessionState, currentText: string, prevText: s
     const now = Date.now();
     state.lastSttActivityAt = now;
     state.lastAccumulatedTranscript = content;
-    state.lastAccumulatedTranscriptSetAt = now;
     state.lastAudioReceivedAt = now;
     state.lastActivityTime = now;
 
@@ -1792,10 +1495,6 @@ function hardInterruptTutor(
   state.lastBargeInAt = now;
   state.wasInterrupted = true;
   state.lastInterruptionTime = now;
-  // Reset STT deadman baseline so it gets a full window from barge-in
-  state.sttLastMessageAtMs = now;
-  // Flush any in-flight partial from AssemblyAI before switching to LISTENING
-  sendAssemblyAIForceEndpoint(state);
   setPhase(state, 'LISTENING', `barge_in_${reason}`, ws);
 
   let llmAborted = false;
@@ -1850,10 +1549,6 @@ function hardInterruptTutor(
     client_side_stop: !llmAborted && !ttsAborted,
     timestamp: now,
   }));
-
-  // NOTE: proactive STT reconnect after barge-in REMOVED — it was destroying the connection
-  // faster than reconnect could rebuild, causing permanent "Cannot forward audio" failures.
-  // The original stale-STT issue was caused by u3-rt-pro model, which has been removed.
 
   return true;
 }
@@ -2129,16 +1824,6 @@ async function finalizeSession(
   if (state.sttReconnectTimerId) {
     clearTimeout(state.sttReconnectTimerId);
     state.sttReconnectTimerId = null;
-  }
-  if (state.speechWatchdogTimerId) {
-    clearTimeout(state.speechWatchdogTimerId);
-    state.speechWatchdogTimerId = null;
-  }
-  // TRIAL MINUTE ENFORCEMENT: Clear trial minute check timer
-  if (state.trialMinuteCheckTimerId) {
-    clearInterval(state.trialMinuteCheckTimerId);
-    state.trialMinuteCheckTimerId = null;
-    console.log(`[Finalize] 🧹 Cleared trial minute check timer (reason: ${reason})`);
   }
   if (state.assemblyAIWs) {
     try { state.assemblyAIWs.close(); } catch (_e) {}
@@ -2638,46 +2323,11 @@ export function setupCustomVoiceWebSocket(server: Server) {
     // FIX (Dec 10, 2025): Server-side transcript accumulation
     // Don't process each transcript separately - accumulate and wait for gap
     // This prevents cutting off students mid-sentence when they pause to think
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // THREE-SIGNAL TURN DETECTION (Apr 7, 2026)
-    // Based on ChatGPT architecture analysis:
-    // 1. is_final → accumulate text (segment locked, NOT turn end)
-    // 2. speech_final → student silent for endpointing ms (primary turn signal)
-    // 3. UtteranceEnd → definitive turn end (safety net, commit immediately)
-    // Interims with text → CANCEL all timers (student still talking)
+    // 2.5 seconds catches natural thinking pauses without feeling sluggish
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     let pendingTranscript = '';
     let transcriptAccumulationTimer: NodeJS.Timeout | null = null;
-    let speechFinalCommitTimer: NodeJS.Timeout | null = null;
-    let quickAnswerTimer: NodeJS.Timeout | null = null;
-    let lastSpeechActivityAt = 0; // Tracks any non-empty transcript (interim or final)
-    
-    // Timing constants for three-signal architecture
-    const QUICK_ANSWER_WORD_LIMIT = 2;      // Single/double word answers get fast path
-    const QUICK_ANSWER_DELAY_MS = 1200;      // 1.2s after short is_final with no more speech
-    const SPEECH_FINAL_COMMIT_MS = 500;      // 500ms after speech_final (3.5s silence already happened)
-    const UTTERANCE_COMPLETE_DELAY_MS = 4000; // Legacy fallback — only used for AssemblyAI path
-    
-    // Incomplete sentence heuristic — extends patience when thought is clearly unfinished
-    const INCOMPLETE_ENDINGS = /\b(to|the|a|an|and|or|but|in|on|at|for|with|of|as|it|is|that|was|were|been|be|are|am|will|would|could|should|can|may|might|have|has|had|do|does|did|not|if|when|while|than|then|so|because|since|about|into|from|by|up|just|also|very|really|like|um|uh)$/i;
-    
-    function cancelAllCommitTimers(reason: string) {
-      if (transcriptAccumulationTimer) {
-        clearTimeout(transcriptAccumulationTimer);
-        transcriptAccumulationTimer = null;
-      }
-      if (speechFinalCommitTimer) {
-        clearTimeout(speechFinalCommitTimer);
-        speechFinalCommitTimer = null;
-      }
-      if (quickAnswerTimer) {
-        clearTimeout(quickAnswerTimer);
-        quickAnswerTimer = null;
-      }
-      if (reason) {
-        console.log(`[TurnDetect] ⏰ Cancelled all timers: ${reason}`);
-      }
-    }
+    const UTTERANCE_COMPLETE_DELAY_MS = 2500; // Wait 2.5s after last transcript before AI call
     
     // FIX (Dec 10, 2025): Track reconnection attempts to prevent infinite loops
     let reconnectAttempts = 0;
@@ -2735,7 +2385,6 @@ export function setupCustomVoiceWebSocket(server: Server) {
       safetyStrikeCount: 0, // SAFETY: Initialize strike count
       safetyFlags: [], // SAFETY: Initialize safety flags array
       terminatedForSafety: false, // SAFETY: Not terminated initially
-      useFallbackLLM: false, // FALLBACK: Start with Claude, switch to OpenAI on failure
       parentEmail: undefined, // SAFETY: Will be set from user data
       studentId: undefined, // SAFETY: Will be set from session data
       // RECONNECT GRACE WINDOW: Initialize reconnect tracking
@@ -2772,7 +2421,6 @@ export function setupCustomVoiceWebSocket(server: Server) {
       isTutorThinking: false,
       lastSttActivityAt: 0,
       lastAccumulatedTranscript: '',
-      lastAccumulatedTranscriptSetAt: 0,
       lastAccumulatedConfidence: 0,
       audioFrameCount: 0,
       bargeInCandidate: {
@@ -2796,7 +2444,7 @@ export function setupCustomVoiceWebSocket(server: Server) {
       sttReconnectTimerId: null,
       sttDeadmanTimerId: null,
       sttConnectionId: 0,
-      sttAudioRingBuffer: new PcmRingBuffer(),
+      sttAudioRingBuffer: [],
       sttDisconnectedSinceMs: null,
       sttKeytermsDisabledForSession: false,
       sttKeytermsJson: null,
@@ -2804,22 +2452,11 @@ export function setupCustomVoiceWebSocket(server: Server) {
       sttSendFailureLoggedAt: 0,
       sttSendFailureTotalDropped: 0,
       sttSendFailureStartedAt: 0,
-      speechWatchdogTimerId: null,
-      sttBeginReceived: false,
-      sttLastUserSpeechSentAtMs: 0,
-      sttEpoch: 0,
-      reconnectInFlight: false,
-      speechWatchdogSegments: 0,
       lastProgressAt: Date.now(),
       watchdogTimerId: null,
       watchdogRecoveries: 0,
       lastWatchdogRecoveryAt: 0,
       watchdogDisabled: false,
-      sttReconnectFn: null,
-      trialMinuteCheckTimerId: null,
-      trialMinuteWarned: false,
-      droppedTurnTimestamps: [],
-      lastNoiseCoachingAtMs: 0,
     };
 
     // FIX #3: Auto-persist every 10 seconds
@@ -2875,26 +2512,17 @@ export function setupCustomVoiceWebSocket(server: Server) {
 
     // ============================================
     // NO-PROGRESS WATCHDOG: Detect stalled sessions and auto-recover STT
-    // Runs every 3s, triggers after 15s (AssemblyAI) or 45s (Deepgram) of no progress
-    // Deepgram has its own health monitoring, so watchdog is less aggressive
+    // Runs every 3s, triggers after 15s of no progress, max 2 recoveries per 60s
     // ============================================
-    const WATCHDOG_THRESHOLD = USE_ASSEMBLYAI ? WATCHDOG_STALL_THRESHOLD_MS : 45_000; // 45s for Deepgram (students think!)
-    const WATCHDOG_MAX_RECOVERIES = USE_ASSEMBLYAI ? WATCHDOG_MAX_RECOVERIES_PER_WINDOW : 3;
-    
     state.watchdogTimerId = setInterval(() => {
       if (state.isSessionEnded || state.sessionFinalizing || state.watchdogDisabled || state.isPendingReconnect) {
-        return;
-      }
-      
-      // Skip watchdog during active tutor phases — the system IS making progress
-      if (state.phase === 'TUTOR_SPEAKING' || state.phase === 'AWAITING_RESPONSE' || state.phase === 'TURN_COMMITTED') {
         return;
       }
       
       const now = Date.now();
       const sinceProgress = now - state.lastProgressAt;
       
-      if (sinceProgress < WATCHDOG_THRESHOLD) {
+      if (sinceProgress < WATCHDOG_STALL_THRESHOLD_MS) {
         return;
       }
       
@@ -2902,10 +2530,10 @@ export function setupCustomVoiceWebSocket(server: Server) {
         ? state.watchdogRecoveries
         : 0;
       
-      console.log(`[WATCHDOG_STALL_DETECTED] sessionId=${state.sessionId} userId=${state.userId} studentId=${state.studentId || 'n/a'} sttProvider=${USE_ASSEMBLYAI ? 'assemblyai' : 'deepgram'} reconnectCount=${state.reconnectCount} secondsSinceProgress=${Math.round(sinceProgress / 1000)} recoveries=${recoveriesInWindow}/${WATCHDOG_MAX_RECOVERIES} phase=${state.phase}`);
+      console.log(`[WATCHDOG_STALL_DETECTED] sessionId=${state.sessionId} userId=${state.userId} studentId=${state.studentId || 'n/a'} sttProvider=assemblyai reconnectCount=${state.reconnectCount} secondsSinceProgress=${Math.round(sinceProgress / 1000)} recoveries=${recoveriesInWindow}/${WATCHDOG_MAX_RECOVERIES_PER_WINDOW}`);
       
-      if (recoveriesInWindow >= WATCHDOG_MAX_RECOVERIES) {
-        console.error(`[WATCHDOG] ❌ Max recoveries (${WATCHDOG_MAX_RECOVERIES}) exhausted within ${WATCHDOG_RECOVERY_WINDOW_MS / 1000}s - ending session`);
+      if (recoveriesInWindow >= WATCHDOG_MAX_RECOVERIES_PER_WINDOW) {
+        console.error(`[WATCHDOG] ❌ Max recoveries (${WATCHDOG_MAX_RECOVERIES_PER_WINDOW}) exhausted within ${WATCHDOG_RECOVERY_WINDOW_MS / 1000}s - ending session`);
         state.watchdogDisabled = true;
         sendWsEvent(ws, 'voice_status', { status: 'audio_reconnect_failed' });
         ws.send(JSON.stringify({
@@ -2921,18 +2549,9 @@ export function setupCustomVoiceWebSocket(server: Server) {
       
       sendWsEvent(ws, 'voice_status', { status: 'reconnecting_audio' });
       
-      // Provider-specific recovery
-      if (USE_ASSEMBLYAI) {
-        if (state.assemblyAIWs) {
-          try { state.assemblyAIWs.close(); } catch (_e) {}
-          state.assemblyAIWs = null;
-        }
-      } else {
-        // Deepgram: close and reconnect
-        if (state.deepgramConnection) {
-          try { state.deepgramConnection.close(); } catch (_e) {}
-          state.deepgramConnection = null;
-        }
+      if (state.assemblyAIWs) {
+        try { state.assemblyAIWs.close(); } catch (_e) {}
+        state.assemblyAIWs = null;
       }
       state.sttConnected = false;
       
@@ -2944,7 +2563,7 @@ export function setupCustomVoiceWebSocket(server: Server) {
       state.lastWatchdogRecoveryAt = now;
       markProgress(state);
       
-      console.log(`[WATCHDOG] 🔄 Triggering STT reconnect (recovery ${state.watchdogRecoveries}/${WATCHDOG_MAX_RECOVERIES})`);
+      console.log(`[WATCHDOG] 🔄 Triggering STT reconnect (recovery ${state.watchdogRecoveries}/${WATCHDOG_MAX_RECOVERIES_PER_WINDOW})`);
     }, WATCHDOG_CHECK_INTERVAL_MS);
 
     // INACTIVITY: Check for user inactivity every 30 seconds
@@ -3083,155 +2702,6 @@ export function setupCustomVoiceWebSocket(server: Server) {
     console.log('[Inactivity] ✅ Checker started (checks every 30 seconds)');
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // TRIAL MINUTE ENFORCEMENT: Check remaining minutes every 60s
-    // Warns at 2 minutes remaining, disconnects at 0
-    // Only runs for trial users (trialActive = true)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    if (!isTrialSession) {
-      // For authenticated users, start a periodic check if they're a trial user
-      // We check on first tick and then every 60 seconds
-      const startTrialMinuteCheck = async () => {
-        try {
-          const user = await storage.getUser(authenticatedUserId);
-          if (!user || !user.trialActive) {
-            console.log('[TrialMinuteCheck] ℹ️ User is not a trial user, skipping enforcement');
-            return;
-          }
-
-          console.log('[TrialMinuteCheck] 🎫 Trial user detected — starting minute enforcement timer');
-
-          state.trialMinuteCheckTimerId = setInterval(async () => {
-            if (state.isSessionEnded || state.sessionFinalizing) return;
-
-            try {
-              const currentUser = await storage.getUser(authenticatedUserId);
-              if (!currentUser || !currentUser.trialActive) return;
-
-              const trialLimit = currentUser.trialMinutesLimit || 30;
-              const trialUsed = currentUser.trialMinutesUsed || 0;
-              
-              // Also account for current session time not yet deducted
-              const currentSessionMinutes = Math.ceil((Date.now() - state.sessionStartTime) / 60000);
-              const effectiveUsed = trialUsed + currentSessionMinutes;
-              const effectiveRemaining = Math.max(0, trialLimit - effectiveUsed);
-
-              console.log(`[TrialMinuteCheck] ⏱️ Trial: ${effectiveUsed}/${trialLimit} min used (DB: ${trialUsed}, session: ${currentSessionMinutes}), ${effectiveRemaining} remaining`);
-
-              // WARNING at 2 minutes remaining
-              if (effectiveRemaining <= 2 && effectiveRemaining > 0 && !state.trialMinuteWarned) {
-                state.trialMinuteWarned = true;
-                console.log('[TrialMinuteCheck] ⚠️ Trial running low — sending 2-minute warning');
-
-                const warningText = `Just a heads up — you have about ${effectiveRemaining} minute${effectiveRemaining === 1 ? '' : 's'} left in your free trial. After that, you can subscribe to keep learning!`;
-
-                state.transcript.push({
-                  speaker: "tutor",
-                  text: warningText,
-                  timestamp: new Date().toISOString(),
-                  messageId: crypto.randomUUID(),
-                });
-
-                if (ws.readyState === WebSocket.OPEN) {
-                  ws.send(JSON.stringify({
-                    type: 'transcript',
-                    speaker: 'tutor',
-                    text: warningText,
-                  }));
-
-                  // Generate speech for warning
-                  if (state.tutorAudioEnabled) {
-                    try {
-                      const audioBuffer = await generateSpeech(warningText, state.ageGroup, state.speechSpeed);
-                      if (audioBuffer && audioBuffer.length > 0) {
-                        ws.send(JSON.stringify({
-                          type: 'audio',
-                          data: audioBuffer.toString('base64'),
-                          mimeType: 'audio/pcm;rate=16000',
-                        }));
-                      }
-                    } catch (audioErr) {
-                      console.error('[TrialMinuteCheck] ❌ Warning audio error:', audioErr);
-                    }
-                  }
-                }
-              }
-
-              // END SESSION at 0 minutes remaining
-              if (effectiveRemaining <= 0) {
-                console.log('[TrialMinuteCheck] 🛑 Trial minutes exhausted — ending session');
-
-                // Clear this interval immediately
-                if (state.trialMinuteCheckTimerId) {
-                  clearInterval(state.trialMinuteCheckTimerId);
-                  state.trialMinuteCheckTimerId = null;
-                }
-
-                const endText = "Your free trial time is up! I hope you enjoyed learning with me. Subscribe to a plan to continue our sessions — I'd love to keep helping you learn!";
-
-                state.transcript.push({
-                  speaker: "tutor",
-                  text: endText,
-                  timestamp: new Date().toISOString(),
-                  messageId: crypto.randomUUID(),
-                });
-
-                if (ws.readyState === WebSocket.OPEN) {
-                  ws.send(JSON.stringify({
-                    type: 'transcript',
-                    speaker: 'tutor',
-                    text: endText,
-                  }));
-
-                  // Generate speech for end message
-                  if (state.tutorAudioEnabled) {
-                    try {
-                      const audioBuffer = await generateSpeech(endText, state.ageGroup, state.speechSpeed);
-                      if (audioBuffer && audioBuffer.length > 0) {
-                        ws.send(JSON.stringify({
-                          type: 'audio',
-                          data: audioBuffer.toString('base64'),
-                          mimeType: 'audio/pcm;rate=16000',
-                        }));
-                      }
-                    } catch (audioErr) {
-                      console.error('[TrialMinuteCheck] ❌ End audio error:', audioErr);
-                    }
-                  }
-
-                  // Wait for audio to play, then end session
-                  setTimeout(async () => {
-                    try {
-                      ws.send(JSON.stringify({
-                        type: 'session_ended',
-                        reason: 'minutes_exhausted',
-                        message: 'Your free trial has ended. Subscribe to continue learning!',
-                        isTrial: true
-                      }));
-
-                      await finalizeSession(state, 'minutes_exhausted');
-                      ws.close(1000, 'Trial minutes exhausted');
-                      console.log('[TrialMinuteCheck] ✅ Trial session ended successfully');
-                    } catch (endErr) {
-                      console.error('[TrialMinuteCheck] ❌ Error ending trial session:', endErr);
-                      ws.close(1011, 'Error ending trial session');
-                    }
-                  }, 5000);
-                }
-              }
-            } catch (checkErr) {
-              console.error('[TrialMinuteCheck] ❌ Error checking trial minutes:', checkErr);
-            }
-          }, 60000); // Check every 60 seconds
-        } catch (err) {
-          console.error('[TrialMinuteCheck] ❌ Error initializing trial check:', err);
-        }
-      };
-
-      // Fire async — don't block WS setup
-      startTrialMinuteCheck();
-    }
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // SAFETY TIMEOUT (Dec 10, 2025): Reset stuck isProcessing flag
     // Prevents tutor from going silent forever if something fails
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -3319,12 +2789,6 @@ export function setupCustomVoiceWebSocket(server: Server) {
       }
 
       setPhase(state, 'TURN_COMMITTED', `commit_${source}`, ws);
-      // SPEECH WATCHDOG: Turn committed — cancel watchdog, speech was successfully transcribed
-      if (state.speechWatchdogTimerId) {
-        clearTimeout(state.speechWatchdogTimerId);
-        state.speechWatchdogTimerId = null;
-      }
-      state.speechWatchdogSegments = 0;
 
       if (state.isProcessing) {
         // QUEUE COALESCING: Merge with last queued item if processing
@@ -3487,9 +2951,8 @@ export function setupCustomVoiceWebSocket(server: Server) {
           const words = transcript.trim().split(/\s+/).filter(w => w.length > 0);
           const wordCount = words.length;
           
-          // Reject too short and low-signal transcripts (< 3 words)
-          // Raised from 2→3: keyboard/mechanical noise typically produces short garbled fragments
-          if (wordCount < 3) {
+          // Reject too short and low-signal transcripts (< 2 words)
+          if (wordCount < 2) {
             console.log(JSON.stringify({
               event: 'ambient_rejected',
               session_id: state.sessionId || 'unknown',
@@ -3551,11 +3014,7 @@ export function setupCustomVoiceWebSocket(server: Server) {
         // Feature flag: COHERENCE_GATE_ENABLED (default: false)
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         const coherenceConfig = getCoherenceGateConfig();
-        const completedStudentTurns = state.conversationHistory.filter(m => m.role === "user").length;
-        if (coherenceConfig.enabled && completedStudentTurns < 3) {
-          console.log(`[CoherenceGate] ⏭️ Skipped — insufficient conversation context (turn ${completedStudentTurns} < 3)`);
-        }
-        if (coherenceConfig.enabled && completedStudentTurns >= 3) {
+        if (coherenceConfig.enabled) {
           const conversationContext = extractConversationContext(
             state.conversationHistory,
             state.subject,
@@ -4081,7 +3540,6 @@ export function setupCustomVoiceWebSocket(server: Server) {
         state.llmInFlight = true;
         cancelBargeInCandidate(state, 'awaiting_response', ws);
         setPhase(state, 'AWAITING_RESPONSE', 'llm_request_start', ws);
-        markProgress(state); // Keep watchdog alive during LLM call
         console.log(`[LLM] request_start session=${state.sessionId || 'unknown'} turnId=${turnId} messageCount=${state.conversationHistory.length} phase=${state.phase}`);
         
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -4123,33 +3581,15 @@ export function setupCustomVoiceWebSocket(server: Server) {
         // Use streaming with sentence-by-sentence TTS for minimal latency
         await new Promise<void>((resolve, reject) => {
           const callbacks: StreamingCallbacks = {
-            onSentence: async (sentenceRaw: string) => {
+            onSentence: async (sentence: string) => {
               sentenceCount++;
               const sentenceStart = Date.now();
-
-              // ── VISUAL TAG PARSER ────────────────────────────────────────
-              // Strip [VISUAL: tag_name] from sentence before TTS/transcript.
-              // If found, send show_visual event to client.
-              const visualMatch = sentenceRaw.match(/\[VISUAL:\s*([a-z0-9_]+)\]/i);
-              let sentence = sentenceRaw;
-              if (visualMatch) {
-                const visualTag = visualMatch[1].toLowerCase();
-                sentence = sentenceRaw.replace(visualMatch[0], '').trim();
-                console.log(`[Visual] 📊 Triggering visual: ${visualTag} session=${state.sessionId?.substring(0,8)}`);
-                ws.send(JSON.stringify({ type: 'show_visual', visualTag }));
-              }
-              // ── END VISUAL TAG PARSER ────────────────────────────────────
-
+              
               if (sentenceCount === 1) {
                 firstSentenceMs = sentenceStart - claudeStart;
                 state.isTutorThinking = false;
                 state.llmInFlight = false;
                 setPhase(state, 'TUTOR_SPEAKING', 'first_sentence', ws);
-                markProgress(state); // Keep watchdog alive during TTS playback
-                state.sttLastUserSpeechSentAtMs = 0;
-                // FRESH STT PER LISTENING WINDOW: Close STT during tutor speech.
-                // Eliminates stale connection problem — no need to keep pipe warm.
-                teardownSttConnection(state, 'tutor_speaking_start');
                 console.log(`[LLM] first_token_ms=${firstSentenceMs} session=${state.sessionId || 'unknown'}`);
                 
                 // TURN FALLBACK: Cancel fallback timer since we're producing a response
@@ -4193,10 +3633,9 @@ export function setupCustomVoiceWebSocket(server: Server) {
                   const ttsMs = Date.now() - ttsStart;
                   totalTtsMs += ttsMs;
                   totalAudioBytes += audioBuffer.length;
-
+                  
                   console.log(`[Custom Voice] 🔊 Sentence ${sentenceCount} TTS: ${ttsMs}ms, ${audioBuffer.length} bytes`);
-                  markProgress(state); // Keep watchdog alive during multi-sentence TTS
-
+                  
                   if (state.ttsAbortController?.signal.aborted) {
                     console.log(JSON.stringify({ event: 'audio_dropped_stale_gen', session_id: state.sessionId, sentence: sentenceCount }));
                     return;
@@ -4233,8 +3672,7 @@ export function setupCustomVoiceWebSocket(server: Server) {
               markProgress(state);
               console.log(`[Pipeline] 4. Claude response received (${claudeMs}ms), generating audio...`);
               
-              // ── STRIP VISUAL TAGS from full text before saving to history/transcript ──
-              const normalizedContent = (fullText ?? "").trim().replace(/\[VISUAL:\s*[a-z0-9_]+\]/gi, '').replace(/\s{2,}/g, ' ').trim();
+              const normalizedContent = (fullText ?? "").trim();
               const wasAborted = llmAc.signal.aborted || ttsAc.signal.aborted;
               if (normalizedContent.length === 0 || wasAborted || sentenceCount === 0) {
                 console.log(`[History] saved_assistant=false reason=${wasAborted ? 'aborted' : 'empty'} genId=${activeGenId} tokens=${sentenceCount} phase=${state.phase} len=${normalizedContent.length}`);
@@ -4315,15 +3753,8 @@ export function setupCustomVoiceWebSocket(server: Server) {
             "voice",
             responseLanguage,
             state.ageGroup,
-            llmAc.signal,
-            state.useFallbackLLM
-          ).then(() => {
-            // Check if fallback was triggered during this call
-            if ((callbacks as any)._fallbackUsed && !state.useFallbackLLM) {
-              state.useFallbackLLM = true;
-              console.log(`[LLM Fallback] 🔄 Switching to OpenAI for rest of session ${state.sessionId}`);
-            }
-          }).catch(reject);
+            llmAc.signal
+          ).catch(reject);
         });
 
         console.log("[Custom Voice] 🔊 Streaming response sent, waiting for user...");
@@ -4359,17 +3790,7 @@ export function setupCustomVoiceWebSocket(server: Server) {
           state.tutorAudioPlaying = false;
           if (state.phase !== 'FINALIZING') {
             setPhase(state, 'LISTENING', 'audio_playback_complete', ws);
-            markProgress(state); // Keep watchdog alive after playback
-            // FRESH STT PER LISTENING WINDOW: Open new connection for the next student turn.
-            if (USE_ASSEMBLYAI && !state.reconnectInFlight && state.sttReconnectFn) {
-              state.sttReconnectAttempts = 0;
-              state.sttReconnectFn();
-            }
           }
-          // Reset STT deadman baseline — during tutor speech no transcripts arrive,
-          // so sttLastMessageAtMs gets stale (20+ seconds). Without this reset the
-          // deadman fires instantly when the tutor stops speaking.
-          state.sttLastMessageAtMs = Date.now();
           
           // ECHO GUARD: Mark playback end and start echo tail guard
           markPlaybackEnd(state.echoGuardState, echoConfig);
@@ -4397,54 +3818,21 @@ export function setupCustomVoiceWebSocket(server: Server) {
         // ECHO GUARD: Also mark playback end on error
         markPlaybackEnd(state.echoGuardState, getEchoGuardConfig());
         
-        const errorMsg = error instanceof Error ? error.message : "Unknown error";
-        const isRetryable = errorMsg.startsWith('RETRYABLE:');
-        const displayMessage = isRetryable ? errorMsg.replace('RETRYABLE:', '') : errorMsg;
-        
         // THINKING INDICATOR: Emit tutor_error to clear thinking state
         if (state.currentTurnId) {
           sendWsEvent(ws, 'tutor_error', {
             sessionId: state.sessionId,
             turnId: state.currentTurnId,
             timestamp: Date.now(),
-            message: displayMessage,
+            message: error instanceof Error ? error.message : "Unknown error",
           });
           state.currentTurnId = null;
         }
         
         ws.send(JSON.stringify({ 
           type: "error", 
-          error: displayMessage,
-          retryable: isRetryable
+          error: error instanceof Error ? error.message : "Unknown error"
         }));
-        
-        // AUTO-RETRY: Re-queue the failed transcript for retryable errors (overloaded, rate limit)
-        if (isRetryable && transcript && !state.isSessionEnded) {
-          const retryCount = (state as any)._retryCount || 0;
-          const MAX_CLIENT_RETRIES = 2;
-          if (retryCount < MAX_CLIENT_RETRIES) {
-            (state as any)._retryCount = retryCount + 1;
-            const retryDelay = 2000 * Math.pow(2, retryCount); // 2s, 4s
-            console.log(`[Retry] 🔄 Auto-requeuing transcript (attempt ${retryCount + 1}/${MAX_CLIENT_RETRIES}) in ${retryDelay}ms: "${transcript.substring(0, 50)}..."`);
-            ws.send(JSON.stringify({ 
-              type: "status", 
-              status: "retrying",
-              message: `Retrying your message (attempt ${retryCount + 2})...`,
-              retryIn: retryDelay
-            }));
-            setTimeout(() => {
-              if (!state.isSessionEnded && ws.readyState === 1) {
-                state.transcriptQueue.unshift(transcript);
-                processTranscriptQueue();
-              }
-            }, retryDelay);
-          } else {
-            console.error(`[Retry] ❌ Max retries (${MAX_CLIENT_RETRIES}) exhausted for transcript`);
-            (state as any)._retryCount = 0;
-          }
-        } else if (!isRetryable) {
-          (state as any)._retryCount = 0; // Reset on non-retryable errors
-        }
         
         // FIX #1: Process next item in queue even after error
         if (state.transcriptQueue.length > 0 && !state.isSessionEnded) {
@@ -4487,10 +3875,10 @@ export function setupCustomVoiceWebSocket(server: Server) {
       const { getDeepgramLanguageCode } = await import("../services/deepgram-service");
       const deepgramLanguage = getDeepgramLanguageCode(state.language);
       
-      // Shared transcript handler - THREE-SIGNAL architecture (reconnect path)
-      const handleTranscript = async (transcript: string, isFinal: boolean, speechFinal: boolean, detectedLanguage?: string) => {
+      // Shared transcript handler - same logic as original connection with NOISE ROBUSTNESS
+      const handleTranscript = async (transcript: string, isFinal: boolean, detectedLanguage?: string) => {
         const spokenLang = detectedLanguage || state.language;
-        console.log(`[Deepgram] ${speechFinal ? '🔚 SPEECH_FINAL' : isFinal ? '✅ FINAL' : '⏳ interim'}: "${transcript}" (reconnected, lang=${spokenLang})`);
+        console.log(`[Deepgram] ${isFinal ? '✅ FINAL' : '⏳ interim'}: "${transcript}" (reconnected, lang=${spokenLang})`);
         
         if (!state.userId) return;
         
@@ -4537,93 +3925,61 @@ export function setupCustomVoiceWebSocket(server: Server) {
           }
         }
         
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // THREE-SIGNAL TURN DETECTION (reconnect path)
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-        // Any non-empty transcript = student active, cancel timers
-        if (transcript && transcript.trim().length > 0) {
-          lastSpeechActivityAt = now;
-          cancelAllCommitTimers('speech activity (reconnected)');
-          markProgress(state); // Keep watchdog alive
-          state.lastActivityTime = now;
-          state.inactivityWarningSent = false;
-        }
-
-        // Interims: timers cancelled above, don't process for AI
-        if (!isFinal && !speechFinal) return;
-
-        // speech_final with empty text = student stopped
-        if (speechFinal && (!transcript || transcript.trim().length === 0)) {
-          if (pendingTranscript.trim().length > 0) {
-            const isIncomplete = INCOMPLETE_ENDINGS.test(pendingTranscript.trim());
-            if (!isIncomplete) {
-              speechFinalCommitTimer = setTimeout(() => {
-                if (pendingTranscript && !state.isSessionEnded) {
-                  const completeUtterance = pendingTranscript;
-                  console.log(`[TurnDetect] ✅ speech_final commit (reconnected): "${completeUtterance}"`);
-                  pendingTranscript = '';
-                  state.lastEndOfTurnTime = Date.now();
-                  commitUserTurn(completeUtterance, 'eot');
-                }
-                speechFinalCommitTimer = null;
-              }, SPEECH_FINAL_COMMIT_MS);
-            } else {
-              console.log(`[TurnDetect] ⚠️ Incomplete sentence (reconnected), waiting for UtteranceEnd`);
-            }
-          }
+        if (!isFinal) return;
+        // P0: Use shouldDropTranscript instead of raw char-length gate (reconnected STT path)
+        const reconnDropCheck = shouldDropTranscript(transcript, state);
+        if (reconnDropCheck.drop) {
+          console.log(`[GhostTurn] dropped reason=${reconnDropCheck.reason} text="${(transcript || '').substring(0, 30)}" len=${(transcript || '').trim().length} path=reconnected`);
           return;
         }
-
-        // is_final with text: validate, accumulate, quick-answer path
-        if (isFinal && transcript && transcript.trim().length > 0) {
-          const reconnDropCheck = shouldDropTranscript(transcript, state);
-          if (reconnDropCheck.drop) {
-            console.log(`[GhostTurn] dropped reason=${reconnDropCheck.reason} text="${(transcript || '').substring(0, 30)}" path=reconnected`);
-            return;
-          }
-
-          if (state.lastTranscript === transcript) return;
-          state.lastTranscript = transcript;
-          if (spokenLang) state.detectedLanguage = spokenLang;
-          
-          pendingTranscript = (pendingTranscript + ' ' + transcript).trim();
-          console.log(`[TurnDetect] 📝 Accumulated (reconnected): "${pendingTranscript}"`);
-
-          if (responseTimer) { clearTimeout(responseTimer); responseTimer = null; }
-
-          const wordCount = pendingTranscript.trim().split(/\s+/).length;
-          if (wordCount <= QUICK_ANSWER_WORD_LIMIT) {
-            quickAnswerTimer = setTimeout(() => {
-              if (pendingTranscript && !state.isSessionEnded) {
-                console.log(`[TurnDetect] ✅ Quick answer commit (reconnected): "${pendingTranscript}"`);
-                pendingTranscript = '';
-                state.lastEndOfTurnTime = Date.now();
-                commitUserTurn(pendingTranscript, 'eot');
-              }
-              quickAnswerTimer = null;
-            }, QUICK_ANSWER_DELAY_MS);
-          }
-
-          if (speechFinal) {
-            cancelAllCommitTimers('speech_final on is_final (reconnected)');
-            const isIncomplete = INCOMPLETE_ENDINGS.test(pendingTranscript.trim());
-            if (!isIncomplete) {
-              speechFinalCommitTimer = setTimeout(() => {
-                if (pendingTranscript && !state.isSessionEnded) {
-                  console.log(`[TurnDetect] ✅ speech_final commit (reconnected): "${pendingTranscript}"`);
-                  const completeUtterance = pendingTranscript;
-                  pendingTranscript = '';
-                  state.lastEndOfTurnTime = Date.now();
-                  commitUserTurn(completeUtterance, 'eot');
-                }
-                speechFinalCommitTimer = null;
-              }, SPEECH_FINAL_COMMIT_MS);
-            } else {
-              console.log(`[TurnDetect] ⚠️ Incomplete sentence (reconnected), extending patience`);
-            }
-          }
+        
+        state.lastActivityTime = Date.now();
+        state.inactivityWarningSent = false;
+        
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // FIX (Dec 10, 2025): DON'T drop transcripts when isProcessing!
+        // Previous bug: transcripts were silently dropped causing "tutor not responding"
+        // Now: ALWAYS accumulate transcripts, let the queue handle serialization
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        console.log(`[Pipeline] 1. Transcript received (reconnected): "${transcript}", isProcessing=${state.isProcessing}`);
+        
+        // Skip duplicates only (not based on isProcessing!)
+        if (state.lastTranscript === transcript) {
+          console.log("[Pipeline] ⏭️ Duplicate transcript, skipping");
+          return;
         }
+        
+        state.lastTranscript = transcript;
+        if (spokenLang) state.detectedLanguage = spokenLang;
+        
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // FIX (Dec 10, 2025): Server-side transcript ACCUMULATION (reconnected handler)
+        // ALWAYS accumulate - don't gate on isProcessing!
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        
+        pendingTranscript = (pendingTranscript + ' ' + transcript).trim();
+        console.log(`[Custom Voice] 📝 Accumulated transcript (reconnected): "${pendingTranscript}"`);
+        
+        if (transcriptAccumulationTimer) {
+          clearTimeout(transcriptAccumulationTimer);
+          transcriptAccumulationTimer = null;
+        }
+        
+        if (responseTimer) {
+          clearTimeout(responseTimer);
+          responseTimer = null;
+        }
+        
+        transcriptAccumulationTimer = setTimeout(() => {
+          if (pendingTranscript && !state.isSessionEnded) {
+            const completeUtterance = pendingTranscript;
+            console.log(`[Custom Voice] ✅ Utterance complete (reconnected): "${completeUtterance}"`);
+            pendingTranscript = '';
+            state.lastEndOfTurnTime = Date.now();
+            commitUserTurn(completeUtterance, 'eot');
+          }
+          transcriptAccumulationTimer = null;
+        }, UTTERANCE_COMPLETE_DELAY_MS);
       };
       
       return await startDeepgramStream(
@@ -4637,21 +3993,9 @@ export function setupCustomVoiceWebSocket(server: Server) {
         },
         async () => {
           console.log("[Custom Voice] 🔌 Reconnected Deepgram connection closed");
+          // onClose triggers reconnect logic via the main handler
         },
-        deepgramLanguage,
-        state.ageGroup,
-        // UtteranceEnd (reconnect path) — definitive turn end
-        () => {
-          console.log('[TurnDetect] 🔚 UtteranceEnd (reconnected)');
-          cancelAllCommitTimers('UtteranceEnd (reconnected)');
-          if (pendingTranscript.trim().length > 0 && !state.isSessionEnded) {
-            const completeUtterance = pendingTranscript;
-            console.log(`[TurnDetect] ✅ UtteranceEnd commit (reconnected): "${completeUtterance}"`);
-            pendingTranscript = '';
-            state.lastEndOfTurnTime = Date.now();
-            commitUserTurn(completeUtterance, 'eot');
-          }
-        }
+        deepgramLanguage
       );
     }
 
@@ -4672,12 +4016,8 @@ export function setupCustomVoiceWebSocket(server: Server) {
               state.studentName = message.studentName || "Friend";
               state.ageGroup = message.ageGroup || "College/Adult";
               state.subject = message.subject || "General";
-              state.practiceMode = message.practiceMode || false;
               state.language = message.language || "en";
               state.speechSpeed = 1.0;
-              
-              // PRE-WARM: Fire-and-forget TTS connection warm-up so greeting first sentence is fast
-              prewarmTTS(state.ageGroup).catch(() => {});
               
               console.log(`[Custom Voice] 🎫 Trial session initialized:`, {
                 sessionId: state.sessionId,
@@ -4823,12 +4163,8 @@ export function setupCustomVoiceWebSocket(server: Server) {
               state.studentName = message.studentName || "Student";
               state.ageGroup = message.ageGroup || "College/Adult";
               state.subject = message.subject || "General"; // SESSION: Store tutoring subject
-              state.practiceMode = message.practiceMode || false; // SESSION: Practice drill mode
               state.language = message.language || "en"; // LANGUAGE: Store selected language
               state.uploadedDocCount = typeof message.uploadedDocCount === 'number' ? message.uploadedDocCount : 0;
-              
-              // PRE-WARM: Fire-and-forget TTS connection warm-up so greeting first sentence is fast
-              prewarmTTS(state.ageGroup).catch(() => {});
               
               // STUDENT ISOLATION: Set studentId from init message
               // Also fall back to the session record's studentId for safety
@@ -5009,270 +4345,6 @@ FLOW:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
 
-            // VISUAL AID SYSTEM: Claude can optionally trigger on-screen visuals
-            const VISUAL_SYSTEM_INSTRUCTION = `
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 VISUAL AID SYSTEM (USE WHEN HELPFUL):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-You can display an on-screen visual to the student by including a tag in your response.
-The tag will be REMOVED before your response is spoken — the student only sees the diagram.
-
-AVAILABLE VISUALS (use exact tag name):
-
-MATH — EARLY (K-5):
-  [VISUAL: math_counting_1_20]              — Counting numbers 1–20 with word names
-  [VISUAL: math_simple_addition_table]      — Addition table 0–5
-  [VISUAL: math_simple_subtraction_table]   — Subtraction table 0–5
-  [VISUAL: math_multiplication_table]       — Times table 1–6
-  [VISUAL: math_fractions]                  — Fraction bars (halves, quarters, eighths)
-  [VISUAL: math_place_value]                — Place value chart
-  [VISUAL: math_number_line]                — Number line (negative to positive)
-  [VISUAL: math_shapes_basic]               — Basic 2D shapes
-
-MATH — INTERMEDIATE / ADVANCED:
-  [VISUAL: math_area_model]                 — Distributive property / expanding brackets
-  [VISUAL: math_order_of_operations]        — PEMDAS order of operations
-  [VISUAL: math_percent_diagram]            — Part / Percent / Whole relationships
-  [VISUAL: math_algebra_balance]            — Balance scale for solving equations
-  [VISUAL: math_coordinate_plane]           — X/Y coordinate plane with quadrants
-  [VISUAL: math_geometry_shapes]            — Triangle, rectangle, circle, trapezoid formulas
-  [VISUAL: math_advanced_formulas]          — Quadratic formula, trig ratios, exponent rules
-  [VISUAL: math_trig_unit_circle]           — Unit circle Q1 with sin/cos values
-  [VISUAL: math_statistics_chart]           — Mean, median, mode, range, standard deviation
-
-MATH — FORMULA REFERENCE IMAGES:
-  [VISUAL: math_order_of_operations_visual] — PEMDAS step-by-step with worked example
-  [VISUAL: math_quadratic_formula]          — Quadratic formula with discriminant and worked example
-  [VISUAL: math_area_formulas]              — Area formulas for rectangle, triangle, circle, trapezoid, parallelogram, square
-  [VISUAL: math_volume_formulas]            — Volume formulas for cube, prism, cylinder, sphere, cone
-  [VISUAL: math_trig_sohcahtoa]             — SOH-CAH-TOA right triangle reference
-  [VISUAL: math_exponent_rules]             — Product, quotient, power, zero, negative exponent rules
-  [VISUAL: math_log_rules]                  — Product, quotient, power rules for logarithms
-  [VISUAL: math_distance_midpoint]          — Distance and midpoint formulas with coordinate graph
-  [VISUAL: math_fraction_operations]        — Adding, subtracting, multiplying, dividing fractions
-  [VISUAL: math_mean_median_mode]           — Mean, median, mode, and range with examples
-  [VISUAL: math_inequality_symbols]         — Less than, greater than, ≤, ≥, ≠ with number lines
-  [VISUAL: math_coordinate_plane_quadrants] — Four quadrants (I, II, III, IV) with sign rules
-  [VISUAL: math_slope_intercept_form]       — y = mx + b with labeled graph showing slope and intercept
-  [VISUAL: math_systems_of_equations]       — Solving systems graphically (intersection point)
-  [VISUAL: math_polynomial_operations]      — FOIL method for multiplying polynomials
-
-MATH — ADDITIONAL VISUALS:
-  [VISUAL: math_3d_shapes]                  — 3D geometric shapes (cube, sphere, cylinder, cone, pyramid)
-  [VISUAL: math_angles_types]               — Types of angles (acute, right, obtuse, straight, reflex)
-  [VISUAL: math_circle_parts]               — Parts of a circle (radius, diameter, chord, tangent, arc, sector)
-  [VISUAL: math_derivative_tangent]         — Derivatives and tangent lines visual
-  [VISUAL: math_exponential_vs_linear]      — Comparing linear vs exponential growth curves
-  [VISUAL: math_fractions_pizza]            — Learning fractions with pizza slices
-  [VISUAL: math_integral_area]              — Integrals and area under the curve
-  [VISUAL: math_matrix_operations]          — Matrix addition, multiplication, determinant
-  [VISUAL: math_money_coins]                — US coins (penny, nickel, dime, quarter)
-  [VISUAL: math_normal_distribution]        — Bell curve / empirical rule (68-95-99.7%)
-  [VISUAL: math_pythagorean_theorem]        — Pythagorean theorem with visual proof
-  [VISUAL: math_quadratic_graph]            — Parabola properties (vertex, roots, axis of symmetry)
-  [VISUAL: math_slope_types]                — Four types of slopes (positive, negative, zero, undefined)
-  [VISUAL: math_telling_time]               — Clock face for learning to tell time
-  [VISUAL: math_vector_addition]            — Vector addition diagram
-
-MATH — CALCULUS & COLLEGE:
-  [VISUAL: math_calculus_derivatives]       — Derivative rules (power, product, chain, trig, ln)
-  [VISUAL: math_calculus_integrals]         — Common integral formulas + C
-  [VISUAL: math_limits]                     — Limit definition, L'Hôpital's, key limit rules
-  [VISUAL: math_linear_algebra]             — Matrix multiply, determinant, eigenvalues, dot product
-  [VISUAL: math_probability_stats]          — Probability rules, mean, std dev, z-score, combinations
-  [VISUAL: math_logarithms]                 — Log rules: product, quotient, power, change of base
-
-WRITING / ELA:
-  [VISUAL: writing_paragraph_structure]     — Topic sentence, details, conclusion
-  [VISUAL: writing_essay_outline]           — Intro, body paragraphs, conclusion
-  [VISUAL: writing_story_elements]          — Characters, setting, conflict, plot, resolution
-  [VISUAL: writing_figurative_language]     — Simile, metaphor, personification, hyperbole, alliteration
-
-GRAMMAR / READING:
-  [VISUAL: grammar_sentence_parts]          — Subject, predicate, object
-  [VISUAL: grammar_parts_of_speech]         — All 8 parts of speech with examples
-  [VISUAL: reading_main_idea]               — Main idea and supporting details map
-  [VISUAL: reading_compare_contrast]        — Venn diagram for comparing two things
-  [VISUAL: reading_cause_effect]            — Cause → Effect chains
-  [VISUAL: reading_text_structure]          — Description, sequence, compare/contrast, problem/solution
-
-ENGLISH — COLLEGE LEVEL:
-  [VISUAL: english_thesis_development]      — Weak vs strong thesis, thesis formula
-  [VISUAL: english_argument_structure]      — Claim, evidence, warrant, counterargument, rebuttal
-  [VISUAL: english_research_paper_structure]— Abstract, intro, lit review, methods, results, discussion
-  [VISUAL: english_citation_formats]        — APA 7th and MLA 9th citation formats
-  [VISUAL: english_college_grammar]         — Comma splice, run-ons, dangling modifiers, active/passive
-  [VISUAL: english_rhetorical_devices]      — Ethos, pathos, logos, anaphora, chiasmus, antithesis
-  [VISUAL: english_literary_analysis]       — Theme, motif, symbol, tone, mood, POV, foil, irony
-  [VISUAL: english_critical_reading]        — Annotating, fact vs opinion, evaluating evidence, fallacies
-  [VISUAL: english_parts_of_speech_advanced]— Gerunds, infinitives, participles, appositives, conjunctions
-  [VISUAL: english_logical_fallacies]       — Ad hominem, straw man, false dichotomy, slippery slope
-
-LANGUAGE — ALPHABETS & SYSTEMS:
-  [VISUAL: lang_alphabet_english]           — English alphabet (26 letters, vowels highlighted)
-  [VISUAL: lang_alphabet_spanish]           — Spanish alphabet (27 letters, Ñ and accents)
-  [VISUAL: lang_alphabet_french]            — French alphabet + accented characters
-  [VISUAL: lang_alphabet_japanese]          — Japanese Hiragana (25 characters with romaji)
-  [VISUAL: lang_alphabet_chinese]           — Chinese common characters (15 hanzi with pinyin)
-  [VISUAL: lang_german_alphabet]            — German alphabet + Umlauts (Ä, Ö, Ü, ß)
-  [VISUAL: lang_korean_hangul]              — Korean Hangul consonants and vowels
-  [VISUAL: lang_arabic_alphabet]            — Arabic alphabet (28 letters, right-to-left)
-  [VISUAL: lang_russian_cyrillic]           — Russian Cyrillic alphabet (33 letters)
-  [VISUAL: lang_japanese_katakana]          — Japanese Katakana (foreign loan words)
-  [VISUAL: lang_spanish_verb_conjugation]   — Spanish present tense: hablar, ser, estar, tener
-  [VISUAL: lang_french_verb_conjugation]    — French present tense: parler, être, avoir, aller
-  [VISUAL: lang_chinese_tones]              — Mandarin 4 tones with marks, descriptions, examples
-
-SCIENCE:
-  [VISUAL: science_cell_diagram]            — Plant vs Animal cell parts comparison
-  [VISUAL: science_water_cycle]             — Evaporation, condensation, precipitation
-  [VISUAL: science_food_chain]              — Producer → consumer → apex predator
-  [VISUAL: science_scientific_method]       — 5-step scientific method
-  [VISUAL: science_states_of_matter]        — Solid, liquid, gas properties
-  [VISUAL: science_human_body_systems]      — 6 major body systems
-  [VISUAL: science_solar_system]            — All 8 planets with key facts
-  [VISUAL: periodic_table_simplified]       — Common chemical elements
-  [VISUAL: science_atomic_structure]        — Proton, neutron, electron; atomic number vs mass number
-  [VISUAL: science_chemical_bonding]        — Ionic, covalent, polar covalent, metallic, hydrogen bonds
-  [VISUAL: science_dna_genetics]            — DNA base pairing, mitosis vs meiosis
-  [VISUAL: science_punnett_square]          — Punnett square example (Tt × Tt), phenotype ratios
-  [VISUAL: science_brain_regions]           — Brain regions (color-coded lobes and cerebellum)
-  [VISUAL: science_ear_anatomy]             — Ear cross-section (outer, middle, inner ear)
-  [VISUAL: science_eye_anatomy]             — Eye cross-section (cornea, lens, retina, optic nerve)
-  [VISUAL: science_heart_diagram]           — Heart 4 chambers with blood flow arrows
-  [VISUAL: science_human_muscles]           — Muscular system anterior and posterior views
-  [VISUAL: science_human_skeleton]          — Full labeled human skeleton
-  [VISUAL: science_animal_cell]             — Animal cell diagram
-  [VISUAL: science_plant_cell]              — Plant cell diagram
-  [VISUAL: science_cloud_types]             — Cloud types at different altitudes
-  [VISUAL: science_layers_of_earth]         — Earth layers (crust, mantle, outer/inner core)
-  [VISUAL: science_moon_phases]             — All 8 moon phases
-  [VISUAL: science_photosynthesis]          — Photosynthesis process diagram
-  [VISUAL: science_rock_cycle]              — Rock cycle (igneous, sedimentary, metamorphic)
-  [VISUAL: science_tides_diagram]           — Lunar gravity and ocean tides
-  [VISUAL: science_volcano_cross_section]   — Volcano cross-section
-  [VISUAL: science_water_cycle_illustrated] — Water cycle landscape illustration
-  [VISUAL: science_weather_map_symbols]     — Weather map symbols
-  [VISUAL: science_electromagnetic_wave]    — Electromagnetic wave oscillation
-
-PHYSICS:
-  [VISUAL: physics_newtons_laws]            — Newton's 3 laws with formulas
-  [VISUAL: physics_electromagnetic_spectrum]— Radio → Gamma ray spectrum with uses
-  [VISUAL: physics_formulas]                — Motion, force, energy, waves, electricity, gravity
-  [VISUAL: physics_thermodynamics]          — Laws of thermodynamics + temperature conversions
-  [VISUAL: physics_forces_diagram]          — Free body diagram (normal, gravity, friction, applied)
-  [VISUAL: physics_wave_types]              — Transverse vs longitudinal waves
-  [VISUAL: physics_doppler_effect]          — Doppler effect with ambulance
-  [VISUAL: physics_projectile_motion]       — Projectile motion parabola
-  [VISUAL: physics_pendulum_energy]         — Energy transformation in a pendulum
-  [VISUAL: physics_optics_lenses]           — Convex and concave lens ray diagrams
-  [VISUAL: physics_circuit_symbols]         — Electrical circuit symbol reference
-  [VISUAL: physics_electricity_flow]        — Simple circuit (battery, bulb, switch)
-
-HISTORY / SOCIAL STUDIES:
-  [VISUAL: history_timeline]                — Chronological event timeline
-  [VISUAL: history_cause_effect_chain]      — Historical cause → impact chain
-  [VISUAL: history_three_branches]          — Legislative, Executive, Judicial branches
-  [VISUAL: history_map_compass]             — Cardinal directions and map skills
-  [VISUAL: history_ancient_civilizations_map] — Ancient civilizations map
-  [VISUAL: history_us_expansion_map]        — US expansion map
-  [VISUAL: history_cold_war_map]            — Cold War map
-  [VISUAL: history_world_wars_map]          — World Wars alliances map
-  [VISUAL: history_civil_rights_timeline]   — Civil rights timeline
-  [VISUAL: history_amendments_visual]       — Constitutional amendments visual
-  [VISUAL: history_immigration_waves]       — Immigration waves
-  [VISUAL: history_industrial_revolution]   — Industrial Revolution
-  [VISUAL: history_colonialism_map]         — Colonialism map
-  [VISUAL: history_greek_roman_comparison]  — Greek and Roman comparison
-
-GEOGRAPHY — MAPS:
-  [VISUAL: geography_continents]            — All 7 continents with key facts
-  [VISUAL: geography_usa_map]               — US regions and all 50 states by region
-  [VISUAL: geography_world_map]             — World regions and key countries per continent
-  [VISUAL: geography_europe_map]            — European countries and capitals
-  [VISUAL: geography_lat_long]              — Latitude/longitude, equator, prime meridian
-  [VISUAL: geography_biomes_world]          — World biomes map
-  [VISUAL: geography_rivers_major]          — Major world rivers
-  [VISUAL: geography_tectonic_plates]       — Tectonic plates map
-  [VISUAL: geography_ocean_currents]        — Ocean currents
-  [VISUAL: geography_time_zones]            — World time zones
-  [VISUAL: geography_us_regions]            — US regions
-  [VISUAL: geography_landforms]             — Types of landforms
-  [VISUAL: geography_population_density]    — Population density map
-  [VISUAL: geography_country_capitals]      — Country capitals reference
-
-CHEMISTRY:
-  [VISUAL: chemistry_ph_scale]              — pH scale (acids and bases)
-  [VISUAL: chemistry_types_of_bonds]        — Types of chemical bonds
-  [VISUAL: chemistry_molecular_shapes]      — VSEPR molecular geometry
-  [VISUAL: chemistry_organic_functional_groups] — Organic functional groups
-  [VISUAL: chemistry_periodic_trends]       — Periodic table trends
-
-ECONOMICS:
-  [VISUAL: economics_supply_demand]         — Supply & demand with equilibrium
-  [VISUAL: economics_gdp]                   — GDP formula (C+I+G+NX), nominal vs real, business cycle
-  [VISUAL: economics_market_structures]     — Perfect competition → monopoly comparison
-  [VISUAL: economics_fiscal_monetary]       — Fiscal vs monetary policy tools
-  [VISUAL: economics_comparative_advantage] — Comparative advantage table and trade gains
-  [VISUAL: economics_circular_flow]         — Circular flow of economy
-  [VISUAL: economics_banking_system]        — Banking system diagram
-  [VISUAL: economics_stock_market_basics]   — Stock market basics
-  [VISUAL: economics_trade_balance]         — Trade balance
-  [VISUAL: economics_business_cycle]        — Business cycle phases
-  [VISUAL: economics_inflation_deflation]   — Inflation and deflation
-  [VISUAL: economics_taxes_types]           — Types of taxes (progressive, regressive, proportional)
-
-POLITICAL SCIENCE / GOVERNMENT:
-  [VISUAL: polisci_constitution]            — 7 Articles of the U.S. Constitution
-  [VISUAL: polisci_bill_of_rights]          — Amendments 1–10 with descriptions
-  [VISUAL: polisci_world_governments]       — Democracy, monarchy, theocracy, authoritarian, etc.
-
-SPACE / ASTRONOMY:
-  [VISUAL: space_sun_diagram]               — Sun cross-section (core to corona)
-  [VISUAL: space_mars_surface]              — Mars surface features
-  [VISUAL: space_moon_surface]              — Moon surface with labeled features
-  [VISUAL: space_earth_detailed]            — Earth with atmosphere layers
-  [VISUAL: space_planet_sizes]              — All 8 planets to scale
-  [VISUAL: space_solar_system_distances]    — Planets with AU distances
-  [VISUAL: space_asteroid_belt]             — Solar system orbital view with asteroid belt
-  [VISUAL: space_jupiter_saturn]            — Jupiter and Saturn comparison
-  [VISUAL: space_galaxy_types]              — Galaxy types (spiral, elliptical, irregular)
-
-LANGUAGE — ADDITIONAL:
-  [VISUAL: lang_spanish_common_phrases]     — Common Spanish phrases
-  [VISUAL: lang_japanese_common_phrases]    — Common Japanese phrases
-  [VISUAL: lang_japanese_hiragana_chart]    — Hiragana chart
-  [VISUAL: lang_chinese_radicals]           — Chinese radicals
-  [VISUAL: lang_german_cases]               — German grammatical cases
-  [VISUAL: lang_ipa_chart]                  — IPA phonetic chart
-
-READING / WRITING — ADDITIONAL:
-  [VISUAL: reading_story_mountain]          — Story mountain (narrative arc)
-  [VISUAL: reading_genres_bookshelf]        — Reading genres bookshelf
-  [VISUAL: writing_persuasive_structure]    — Persuasive writing structure
-  [VISUAL: writing_types_comparison]        — Types of writing comparison
-
-STUDY SKILLS:
-  [VISUAL: study_skills_kwl]                — Know / Want to know / Learned chart
-  [VISUAL: study_skills_concept_map]        — Main concept → subtopics → details
-  [VISUAL: study_skills_cornell_notes]      — Cornell notes format (cue, notes, summary)
-  [VISUAL: study_blooms_taxonomy]           — Bloom's 6 levels with action verbs
-  [VISUAL: study_time_management]           — Pomodoro, time blocking, Eisenhower matrix
-  [VISUAL: study_pomodoro_technique]        — Pomodoro technique timer visual
-  [VISUAL: study_growth_mindset]            — Growth mindset diagram
-  [VISUAL: study_note_taking_methods]       — Note-taking methods comparison
-  [VISUAL: study_essay_writing_process]     — Essay writing process steps
-  [VISUAL: study_test_taking_strategies]    — Test-taking strategies
-
-RULES:
-✅ Place the tag at the START of a sentence: "[VISUAL: math_calculus_derivatives] Here are the key derivative rules."
-✅ Use when a diagram genuinely helps — especially for new concepts, comparisons, or processes
-✅ Only use ONE visual per response
-❌ Never mention the tag or the visual system to the student — just let it appear
-❌ Never invent tag names — only use the exact tags listed above
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-`;
             // STT_ARTIFACT_HARDENING is defined at module level (see top of file)
             
             // K2 TURN POLICY: Add response constraints for K-2 students
@@ -5282,18 +4354,6 @@ RULES:
             
             if (k2PolicyActive) {
               console.log(`[TurnPolicy] 🎯 K2 policy ACTIVE for grade band: ${state.ageGroup}`);
-            }
-            
-            // SPECIALIZATION: Inject test-prep or professional-cert coaching context
-            const SPECIALIZATION_BLOCK = getSpecializationPromptBlock(state.subject);
-            if (SPECIALIZATION_BLOCK) {
-              console.log(`[Specialization] 🎯 ${state.subject} → injecting exam-specific coaching prompt (${SPECIALIZATION_BLOCK.length} chars)`);
-            }
-            
-            // PRACTICE MODE: Inject structured drill session prompt when enabled
-            const PRACTICE_MODE_BLOCK = state.practiceMode ? getPracticeModePromptBlock(state.subject) : '';
-            if (PRACTICE_MODE_BLOCK) {
-              console.log(`[PracticeMode] 🏋️ ${state.subject} → practice drill mode ACTIVE (${PRACTICE_MODE_BLOCK.length} chars)`);
             }
             
             // CONTINUITY MEMORY: Load recent session summaries for this student
@@ -5353,7 +4413,7 @@ RULES:
               });
               
               // Create enhanced system instruction - NO-GHOSTING: Only claim access when content exists
-              state.systemInstruction = `${personality.systemPrompt}${VOICE_CONVERSATION_CONSTRAINTS}${VISUAL_SYSTEM_INSTRUCTION}${K2_CONSTRAINTS}${SPECIALIZATION_BLOCK}${PRACTICE_MODE_BLOCK}${continuityBlock}${lsisProfileBlock}
+              state.systemInstruction = `${personality.systemPrompt}${VOICE_CONVERSATION_CONSTRAINTS}${K2_CONSTRAINTS}${continuityBlock}${lsisProfileBlock}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📚 DOCUMENTS LOADED FOR THIS SESSION (${ragChars} chars):
@@ -5387,7 +4447,7 @@ DOCUMENT ACKNOWLEDGMENT RULE:
                 return titleMatch ? titleMatch[1] : `file ${i + 1}`;
               });
               
-              state.systemInstruction = `${personality.systemPrompt}${VOICE_CONVERSATION_CONSTRAINTS}${VISUAL_SYSTEM_INSTRUCTION}${K2_CONSTRAINTS}${SPECIALIZATION_BLOCK}${PRACTICE_MODE_BLOCK}${continuityBlock}${lsisProfileBlock}
+              state.systemInstruction = `${personality.systemPrompt}${VOICE_CONVERSATION_CONSTRAINTS}${K2_CONSTRAINTS}${continuityBlock}${lsisProfileBlock}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚠️ DOCUMENT UPLOAD ISSUE:
@@ -5405,24 +4465,10 @@ HONESTY INSTRUCTIONS:
               console.log(`[Custom Voice] ⚠️ Files uploaded but no content extracted (ragChars=0, files=${uploadedFilenames.join(', ')}) - using honest acknowledgment`);
             } else {
               // No documents at all - use standard prompt
-              state.systemInstruction = personality.systemPrompt + VOICE_CONVERSATION_CONSTRAINTS + VISUAL_SYSTEM_INSTRUCTION + K2_CONSTRAINTS + SPECIALIZATION_BLOCK + PRACTICE_MODE_BLOCK + continuityBlock + lsisProfileBlock + STT_ARTIFACT_HARDENING;
+              state.systemInstruction = personality.systemPrompt + VOICE_CONVERSATION_CONSTRAINTS + K2_CONSTRAINTS + continuityBlock + lsisProfileBlock + STT_ARTIFACT_HARDENING;
               console.log(`[Custom Voice] No documents uploaded - using standard prompt`);
             }
             
-            // Family Academic Context injection (non-blocking)
-            try {
-              if (state.userId && state.studentId) {
-                const { getFamilyAcademicContextForVoice } = await import('./family-academic');
-                const familyContext = await getFamilyAcademicContextForVoice(state.userId, state.studentId);
-                if (familyContext) {
-                  state.systemInstruction += familyContext;
-                  console.log(`[Family Academic] Injected voice context for child ${state.studentId} (${familyContext.length} chars)`);
-                }
-              }
-            } catch (familyErr) {
-              console.warn('[Family Academic] Voice context injection failed (non-blocking):', familyErr);
-            }
-
             // Generate enhanced personalized greeting with LANGUAGE SUPPORT
             let greeting: string = '';
             
@@ -5456,62 +4502,42 @@ HONESTY INSTRUCTIONS:
             // CONTINUITY GREETING: Check for prior sessions
             // ============================================
             // Helper: Pick safe topic from summary (NEVER uses summary_text)
-            const pickContinuationTopic = (summary: { subject?: string | null; topicsCovered?: string[] | null }): { topic: string; lastTopic: string; multiTopic: boolean; reason: 'subject' | 'topic' | 'fallback' } => {
+            const pickContinuationTopic = (summary: { subject?: string | null; topicsCovered?: string[] | null }): { topic: string; reason: 'subject' | 'topic' | 'fallback' } => {
               const FALLBACK = 'what we worked on last time';
-              const sanitize = (raw: string) => raw
-                .replace(/[\n\r"'`]/g, '')
-                .replace(/\[[^\]]*\]/g, '')
-                .replace(/\b(name|email|phone|address|password|ssn|credit|card)\b/gi, '')
-                .trim()
-                .substring(0, 60);
-
-              // Try topicsCovered FIRST — these are the actual topics from the last session
-              if (summary.topicsCovered && summary.topicsCovered.length > 0) {
-                const validTopics = summary.topicsCovered
-                  .map(t => sanitize(t))
-                  .filter(t => t.length >= 3);
-
-                if (validTopics.length === 1) {
-                  return { topic: validTopics[0], lastTopic: validTopics[0], multiTopic: false, reason: 'topic' };
-                }
-
-                if (validTopics.length >= 2) {
-                  // For 4+ topics, take only the last 3
-                  const useTopics = validTopics.length > 3 ? validTopics.slice(-3) : validTopics;
-                  const prefix = validTopics.length > 3 ? 'among other things, ' : '';
-                  const last = useTopics[useTopics.length - 1];
-
-                  let topicStr: string;
-                  if (useTopics.length === 2) {
-                    topicStr = `${prefix}${useTopics[0]}, and then ${useTopics[1]}`;
-                  } else {
-                    // 3 topics
-                    topicStr = `${prefix}${useTopics[0]}, then ${useTopics[1]}, and ended with ${useTopics[2]}`;
-                  }
-                  return { topic: topicStr, lastTopic: last, multiTopic: true, reason: 'topic' };
+              
+              // Try subject first
+              if (summary.subject && summary.subject.length > 0 && summary.subject !== 'general' && summary.subject !== 'unknown') {
+                let topic = summary.subject
+                  .replace(/[\n\r"'`]/g, '') // Strip newlines, quotes, backticks
+                  .replace(/\[[^\]]*\]/g, '') // Strip bracketed content like [email@example.com]
+                  .replace(/\b(name|email|phone|address|password|ssn|credit|card)\b/gi, '') // Remove PII keywords
+                  .trim()
+                  .substring(0, 60);
+                if (topic.length >= 3) {
+                  return { topic, reason: 'subject' };
                 }
               }
-
-              // Fall back to subject only if it's specific (not generic like "General")
-              if (summary.subject && summary.subject.length > 0) {
-                const subjectLower = summary.subject.toLowerCase();
-                if (subjectLower !== 'general' && subjectLower !== 'unknown') {
-                  const topic = sanitize(summary.subject);
-                  if (topic.length >= 3) {
-                    return { topic, lastTopic: topic, multiTopic: false, reason: 'subject' };
-                  }
+              
+              // Try first topic from topicsCovered
+              if (summary.topicsCovered && summary.topicsCovered.length > 0 && summary.topicsCovered[0]) {
+                let topic = summary.topicsCovered[0]
+                  .replace(/[\n\r"'`]/g, '')
+                  .replace(/\[[^\]]*\]/g, '')
+                  .replace(/\b(name|email|phone|address|password|ssn|credit|card)\b/gi, '')
+                  .trim()
+                  .substring(0, 60);
+                if (topic.length >= 3) {
+                  return { topic, reason: 'topic' };
                 }
               }
-
-              return { topic: FALLBACK, lastTopic: FALLBACK, multiTopic: false, reason: 'fallback' };
+              
+              return { topic: FALLBACK, reason: 'fallback' };
             };
             
             let continuityTopic: string | null = null;
-            let continuityLastTopic: string | null = null;
-            let continuityMultiTopic = false;
             let hasPriorSessions = false;
             let topicReason: 'subject' | 'topic' | 'fallback' | 'none' = 'none';
-
+            
             // FIRST-TURN-ONLY: Skip greeting lookup if already greeted (reconnect protection)
             if (!shouldSkipGreeting) {
               try {
@@ -5521,14 +4547,12 @@ HONESTY INSTRUCTIONS:
                   studentId: state.studentId || null,
                   limit: 1
                 });
-
+                
                 hasPriorSessions = priorSummaries.length > 0;
-
+                
                 if (hasPriorSessions) {
                   const result = pickContinuationTopic(priorSummaries[0]);
                   continuityTopic = result.topic;
-                  continuityLastTopic = result.lastTopic;
-                  continuityMultiTopic = result.multiTopic;
                   topicReason = result.reason;
                 }
                 
@@ -5543,7 +4567,7 @@ HONESTY INSTRUCTIONS:
             }
             
             // LANGUAGE: Generate greetings in the selected language
-            const getLocalizedGreeting = (lang: string, name: string, tutorName: string, ageGroup: string, docTitles: string[], priorExists: boolean, topic: string | null, lastTopic: string | null = null, multiTopic: boolean = false): string => {
+            const getLocalizedGreeting = (lang: string, name: string, tutorName: string, ageGroup: string, docTitles: string[], priorExists: boolean, topic: string | null): string => {
               // Language-specific greeting templates
               const greetings: Record<string, { intro: string; docAck: (count: number, titles: string) => string; closing: Record<string, string> }> = {
                 en: {
@@ -5709,31 +4733,15 @@ HONESTY INSTRUCTIONS:
               
               // (2) CONTINUITY GREETING: If prior sessions exist and no active docs, use welcome back greeting
               if (priorExists && topic) {
-                if (multiTopic && lastTopic) {
-                  // Multi-topic greeting: "Last time we covered X, then Y, and ended with Z. Want to pick up where we left off with Z, or start something new?"
-                  const multiGreetings: Record<string, (n: string, t: string, tp: string, lt: string) => string> = {
-                    en: (n, t, tp, lt) => `Welcome back, ${n}! I'm ${t}, your tutor. Last time we covered ${tp}. Want to pick up where we left off with ${lt}, or start something new?`,
-                    es: (n, t, tp, lt) => `¡Bienvenido de nuevo, ${n}! Soy ${t}, tu tutor. La última vez cubrimos ${tp}. ¿Quieres continuar con ${lt} o empezar algo nuevo?`,
-                    fr: (n, t, tp, lt) => `Content de te revoir, ${n}! Je suis ${t}, ton tuteur. La dernière fois, on a couvert ${tp}. Tu veux reprendre avec ${lt} ou commencer quelque chose de nouveau?`,
-                    de: (n, t, tp, lt) => `Willkommen zurück, ${n}! Ich bin ${t}, dein Tutor. Letztes Mal haben wir ${tp} behandelt. Möchtest du mit ${lt} weitermachen oder etwas Neues anfangen?`,
-                    pt: (n, t, tp, lt) => `Bem-vindo de volta, ${n}! Sou ${t}, seu tutor. Da última vez cobrimos ${tp}. Quer continuar com ${lt} ou começar algo novo?`,
-                    zh: (n, t, tp, lt) => `欢迎回来，${n}！我是${t}，你的导师。上次我们学习了${tp}。想继续${lt}，还是开始新的话题？`,
-                    ar: (n, t, tp, lt) => `أهلاً بعودتك، ${n}! أنا ${t}، معلمك. في المرة الماضية تناولنا ${tp}. هل تريد المتابعة مع ${lt} أم البدء بشيء جديد؟`,
-                    sw: (n, t, tp, lt) => `Karibu tena, ${n}! Mimi ni ${t}, mwalimu wako. Mara ya mwisho tulisoma ${tp}. Unataka kuendelea na ${lt} au kuanza kitu kipya?`,
-                  };
-                  const multiFn = multiGreetings[lang] || multiGreetings['en'];
-                  return multiFn(name, tutorName, topic, lastTopic);
-                }
-                // Single-topic greeting
                 const continuityGreetings: Record<string, (name: string, tutorName: string, topic: string) => string> = {
-                  en: (n, t, tp) => `Welcome back, ${n}! I'm ${t}, your tutor. Last time we were exploring ${tp}. Want to pick up where we left off, or start something new?`,
-                  es: (n, t, tp) => `¡Bienvenido de nuevo, ${n}! Soy ${t}, tu tutor. La última vez estábamos explorando ${tp}. ¿Quieres continuar donde lo dejamos o empezar algo nuevo?`,
-                  fr: (n, t, tp) => `Content de te revoir, ${n}! Je suis ${t}, ton tuteur. La dernière fois, on explorait ${tp}. Tu veux reprendre là où on s'est arrêtés ou commencer quelque chose de nouveau?`,
-                  de: (n, t, tp) => `Willkommen zurück, ${n}! Ich bin ${t}, dein Tutor. Letztes Mal haben wir ${tp} erkundet. Möchtest du dort weitermachen oder etwas Neues anfangen?`,
-                  pt: (n, t, tp) => `Bem-vindo de volta, ${n}! Sou ${t}, seu tutor. Da última vez estávamos explorando ${tp}. Quer continuar de onde paramos ou começar algo novo?`,
-                  zh: (n, t, tp) => `欢迎回来，${n}！我是${t}，你的导师。上次我们在探索${tp}。想继续上次的内容，还是开始新的话题？`,
-                  ar: (n, t, tp) => `أهلاً بعودتك، ${n}! أنا ${t}، معلمك. في المرة الماضية كنا نستكشف ${tp}. هل تريد المتابعة من حيث توقفنا أم البدء بشيء جديد؟`,
-                  sw: (n, t, tp) => `Karibu tena, ${n}! Mimi ni ${t}, mwalimu wako. Mara ya mwisho tulikuwa tukichunguza ${tp}. Unataka kuendelea tulipoacha au kuanza kitu kipya?`,
+                  en: (n, t, tp) => `Welcome back, ${n}! I'm ${t}, your tutor. Shall we continue our discussion on ${tp}? What do you remember most from last time?`,
+                  es: (n, t, tp) => `¡Bienvenido de nuevo, ${n}! Soy ${t}, tu tutor. ¿Continuamos con nuestra conversación sobre ${tp}? ¿Qué recuerdas de la última vez?`,
+                  fr: (n, t, tp) => `Content de te revoir, ${n}! Je suis ${t}, ton tuteur. On continue notre discussion sur ${tp}? Qu'est-ce que tu te rappelles de la dernière fois?`,
+                  de: (n, t, tp) => `Willkommen zurück, ${n}! Ich bin ${t}, dein Tutor. Sollen wir unsere Diskussion über ${tp} fortsetzen? Woran erinnerst du dich von letztem Mal?`,
+                  pt: (n, t, tp) => `Bem-vindo de volta, ${n}! Sou ${t}, seu tutor. Vamos continuar nossa discussão sobre ${tp}? O que você lembra da última vez?`,
+                  zh: (n, t, tp) => `欢迎回来，${n}！我是${t}，你的导师。我们继续讨论${tp}吧？你还记得上次我们讲了什么吗？`,
+                  ar: (n, t, tp) => `أهلاً بعودتك، ${n}! أنا ${t}، معلمك. هل نستمر في مناقشة ${tp}؟ ماذا تتذكر من المرة الماضية؟`,
+                  sw: (n, t, tp) => `Karibu tena, ${n}! Mimi ni ${t}, mwalimu wako. Tuendelee na mazungumzo yetu kuhusu ${tp}? Unakumbuka nini kutoka mara ya mwisho?`,
                 };
                 const continuityFn = continuityGreetings[lang] || continuityGreetings['en'];
                 return continuityFn(name, tutorName, topic);
@@ -5748,7 +4756,7 @@ HONESTY INSTRUCTIONS:
             if (!shouldSkipGreeting) {
               const greetingMode = greetingDocTitles.length > 0 ? 'ACTIVE_DOCS' : (hasPriorSessions && continuityTopic ? 'CONTINUITY' : 'GENERIC');
               console.log(`[GREETING_PRIORITY] mode=${greetingMode}, activeDocTitles=${greetingDocTitles.length}, hasPrior=${hasPriorSessions}, topic=${continuityTopic || 'none'}`);
-              greeting = getLocalizedGreeting(state.language, state.studentName, personality.name, state.ageGroup, greetingDocTitles, hasPriorSessions, continuityTopic, continuityLastTopic, continuityMultiTopic);
+              greeting = getLocalizedGreeting(state.language, state.studentName, personality.name, state.ageGroup, greetingDocTitles, hasPriorSessions, continuityTopic);
               console.log(`[Custom Voice] 🌍 Generated greeting in language: ${state.language}`);
               
               console.log(`[Custom Voice] 👋 Greeting: "${greeting}"`);
@@ -5862,95 +4870,12 @@ HONESTY INSTRUCTIONS:
                 // FRAGMENT GUARD: Single conjunction/filler words are likely mid-sentence
                 // fragments caused by brief pauses. Don't commit — let continuation guard
                 // or next EOT accumulate the full sentence.
-                // LANGUAGE PRACTICE: Bypass for language sessions where "a", "i", etc. are valid.
-                const isLanguageSession = isLanguagePracticeSession(state.subject);
                 const FRAGMENT_WORDS = new Set(['and', 'but', 'so', 'because', 'like', 'or', 'well', 'the', 'a', 'to', 'i', 'it', 'if', 'then', 'also', 'just']);
                 const fragmentCheck = transcript.trim().toLowerCase().replace(/[.,!?]/g, '');
                 const fragmentWords = fragmentCheck.split(/\s+/).filter((w: string) => w.length > 0);
-                if (!isLanguageSession && !stallPrompt && fragmentWords.length <= 2 && fragmentWords.every((w: string) => FRAGMENT_WORDS.has(w))) {
+                if (!stallPrompt && fragmentWords.length <= 2 && fragmentWords.every((w: string) => FRAGMENT_WORDS.has(w))) {
                   console.log(`[TurnPolicy] 🔇 Fragment guard: "${transcript.trim()}" (${fragmentWords.length} word${fragmentWords.length > 1 ? 's' : ''}) - deferring as likely mid-sentence`);
                   return;
-                }
-                if (isLanguageSession && fragmentWords.length <= 2 && fragmentWords.every((w: string) => FRAGMENT_WORDS.has(w))) {
-                  console.log(`[LanguagePractice] ✅ Fragment guard bypassed for "${transcript.trim()}" in language session`);
-                }
-                // MINIMUM WORD GATE: Require at least 3 words before firing Claude.
-                // Keyboard noise and brief mic bleed typically produce 1-2 word fragments.
-                // Real utterances in tutoring sessions are almost always 3+ words.
-                // Skip this gate for language practice (single words can be valid responses).
-                // EXCEPTION: Valid short answers like "yes", "no", "gravity", "correct" etc.
-                // should always pass — only drop filler noise and low-confidence fragments.
-                if (!isLanguageSession && !stallPrompt && fragmentWords.length < 3) {
-                  const lastConf = state.lastAccumulatedConfidence || 0;
-                  
-                  // Non-lexical filler sounds — always drop regardless of confidence
-                  const isNonLexicalNoise = /^(um+|uh+|hmm+|hm+|er+|erm+|mhm+)$/i.test(fragmentCheck);
-                  if (isNonLexicalNoise) {
-                    console.log(`[TurnPolicy] 🔇 Min-word gate: "${transcript.trim()}" (non-lexical noise) — dropping`);
-                    trackDroppedTurnForNoiseCoaching(ws, state);
-                    return;
-                  }
-                  
-                  // Common valid short answers — always pass through at any confidence
-                  const VALID_SHORT_ANSWERS = new Set([
-                    // Affirmations & negations
-                    'yes', 'no', 'yeah', 'yep', 'yup', 'nah', 'nope',
-                    'sure', 'ok', 'okay', 'correct', 'right', 'wrong',
-                    'true', 'false', 'maybe', 'probably', 'definitely',
-                    'absolutely', 'exactly', 'indeed', 'certainly',
-                    // Frequency & quantity
-                    'always', 'never', 'sometimes', 'both', 'neither',
-                    'all', 'none', 'some', 'many', 'few', 'most',
-                    'less', 'more', 'each', 'every', 'enough',
-                    // Pronouns & determiners as answers
-                    'nothing', 'everything', 'something', 'anything',
-                    'everyone', 'nobody', 'somebody', 'anybody',
-                    'here', 'there', 'this', 'that', 'those', 'these',
-                    'me', 'him', 'her', 'them', 'us', 'it', 'mine',
-                    // Question words (student repeating/confirming)
-                    'what', 'who', 'why', 'how', 'when', 'where', 'which',
-                    // Session control
-                    'stop', 'wait', 'continue', 'repeat', 'again', 'next',
-                    'help', 'skip', 'harder', 'easier', 'slower', 'faster',
-                    'done', 'ready', 'start', 'finish', 'quit', 'back',
-                    // Greetings & politeness
-                    'hello', 'hi', 'hey', 'bye', 'goodbye', 'thanks',
-                    'please', 'sorry', 'welcome',
-                    // Reactions & feelings
-                    'wow', 'cool', 'nice', 'great', 'awesome', 'perfect',
-                    'good', 'bad', 'fine', 'amazing', 'interesting',
-                    'confused', 'lost', 'stuck', 'unsure', 'understand',
-                    // Academic responses
-                    'agree', 'disagree', 'forgot', 'remember', 'know',
-                    'think', 'guess', 'believe', 'depends', 'different',
-                    'same', 'similar', 'opposite', 'equal', 'zero',
-                    // Ordinals & comparisons
-                    'first', 'second', 'third', 'last',
-                    'bigger', 'smaller', 'higher', 'lower',
-                    // Common single-word subject answers
-                    'water', 'earth', 'sun', 'moon', 'gravity',
-                    'energy', 'light', 'sound', 'heat', 'oxygen',
-                    'north', 'south', 'east', 'west',
-                    'addition', 'subtraction', 'multiplication', 'division',
-                    // Numbers as words
-                    'one', 'two', 'three', 'four', 'five',
-                    'six', 'seven', 'eight', 'nine', 'ten',
-                    'hundred', 'thousand', 'million', 'half', 'double',
-                  ]);
-                  const isValidShortAnswer = fragmentWords.length === 1 && VALID_SHORT_ANSWERS.has(fragmentWords[0]);
-                  
-                  if (isValidShortAnswer) {
-                    console.log(`[TurnPolicy] ✅ Min-word gate BYPASSED: "${transcript.trim()}" — recognized short answer`);
-                  } else if (lastConf >= 0.20 || (lastConf >= 0.20 && fragmentWords.length === 2)) {
-                    // Any real word with any meaningful confidence passes (e.g. "gravity", "everything")
-                    // AssemblyAI turn confidence for single words is typically 0.20-0.50
-                    // Filler noise (um, uh, hmm) is already caught by the non-lexical filter above
-                    console.log(`[TurnPolicy] ✅ Min-word gate BYPASSED: "${transcript.trim()}" (${fragmentWords.length} word${fragmentWords.length > 1 ? 's' : ''}, conf=${lastConf.toFixed(2)}) — high-confidence short answer`);
-                  } else {
-                    console.log(`[TurnPolicy] 🔇 Min-word gate: "${transcript.trim()}" (${fragmentWords.length} word${fragmentWords.length > 1 ? 's' : ''} < 3, conf=${lastConf.toFixed(2)}) — dropping as likely noise fragment`);
-                    trackDroppedTurnForNoiseCoaching(ws, state);
-                    return;
-                  }
                 }
 
                 let finalText: string;
@@ -6000,9 +4925,6 @@ HONESTY INSTRUCTIONS:
               // CRITICAL: Do NOT pass transcript through closure — read from state at fire time
               // to avoid stale-closure bug where early text ("i do") is committed instead of
               // the full accumulated transcript ("i do see a pattern but if i pause...")
-              // TRANSCRIPT STABILITY CHECK: Don't fire if transcript changed within last 300ms —
-              // this catches "show me the us by" committing before "itself" arrives.
-              const TRANSCRIPT_STABILITY_MS = 300;
               let sttDeferTimerId: NodeJS.Timeout | undefined;
               const gatedFireClaude = (stallPrompt?: string) => {
                 const sttAge = Date.now() - state.lastSttActivityAt;
@@ -6023,21 +4945,6 @@ HONESTY INSTRUCTIONS:
                         console.log(`[TurnPolicy] gated_fire_skipped - no accumulated transcript`);
                         return;
                       }
-                      // STABILITY CHECK: If transcript changed very recently, wait a bit more
-                      const transcriptAge = Date.now() - state.lastAccumulatedTranscriptSetAt;
-                      if (transcriptAge < TRANSCRIPT_STABILITY_MS) {
-                        const stabilityWait = TRANSCRIPT_STABILITY_MS - transcriptAge + 50;
-                        console.log(`[TurnPolicy] transcript_unstable - changed ${transcriptAge}ms ago, waiting ${stabilityWait}ms more`);
-                        sttDeferTimerId = setTimeout(() => {
-                          sttDeferTimerId = undefined;
-                          const stableTranscript = state.lastAccumulatedTranscript.trim();
-                          if (stableTranscript) {
-                            console.log(`[TurnPolicy] gated_fire_using_fresh_transcript: "${stableTranscript.substring(0, 60)}"`);
-                            fireClaudeWithPolicy(stableTranscript, stallPrompt);
-                          }
-                        }, stabilityWait);
-                        return;
-                      }
                       console.log(`[TurnPolicy] gated_fire_using_fresh_transcript: "${freshTranscript.substring(0, 60)}"`);
                       fireClaudeWithPolicy(freshTranscript, stallPrompt);
                     }
@@ -6048,21 +4955,6 @@ HONESTY INSTRUCTIONS:
                 const freshTranscript = state.lastAccumulatedTranscript.trim();
                 if (!freshTranscript) {
                   console.log(`[TurnPolicy] gated_fire_skipped - no accumulated transcript`);
-                  return;
-                }
-                // STABILITY CHECK: Even without STT recency gate, ensure transcript is stable
-                const transcriptAge = Date.now() - state.lastAccumulatedTranscriptSetAt;
-                if (state.lastAccumulatedTranscriptSetAt > 0 && transcriptAge < TRANSCRIPT_STABILITY_MS) {
-                  const stabilityWait = TRANSCRIPT_STABILITY_MS - transcriptAge + 50;
-                  console.log(`[TurnPolicy] transcript_unstable_direct - changed ${transcriptAge}ms ago, waiting ${stabilityWait}ms`);
-                  sttDeferTimerId = setTimeout(() => {
-                    sttDeferTimerId = undefined;
-                    const stableTranscript = state.lastAccumulatedTranscript.trim();
-                    if (stableTranscript) {
-                      console.log(`[TurnPolicy] gated_fire_stable: "${stableTranscript.substring(0, 60)}"`);
-                      fireClaudeWithPolicy(stableTranscript, stallPrompt);
-                    }
-                  }, stabilityWait);
                   return;
                 }
                 fireClaudeWithPolicy(freshTranscript, stallPrompt);
@@ -6134,11 +5026,6 @@ HONESTY INSTRUCTIONS:
                   // Partials are hypothesis-only - no actions taken
                   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                   console.log(`[AssemblyAI] 📝 Complete utterance (confidence: ${confidence.toFixed(2)}): "${text}"`);
-                  
-                  // Store confidence in SessionState so downstream min-word gate can read it
-                  // (the confidence from createAssemblyAIConnection's internal AssemblyAIState
-                  // is NOT the same object as this SessionState)
-                  state.lastAccumulatedConfidence = confidence;
                   
                   // Update last audio received time for stall detection
                   state.lastAudioReceivedAt = Date.now();
@@ -6354,7 +5241,6 @@ HONESTY INSTRUCTIONS:
                         // Ensure state has the latest text from continuation guard
                         if (finalText.trim().length > state.lastAccumulatedTranscript.trim().length) {
                           state.lastAccumulatedTranscript = finalText;
-                          state.lastAccumulatedTranscriptSetAt = Date.now();
                         }
                         gatedFireClaude();
                       }
@@ -6400,7 +5286,6 @@ HONESTY INSTRUCTIONS:
                     // Ensure state has latest text before gated fire
                     if (text.trim().length > state.lastAccumulatedTranscript.trim().length) {
                       state.lastAccumulatedTranscript = text;
-                      state.lastAccumulatedTranscriptSetAt = Date.now();
                     }
                     gatedFireClaude();
                   }
@@ -6411,55 +5296,46 @@ HONESTY INSTRUCTIONS:
                 },
                 (sessionId) => {
                   console.log('[AssemblyAI] 🎬 Session started:', sessionId);
-                  state.sttBeginReceived = true;
-                  // Trigger paced replay of recent audio after Begin
-                  const epoch = state.sttEpoch;
-                  if (state.reconnectInFlight) {
-                    void replayRecentAudioAfterBegin(state, epoch).then(() => {
-                      if (epoch === state.sttEpoch) {
-                        state.reconnectInFlight = false;
-                        state.sttReconnectAttempts = 0;
-                      }
-                    });
-                  }
                 },
                 undefined,
                 state.ageGroup,
                 (text, prevText) => creditSttActivity(state, text, prevText),
                 () => {
-                  state.sttEpoch++;
                   state.sttConnected = true;
                   state.sttLastMessageAtMs = Date.now();
                   state.sttReconnectAttempts = 0;
                   state.sttDisconnectedSinceMs = null;
                   markProgress(state);
                   state.sttConnectionId++;
-                  console.log(`[STT] connected sessionId=${state.sessionId} connectionId=${state.sttConnectionId} epoch=${state.sttEpoch}`);
+                  console.log(`[STT] connected sessionId=${state.sessionId} connectionId=${state.sttConnectionId}`);
                   sendWsEvent(ws, 'stt_status', { status: 'connected' });
-                  // Replay moved to replayRecentAudioAfterBegin() — runs after Begin, not onOpen
+                  if (state.sttAudioRingBuffer.length > 0) {
+                    console.log(`[STT] flushing ${state.sttAudioRingBuffer.length} buffered audio chunks after reconnect`);
+                    for (const chunk of state.sttAudioRingBuffer) {
+                      if (state.assemblyAIWs && state.assemblyAIWs.readyState === WebSocket.OPEN) {
+                        state.assemblyAIWs.send(chunk);
+                      }
+                    }
+                    state.sttAudioRingBuffer = [];
+                  }
                 },
                 () => {
                   state.sttLastMessageAtMs = Date.now();
                   state.sttConsecutiveSendFailures = 0;
                   markProgress(state);
-                  // SPEECH WATCHDOG: Transcript arrived — reset timer and segment count
-                  if (state.speechWatchdogTimerId) {
-                    clearTimeout(state.speechWatchdogTimerId);
-                    state.speechWatchdogTimerId = null;
-                  }
-                  state.speechWatchdogSegments = 0;
                 },
                 state.sttKeytermsDisabledForSession ? null : state.sttKeytermsJson
               );
-
+              
               console.log('[AssemblyAI] createAssemblyAIConnection returned successfully');
               state.assemblyAIWs = assemblyWs;
               state.assemblyAIState = assemblyState;
               console.log('[AssemblyAI] AssemblyAI WS assigned to state');
               
+              const STT_RING_BUFFER_MAX = 16;
               const STT_DEADMAN_INTERVAL_MS = 2000;
-              // Deadman constants: STT_FALLBACK_DEADMAN_MS (30s safety net)
-              // Speech watchdog removed — fresh STT per listening window eliminates stale connections
+              const STT_DEADMAN_NO_MESSAGE_MS = 8000;
+              const STT_DEADMAN_AUDIO_RECENCY_MS = 3000;
               const STT_MAX_RECONNECT_ATTEMPTS = 5;
               const STT_RECONNECT_BACKOFF = [250, 500, 1000, 2000, 4000];
               
@@ -6469,7 +5345,6 @@ HONESTY INSTRUCTIONS:
                   return;
                 }
                 if (state.sttReconnectTimerId) return;
-                if (state.reconnectInFlight) return;
                 
                 state.sttReconnectAttempts++;
                 const attempt = state.sttReconnectAttempts;
@@ -6477,17 +5352,10 @@ HONESTY INSTRUCTIONS:
                 if (attempt > STT_MAX_RECONNECT_ATTEMPTS) {
                   console.error(`[STT] reconnect_exhausted attempts=${attempt} sessionId=${state.sessionId}`);
                   state.isReconnecting = false;
-                  state.reconnectInFlight = false;
                   sendWsEvent(ws, 'stt_status', { status: 'failed', attempts: attempt });
                   ws.send(JSON.stringify({ type: "error", error: "Speech service connection lost. Please restart the session." }));
                   return;
                 }
-
-                // Send ForceEndpoint + Terminate before closing old connection
-                const closingEpoch = state.sttEpoch;
-                sendAssemblyAIForceEndpoint(state, closingEpoch);
-                sendAssemblyAITerminate(state, closingEpoch);
-                state.reconnectInFlight = true;
                 
                 const backoffMs = STT_RECONNECT_BACKOFF[Math.min(attempt - 1, STT_RECONNECT_BACKOFF.length - 1)];
                 console.log(`[STT] reconnecting attempt=${attempt}/${STT_MAX_RECONNECT_ATTEMPTS} backoffMs=${backoffMs} sessionId=${state.sessionId}`);
@@ -6509,10 +5377,6 @@ HONESTY INSTRUCTIONS:
                     const wasAwaitingEot = state.turnPolicyState.awaitingSecondEot;
                     const savedLastEotTimestamp = state.turnPolicyState.lastEotTimestamp;
                     const savedGuardedTranscript = state.guardedTranscript;
-                    // PATIENCE FIX: Preserve pendingTranscript across STT reconnects
-                    // so partial speech before deadman is not lost
-                    const savedPendingTranscript = pendingTranscript;
-                    pendingTranscript = '';
                     const savedStallTimerStartedAt = state.stallTimerStartedAt;
                     const savedLastAudioReceivedAt = state.lastAudioReceivedAt;
                     const config = getTurnPolicyConfig(state.ageGroup as GradeBand, state.turnPolicyK2Override);
@@ -6565,17 +5429,8 @@ HONESTY INSTRUCTIONS:
                     
                     const { ws: newWs, state: newState } = createAssemblyAIConnection(
                       state.language,
-                      (rawText, endOfTurn, confidence) => {
-                        // PATIENCE FIX: Merge any transcript saved before deadman with post-reconnect text
-                        // so speech that was in-flight when deadman fired is not silently dropped
-                        const text = savedPendingTranscript
-                          ? (savedPendingTranscript + ' ' + rawText).trim()
-                          : rawText;
-                        if (savedPendingTranscript) {
-                          console.log(`[AssemblyAI-Reconnect] 🔗 Merged pre-reconnect transcript: "${savedPendingTranscript}" + "${rawText}" => "${text}"`);
-                        }
+                      (text, endOfTurn, confidence) => {
                         console.log(`[AssemblyAI-Reconnect] 📝 Complete utterance (confidence: ${confidence.toFixed(2)}): "${text}"`);
-                        state.lastAccumulatedConfidence = confidence;
                         state.lastAudioReceivedAt = Date.now();
                         
                         const transcriptValidation = validateTranscript(text, 1);
@@ -6605,54 +5460,43 @@ HONESTY INSTRUCTIONS:
                           // Ensure state has latest text before gated fire
                           if (text.trim().length > state.lastAccumulatedTranscript.trim().length) {
                             state.lastAccumulatedTranscript = text;
-                            state.lastAccumulatedTranscriptSetAt = Date.now();
                           }
                           gatedFireClaude();
                         }
                       },
                       (error) => console.error('[STT] reconnect_error:', error),
-                      (sessionId) => {
-                        console.log('[STT] reconnected sttSessionId:', sessionId);
-                        state.sttBeginReceived = true;
-                        // Trigger paced replay after Begin
-                        const epoch = state.sttEpoch;
-                        void replayRecentAudioAfterBegin(state, epoch).then(() => {
-                          if (epoch === state.sttEpoch) {
-                            state.reconnectInFlight = false;
-                            state.sttReconnectAttempts = 0;
-                          }
-                        });
-                      },
+                      (sessionId) => console.log('[STT] reconnected sttSessionId:', sessionId),
                       undefined,
                       state.ageGroup,
                       (text, prevText) => creditSttActivity(state, text, prevText),
                       () => {
-                        state.sttEpoch++;
                         state.sttConnected = true;
                         state.sttLastMessageAtMs = Date.now();
                         state.sttReconnectAttempts = 0;
                         state.sttDisconnectedSinceMs = null;
                         markProgress(state);
                         state.sttConnectionId++;
-                        console.log(`[STT] reconnected sessionId=${state.sessionId} connectionId=${state.sttConnectionId} epoch=${state.sttEpoch}`);
+                        console.log(`[STT] reconnected sessionId=${state.sessionId} connectionId=${state.sttConnectionId}`);
                         if (state.watchdogRecoveries > 0) {
                           console.log(`[WATCHDOG_RECOVERY_SUCCESS] sessionId=${state.sessionId} recovery=${state.watchdogRecoveries}`);
                           sendWsEvent(ws, 'voice_status', { status: 'audio_restored' });
                         }
                         sendWsEvent(ws, 'stt_status', { status: 'connected' });
-                        // Replay moved to replayRecentAudioAfterBegin() — runs after Begin, not onOpen
+                        if (state.sttAudioRingBuffer.length > 0) {
+                          console.log(`[STT] flushing ${state.sttAudioRingBuffer.length} buffered audio chunks after reconnect`);
+                          for (const chunk of state.sttAudioRingBuffer) {
+                            if (state.assemblyAIWs && state.assemblyAIWs.readyState === WebSocket.OPEN) {
+                              state.assemblyAIWs.send(chunk);
+                            }
+                          }
+                          state.sttAudioRingBuffer = [];
+                        }
                         state.isReconnecting = false;
                       },
                       () => {
                         state.sttLastMessageAtMs = Date.now();
                         state.sttConsecutiveSendFailures = 0;
                         markProgress(state);
-                        // SPEECH WATCHDOG: Transcript arrived — reset timer and segment count
-                        if (state.speechWatchdogTimerId) {
-                          clearTimeout(state.speechWatchdogTimerId);
-                          state.speechWatchdogTimerId = null;
-                        }
-                        state.speechWatchdogSegments = 0;
                       },
                       // P0.5: Reconnect preserves keyterms when valid, omits when disabled
                       state.sttKeytermsDisabledForSession ? null : state.sttKeytermsJson
@@ -6672,21 +5516,12 @@ HONESTY INSTRUCTIONS:
                 }, backoffMs);
               };
               
-              // Store reconnect function on state so it's accessible from processTranscriptQueue
-              // (which is defined earlier in the file and can't access this const directly)
-              state.sttReconnectFn = sttReconnect;
-              
               const handleSttDisconnect = (code?: number, reason?: string) => {
                 state.sttConnected = false;
-                state.sttBeginReceived = false;
                 state.sttDisconnectedSinceMs = Date.now();
                 // P0.4: Clear ws reference on disconnect to prevent stale sends
                 state.assemblyAIWs = null;
-                // Clear reconnectInFlight if Begin was never received for this connection
-                if (state.reconnectInFlight) {
-                  state.reconnectInFlight = false;
-                }
-                console.log(`[STT] disconnected code=${code} reason=${reason || 'none'} epoch=${state.sttEpoch} sessionId=${state.sessionId}`);
+                console.log(`[STT] disconnected code=${code} reason=${reason || 'none'} sessionId=${state.sessionId}`);
                 sendWsEvent(ws, 'stt_status', { status: 'disconnected', code, reason });
                 
                 // P0.3: Handle 3005 as fatal config error (keyterms validation failure)
@@ -6709,10 +5544,10 @@ HONESTY INSTRUCTIONS:
                   persistTranscript(state.sessionId, state.transcript).catch(() => {});
                 }
                 
-                if (!state.isSessionEnded && state.sessionId && state.sttReconnectEnabled && state.phase !== 'FINALIZING' && state.phase !== 'TUTOR_SPEAKING') {
+                if (!state.isSessionEnded && state.sessionId && state.sttReconnectEnabled && state.phase !== 'FINALIZING') {
                   sttReconnect();
                 } else {
-                  console.log(`[STT] reconnect_skipped reason=${state.isSessionEnded ? 'session_ended' : !state.sttReconnectEnabled ? 'reconnect_disabled' : state.phase === 'TUTOR_SPEAKING' ? 'tutor_speaking_teardown' : 'finalizing'} phase=${state.phase}`);
+                  console.log(`[STT] reconnect_skipped reason=${state.isSessionEnded ? 'session_ended' : !state.sttReconnectEnabled ? 'reconnect_disabled' : 'finalizing'} phase=${state.phase}`);
                 }
               };
               
@@ -6726,48 +5561,42 @@ HONESTY INSTRUCTIONS:
               });
               
               state.sttDeadmanTimerId = setInterval(() => {
-                const now = Date.now();
-
                 if (state.isSessionEnded || !state.sttConnected || state.phase === 'FINALIZING' || !state.sttReconnectEnabled || state.sessionFinalizing) return;
                 
-                if (state.phase === 'TUTOR_SPEAKING' || state.tutorAudioPlaying) return;
-
-                if (state.reconnectInFlight) return;
-                
-                const msSinceLastBargeIn = now - state.lastBargeInAt;
-                if (state.lastBargeInAt > 0 && msSinceLastBargeIn < 5000) return;
-                
-                // Suppress when student has spoken but not finished
-                if (pendingTranscript.trim().length > 0) return;
-                
-                const noMessageMs = now - state.sttLastMessageAtMs;
-                const audioRecentMs = state.sttLastAudioForwardAtMs > 0 ? now - state.sttLastAudioForwardAtMs : Infinity;
-
-                // FALLBACK DEADMAN ONLY: 30s with no messages and recent audio forwarding.
-                // The speech_watchdog was removed — fresh STT per listening window eliminates
-                // the stale-connection problem it was compensating for.
-                const fallbackDeadman = noMessageMs >= STT_FALLBACK_DEADMAN_MS && audioRecentMs < 3000;
-
-                if (!fallbackDeadman) return;
-
-                console.log(`[STT] stt_deadman_fallback noMessageMs=${noMessageMs} audioRecentMs=${audioRecentMs.toFixed(0)} sessionId=${state.sessionId}`);
-                state.sttConnected = false;
-                if (state.assemblyAIWs) {
-                  try { state.assemblyAIWs.close(); } catch (_e) {}
+                if (state.tutorAudioPlaying) {
+                  console.log(`[STT] deadman_suppressed reason=tutor_speaking phase=${state.phase} sessionId=${state.sessionId}`);
+                  return;
                 }
-                handleSttDisconnect(undefined, 'stt_deadman_fallback');
+                
+                const msSinceLastBargeIn = Date.now() - state.lastBargeInAt;
+                if (state.lastBargeInAt > 0 && msSinceLastBargeIn < 5000) {
+                  console.log(`[STT] deadman_suppressed reason=barge_in_recovery msSinceBargeIn=${msSinceLastBargeIn} sessionId=${state.sessionId}`);
+                  return;
+                }
+                
+                const noMessageMs = Date.now() - state.sttLastMessageAtMs;
+                const audioRecentMs = state.sttLastAudioForwardAtMs > 0 ? Date.now() - state.sttLastAudioForwardAtMs : Infinity;
+                
+                if (noMessageMs > STT_DEADMAN_NO_MESSAGE_MS && audioRecentMs < STT_DEADMAN_AUDIO_RECENCY_MS) {
+                  console.log(`[STT] deadman_trigger noMessageMs=${noMessageMs} audioRecentMs=${audioRecentMs.toFixed(0)} sessionId=${state.sessionId}`);
+                  state.sttConnected = false;
+                  if (state.assemblyAIWs) {
+                    try { state.assemblyAIWs.close(); } catch (_e) {}
+                  }
+                  handleSttDisconnect(undefined, 'deadman_trigger');
+                }
               }, STT_DEADMAN_INTERVAL_MS);
               
             } else {
               // ============================================
               // DEEPGRAM NOVA-2 (ORIGINAL)
               // ============================================
-              console.log('[STT] 🚀 Using Deepgram Nova-3');
+              console.log('[STT] 🚀 Using Deepgram Nova-2');
               state.deepgramConnection = await startDeepgramStream(
-              async (transcript: string, isFinal: boolean, speechFinal: boolean, detectedLanguage?: string) => {
+              async (transcript: string, isFinal: boolean, detectedLanguage?: string) => {
                 // Log EVERYTHING for debugging - including detected language
                 const spokenLang = detectedLanguage || state.language;
-                console.log(`[Deepgram] ${speechFinal ? '🔚 SPEECH_FINAL' : isFinal ? '✅ FINAL' : '⏳ interim'}: "${transcript}" (isFinal=${isFinal}, speechFinal=${speechFinal}, detectedLang=${spokenLang})`);
+                console.log(`[Deepgram] ${isFinal ? '✅ FINAL' : '⏳ interim'}: "${transcript}" (isFinal=${isFinal}, detectedLang=${spokenLang})`);
                 
                 // CRITICAL FIX (Nov 14, 2025): Check userId FIRST to debug 401 auth issues
                 if (!state.userId) {
@@ -6783,12 +5612,16 @@ HONESTY INSTRUCTIONS:
                 }
                 
                 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                // NOISE ROBUSTNESS: Ghost turn prevention & validation
+                // NOISE ROBUSTNESS: For Deepgram, only act on final transcripts
+                // Interim transcripts are hypothesis-only
                 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                 const now = Date.now();
                 const timeSinceLastAudio = now - state.lastAudioSentAt;
                 const noiseFloor = getNoiseFloor(state.noiseFloorState);
                 
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                // GHOST TURN PREVENTION: Validate transcript
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                 const transcriptValidation = validateTranscript(transcript, 1);
                 if (!transcriptValidation.isValid && isFinal) {
                   logGhostTurnPrevention(state.sessionId || 'unknown', transcript, transcriptValidation);
@@ -6847,128 +5680,88 @@ HONESTY INSTRUCTIONS:
                   state.bargeInDucking = false;
                 }
 
-                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                // THREE-SIGNAL TURN DETECTION ARCHITECTURE
-                // Signal 1: Any non-empty transcript (interim or final) = student active
-                // Signal 2: is_final = accumulate text (segment locked)
-                // Signal 3: speech_final = student silent for endpointing ms
-                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-                // SIGNAL 0: Any transcript with text = student is ACTIVELY SPEAKING
-                // Cancel ALL running commit timers — student isn't done yet
-                if (transcript && transcript.trim().length > 0) {
-                  lastSpeechActivityAt = now;
-                  cancelAllCommitTimers('speech activity detected');
-                  markProgress(state); // Keep watchdog alive
-                  
-                  // Inactivity reset
-                  state.lastActivityTime = now;
-                  state.inactivityWarningSent = false;
-                }
-
-                // INTERIMS: Don't process for AI, but they already cancelled timers above
-                if (!isFinal && !speechFinal) {
-                  console.log("[TurnDetect] ⏳ Interim — timers cancelled, waiting for more speech");
+                // Only process for AI response on FINAL transcripts
+                if (!isFinal) {
+                  console.log("[Custom Voice] ⏭️ Skipping interim for AI processing (hypothesis only)");
                   return;
                 }
 
-                // SIGNAL 2: speech_final with empty text = student stopped speaking
-                // (The endpointing silence already happened — commit quickly)
-                if (speechFinal && (!transcript || transcript.trim().length === 0)) {
-                  if (pendingTranscript.trim().length > 0) {
-                    console.log(`[TurnDetect] 🔚 speech_final (empty) — committing pending: "${pendingTranscript}"`);
-                    const isIncomplete = INCOMPLETE_ENDINGS.test(pendingTranscript.trim());
-                    if (isIncomplete) {
-                      console.log(`[TurnDetect] ⚠️ Incomplete sentence detected, extending patience — waiting for UtteranceEnd`);
-                      // Don't commit yet — wait for UtteranceEnd as safety net
-                    } else {
-                      speechFinalCommitTimer = setTimeout(() => {
-                        if (pendingTranscript && !state.isSessionEnded) {
-                          const completeUtterance = pendingTranscript;
-                          console.log(`[TurnDetect] ✅ speech_final commit (${SPEECH_FINAL_COMMIT_MS}ms): "${completeUtterance}"`);
-                          pendingTranscript = '';
-                          state.lastEndOfTurnTime = Date.now();
-                          commitUserTurn(completeUtterance, 'eot');
-                        }
-                        speechFinalCommitTimer = null;
-                      }, SPEECH_FINAL_COMMIT_MS);
-                    }
-                  }
+                // P0: Use shouldDropTranscript instead of raw char-length gate (Deepgram path)
+                const deepgramDropCheck = shouldDropTranscript(transcript, state);
+                if (deepgramDropCheck.drop) {
+                  console.log(`[GhostTurn] dropped reason=${deepgramDropCheck.reason} text="${(transcript || '').substring(0, 30)}" len=${(transcript || '').trim().length}`);
                   return;
                 }
 
-                // is_final validation (drop checks, duplicate detection)
-                if (isFinal && transcript && transcript.trim().length > 0) {
-                  const deepgramDropCheck = shouldDropTranscript(transcript, state);
-                  if (deepgramDropCheck.drop) {
-                    console.log(`[GhostTurn] dropped reason=${deepgramDropCheck.reason} text="${(transcript || '').substring(0, 30)}" len=${(transcript || '').trim().length}`);
-                    return;
-                  }
-
-                  if (state.lastTranscript === transcript) {
-                    console.log("[Pipeline] ⏭️ Duplicate transcript, skipping");
-                    return;
-                  }
-                  state.lastTranscript = transcript;
-
-                  // Language auto-detect
-                  if (spokenLang && spokenLang !== state.language) {
-                    console.log(`[Custom Voice] 🌍 Language switch detected: ${state.language} → ${spokenLang}`);
-                    state.detectedLanguage = spokenLang;
-                  } else if (spokenLang) {
-                    state.detectedLanguage = spokenLang;
-                  }
-
-                  // SIGNAL 2: is_final = accumulate text into pending buffer
-                  pendingTranscript = (pendingTranscript + ' ' + transcript).trim();
-                  console.log(`[TurnDetect] 📝 Accumulated: "${pendingTranscript}"`);
-
-                  // Also clear old response timer
-                  if (responseTimer) {
-                    clearTimeout(responseTimer);
-                    responseTimer = null;
-                  }
-
-                  // QUICK ANSWER PATH: ≤2 words get a fast commit timer
-                  const wordCount = pendingTranscript.trim().split(/\s+/).length;
-                  if (wordCount <= QUICK_ANSWER_WORD_LIMIT) {
-                    console.log(`[TurnDetect] ⚡ Quick answer path (${wordCount} words) — ${QUICK_ANSWER_DELAY_MS}ms timer`);
-                    quickAnswerTimer = setTimeout(() => {
-                      if (pendingTranscript && !state.isSessionEnded) {
-                        const completeUtterance = pendingTranscript;
-                        console.log(`[TurnDetect] ✅ Quick answer commit: "${completeUtterance}"`);
-                        pendingTranscript = '';
-                        state.lastEndOfTurnTime = Date.now();
-                        commitUserTurn(completeUtterance, 'eot');
-                      }
-                      quickAnswerTimer = null;
-                    }, QUICK_ANSWER_DELAY_MS);
-                  } else {
-                    // Multi-word: do NOT start any timer — wait for speech_final
-                    console.log(`[TurnDetect] 📝 Multi-word (${wordCount}) — waiting for speech_final`);
-                  }
-
-                  // If this is_final ALSO has speech_final, process the turn end
-                  if (speechFinal) {
-                    cancelAllCommitTimers('speech_final on is_final');
-                    const isIncomplete = INCOMPLETE_ENDINGS.test(pendingTranscript.trim());
-                    if (isIncomplete) {
-                      console.log(`[TurnDetect] ⚠️ speech_final but incomplete sentence "${pendingTranscript}" — extending patience`);
-                    } else {
-                      console.log(`[TurnDetect] 🔚 speech_final — starting ${SPEECH_FINAL_COMMIT_MS}ms commit timer`);
-                      speechFinalCommitTimer = setTimeout(() => {
-                        if (pendingTranscript && !state.isSessionEnded) {
-                          const completeUtterance = pendingTranscript;
-                          console.log(`[TurnDetect] ✅ speech_final commit: "${completeUtterance}"`);
-                          pendingTranscript = '';
-                          state.lastEndOfTurnTime = Date.now();
-                          commitUserTurn(completeUtterance, 'eot');
-                        }
-                        speechFinalCommitTimer = null;
-                      }, SPEECH_FINAL_COMMIT_MS);
-                    }
-                  }
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                // INACTIVITY: Reset activity timer - User is speaking!
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                state.lastActivityTime = Date.now();
+                state.inactivityWarningSent = false; // Reset warning flag
+                console.log('[Inactivity] 🎤 User activity detected, timer reset');
+                
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                // FIX (Dec 10, 2025): DON'T drop transcripts when isProcessing!
+                // Previous bug: transcripts were silently dropped causing "tutor not responding"
+                // Now: ALWAYS accumulate transcripts, let the queue handle serialization
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                console.log(`[Pipeline] 1. Transcript received: "${transcript}", isProcessing=${state.isProcessing}`);
+                
+                // Skip duplicates only (not based on isProcessing!)
+                if (state.lastTranscript === transcript) {
+                  console.log("[Pipeline] ⏭️ Duplicate transcript, skipping");
+                  return;
                 }
+                
+                state.lastTranscript = transcript;
+                
+                // LANGUAGE AUTO-DETECT: Update detected language for AI response
+                if (spokenLang && spokenLang !== state.language) {
+                  console.log(`[Custom Voice] 🌍 Language switch detected: ${state.language} → ${spokenLang}`);
+                  state.detectedLanguage = spokenLang;
+                } else if (spokenLang) {
+                  state.detectedLanguage = spokenLang;
+                }
+                
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                // FIX (Dec 10, 2025): Server-side transcript ACCUMULATION
+                // Don't process each transcript separately - accumulate them!
+                // This fixes students being cut off when they pause mid-sentence
+                // Example: "To get my answer," [pause] "apple" → "To get my answer, apple"
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                
+                // Accumulate this transcript with previous pending text
+                pendingTranscript = (pendingTranscript + ' ' + transcript).trim();
+                console.log(`[Custom Voice] 📝 Accumulated transcript: "${pendingTranscript}"`);
+                
+                // Clear any existing accumulation timer (we got new speech!)
+                if (transcriptAccumulationTimer) {
+                  clearTimeout(transcriptAccumulationTimer);
+                  transcriptAccumulationTimer = null;
+                  console.log(`[Custom Voice] ⏰ Reset accumulation timer (more speech incoming)`);
+                }
+                
+                // Also clear the old response timer if it exists
+                if (responseTimer) {
+                  clearTimeout(responseTimer);
+                  responseTimer = null;
+                }
+                
+                // Wait 1.5 seconds after the LAST transcript before sending to AI
+                // This gives students time to complete their thought
+                transcriptAccumulationTimer = setTimeout(() => {
+                  if (pendingTranscript && !state.isSessionEnded) {
+                    const completeUtterance = pendingTranscript;
+                    console.log(`[Custom Voice] ✅ Utterance complete after ${UTTERANCE_COMPLETE_DELAY_MS}ms silence: "${completeUtterance}"`);
+                    
+                    // Clear pending transcript
+                    pendingTranscript = '';
+                    
+                    state.lastEndOfTurnTime = Date.now();
+                    commitUserTurn(completeUtterance, 'eot');
+                  }
+                  transcriptAccumulationTimer = null;
+                }, UTTERANCE_COMPLETE_DELAY_MS);
               },
               async (error: Error) => {
                 console.error("[Custom Voice] ❌ Deepgram error:", error);
@@ -7081,50 +5874,9 @@ HONESTY INSTRUCTIONS:
                   }, backoffDelay); // Exponential backoff
                 }
               },
-              deepgramLanguage, // LANGUAGE: Pass selected language for speech recognition
-              state.ageGroup,  // GRADE BAND: Per-band endpointing patience
-              // UTTERANCE END: Definitive turn-end signal — commit immediately
-              () => {
-                console.log('[TurnDetect] 🔚 UtteranceEnd — definitive turn end');
-                cancelAllCommitTimers('UtteranceEnd');
-                if (pendingTranscript.trim().length > 0 && !state.isSessionEnded) {
-                  const completeUtterance = pendingTranscript;
-                  console.log(`[TurnDetect] ✅ UtteranceEnd commit: "${completeUtterance}"`);
-                  pendingTranscript = '';
-                  state.lastEndOfTurnTime = Date.now();
-                  commitUserTurn(completeUtterance, 'eot');
-                }
-              }
+              deepgramLanguage // LANGUAGE: Pass selected language for speech recognition
             );
             } // End of Deepgram else block
-
-            // CRITICAL: Send "ready" BEFORE greeting so client can initialize Silero VAD
-            // Otherwise, Silero VAD starts AFTER greeting audio begins playing and cannot detect
-            // speech during the first ~1-2 seconds of greeting playback (barge-in fails).
-            ws.send(JSON.stringify({ type: "ready" }));
-            console.log("[Custom Voice] ✅ Session ready - sent before greeting");
-            
-            // Send session_config for adaptive voice UX features
-            const gradeBand = normalizeGradeBand(state.ageGroup || 'G6-8');
-            const initialActivityMode: ActivityMode = 'default';
-            ws.send(JSON.stringify({ 
-              type: "session_config",
-              adaptiveBargeInEnabled: isAdaptiveBargeInEnabled(),
-              readingModeEnabled: isReadingModeEnabled(),
-              adaptivePatienceEnabled: isAdaptivePatienceEnabled(),
-              goodbyeHardStopEnabled: isGoodbyeHardStopEnabled(),
-              gradeBand,
-              activityMode: initialActivityMode
-            }));
-            console.log(`[Custom Voice] ⚙️ Session config sent: adaptiveBargeIn=${isAdaptiveBargeInEnabled()}, gradeBand=${gradeBand}`);
-            
-            // CRITICAL: 500ms delay for client to initialize microphone + Silero VAD
-            // Without this delay, greeting audio arrives before Silero VAD is ready,
-            // and barge-in detection during the greeting completely fails.
-            // Client flow: receive "ready" → startMicrophone() → MicVAD.new() → vad.start()
-            // This entire chain needs ~300-400ms, so 500ms ensures full initialization.
-            await new Promise(resolve => setTimeout(resolve, 500));
-            console.log("[Custom Voice] ⏳ Silero VAD initialization delay complete");
 
             // Generate and send greeting audio - SENTENCE-CHUNKED for faster first-audio
             // Instead of waiting for the entire greeting to synthesize, split into sentences
@@ -7154,49 +5906,21 @@ HONESTY INSTRUCTIONS:
                 speaker: "tutor"
               }));
               
-              // BARGE-IN: Set phase to TUTOR_SPEAKING so hardInterruptTutor can fire during greeting.
-              // Without this the phase stays LISTENING and barge-in is completely blocked.
-              setPhase(state, 'TUTOR_SPEAKING', 'greeting_start', ws);
-              state.sttLastUserSpeechSentAtMs = 0;
-              // FRESH STT PER LISTENING WINDOW: Close STT during greeting playback.
-              teardownSttConnection(state, 'greeting_start');
-              state.tutorAudioPlaying = true;
-              state.tutorAudioStartMs = Date.now();
-              
-              // BARGE-IN: Create an AbortController so the greeting loop can be cancelled mid-stream.
-              const greetingAc = new AbortController();
-              state.ttsAbortController = greetingAc;
-              
               const greetingTtsStart = Date.now();
               let totalGreetingAudioBytes = 0;
               let chunkIndex = 0;
-              let greetingInterrupted = false;
               
               try {
                 for (const sentence of greetingSentences) {
-                  // Check barge-in abort between sentences
-                  if (greetingAc.signal.aborted) {
-                    greetingInterrupted = true;
-                    console.log(`[Greeting Chunking] ⚡ Greeting interrupted by barge-in after ${chunkIndex} sentences`);
-                    break;
-                  }
-                  
                   chunkIndex++;
                   const chunkStart = Date.now();
-
+                  
                   const audioBuffer = await generateSpeech(sentence, state.ageGroup, state.speechSpeed);
                   const chunkMs = Date.now() - chunkStart;
                   totalGreetingAudioBytes += audioBuffer.length;
-
-                  // Check again after TTS (barge-in may have fired while generating)
-                  if (greetingAc.signal.aborted) {
-                    greetingInterrupted = true;
-                    console.log(`[Greeting Chunking] ⚡ Greeting interrupted mid-chunk ${chunkIndex} by barge-in`);
-                    break;
-                  }
-
+                  
                   console.log(`[Greeting Chunking] 🔊 Chunk ${chunkIndex}/${greetingSentences.length}: ${chunkMs}ms, ${audioBuffer.length} bytes | "${sentence.substring(0, 50)}..."`);
-
+                  
                   ws.send(JSON.stringify({
                     type: "audio",
                     data: audioBuffer.toString("base64"),
@@ -7206,31 +5930,15 @@ HONESTY INSTRUCTIONS:
                   }));
                 }
                 
-                if (!greetingInterrupted) {
-                  const totalGreetingMs = Date.now() - greetingTtsStart;
-                  console.log(`[Greeting Chunking] ✅ All ${chunkIndex} chunks sent in ${totalGreetingMs}ms total (${totalGreetingAudioBytes} bytes)`);
-                }
+                const totalGreetingMs = Date.now() - greetingTtsStart;
+                console.log(`[Greeting Chunking] ✅ All ${chunkIndex} chunks sent in ${totalGreetingMs}ms total (${totalGreetingAudioBytes} bytes)`);
               } catch (error) {
                 console.error("[Custom Voice] ❌ Failed to generate greeting audio:", error);
               } finally {
-                // Only reset phase if barge-in hasn't already changed it
-                if (!greetingInterrupted) {
-                  setPhase(state, 'LISTENING', 'greeting_complete', ws);
-                  state.tutorAudioPlaying = false;
-                  state.sttLastMessageAtMs = Date.now();
-                  // FRESH STT PER LISTENING WINDOW: Open new connection after greeting.
-                  if (USE_ASSEMBLYAI && !state.reconnectInFlight && state.sttReconnectFn) {
-                    state.sttReconnectAttempts = 0;
-                    state.sttReconnectFn();
-                  }
-                }
-                if (state.ttsAbortController === greetingAc) {
-                  state.ttsAbortController = null;
-                }
                 state.isProcessing = false;
                 state.processingSinceMs = null;
                 state.isTutorSpeaking = false;
-                console.log(`[Pipeline] greeting_processing_end isProcessing=false interrupted=${greetingInterrupted} queueLen=${state.transcriptQueue.length}`);
+                console.log(`[Pipeline] greeting_processing_end isProcessing=false queueLen=${state.transcriptQueue.length}`);
                 if (state.transcriptQueue.length > 0 && !state.isSessionEnded) {
                   console.log(`[Pipeline] drainQueue after greeting, queueLen=${state.transcriptQueue.length}`);
                   setImmediate(() => processTranscriptQueue());
@@ -7240,17 +5948,29 @@ HONESTY INSTRUCTIONS:
               console.log(`[Custom Voice] 🔄 Reconnect detected - skipping greeting audio`);
             }
 
-            // NOTE: "ready" and "session_config" messages already sent BEFORE greeting (line ~6227)
-            // to ensure Silero VAD is initialized before greeting audio playback begins.
+            ws.send(JSON.stringify({ type: "ready" }));
+            console.log("[Custom Voice] ✅ Session ready");
+            
+            // Send session_config for adaptive voice UX features
+            const gradeBand = normalizeGradeBand(state.ageGroup || 'G6-8');
+            const initialActivityMode: ActivityMode = 'default';
             
             // Initialize turn policy state with activity mode for reading patience overlay
             if (isReadingModeEnabled()) {
-              const initialActivityMode: ActivityMode = 'default';
               setActivityMode(state.turnPolicyState, initialActivityMode);
               console.log(`[Custom Voice] 📖 Reading mode patience enabled, initial mode: ${initialActivityMode}`);
             }
             
-            // NOTE: "session_config" already sent BEFORE greeting (line ~6234)
+            ws.send(JSON.stringify({
+              type: "session_config",
+              adaptiveBargeInEnabled: isAdaptiveBargeInEnabled(),
+              readingModeEnabled: isReadingModeEnabled(),
+              adaptivePatienceEnabled: isAdaptivePatienceEnabled(),
+              goodbyeHardStopEnabled: isGoodbyeHardStopEnabled(),
+              gradeBand,
+              activityMode: initialActivityMode,
+            }));
+            console.log(`[Custom Voice] ⚙️ Session config sent: adaptiveBargeIn=${isAdaptiveBargeInEnabled()}, gradeBand=${gradeBand}`);
             break;
 
           case "audio":
@@ -7275,14 +5995,7 @@ HONESTY INSTRUCTIONS:
             }
             
             if (state.isReconnecting) {
-              // PATIENCE FIX: Buffer audio during reconnect instead of dropping it.
-              // PcmRingBuffer handles overflow internally.
-              if (message.data) {
-                const buf = Buffer.from(message.data, 'base64');
-                state.sttAudioRingBuffer.push(buf);
-                state.sttLastAudioForwardAtMs = Date.now(); // prevent false deadman
-                markProgress(state);
-              }
+              console.warn('[Custom Voice] ⏸️ Audio dropped - reconnection in progress');
               break;
             }
             
@@ -7466,20 +6179,13 @@ HONESTY INSTRUCTIONS:
                   if (state.phase === 'LISTENING') {
                     setPhase(state, 'SPEECH_DETECTED', 'vad_speech_onset', ws);
                   }
-                  // SPEECH WATCHDOG: Removed — was racing with reconnect logic and killing connections.
-                  // The underlying stale-STT issue was caused by u3-rt-pro model, now removed.
                 } else if (!speechDetection.isSpeech && state.lastSpeechNotificationSent) {
                   state.lastSpeechNotificationSent = false;
                   ws.send(JSON.stringify({ type: "speech_ended" }));
                   cancelBargeInCandidate(state, 'speech_ended', ws);
-                  // DO NOT send ForceEndpoint here — our energy-based VAD fires on micro-pauses
-                  // in natural speech (breathing, hesitation between words). Forcing AssemblyAI
-                  // to commit at each pause splits utterances mid-sentence ("I said" without "math").
-                  // Let AssemblyAI's own turn detection (semantic + acoustic) own turn boundaries.
                   if (state.phase === 'SPEECH_DETECTED') {
                     setPhase(state, 'LISTENING', 'vad_speech_ended', ws);
                   }
-                  // SPEECH WATCHDOG: Removed (see speech onset comment above)
                 }
                 
                 // Only log detailed audio analysis occasionally (every ~50th chunk to reduce noise)
@@ -7496,19 +6202,12 @@ HONESTY INSTRUCTIONS:
                 }
                 
                 if (!hasNonZero) {
-                  console.warn('[Custom Voice] ⚠️ Audio buffer is COMPLETELY SILENT (all zeros)! Dropping chunk to prevent STT deadman trigger.');
-                  // Drop silent-zero chunks entirely — sending them to AssemblyAI causes
-                  // the deadman timer to fire (no STT messages returned) which triggers
-                  // unnecessary reconnect cycles at session start when mic is still initializing.
-                  return;
+                  console.warn('[Custom Voice] ⚠️ Audio buffer is COMPLETELY SILENT (all zeros)!');
                 }
                 
                 // Send to appropriate STT provider
                 if (USE_ASSEMBLYAI) {
-                  // Guards (TUTOR_SPEAKING, sttBeginReceived, epoch, reconnectInFlight)
-                  // are now inside sendAudioToAssemblyAI. Ring buffer is always kept warm.
-                  const isSpeechFrame = Boolean(speechDetection?.isSpeech);
-                  const sent = sendAudioToAssemblyAI(state.assemblyAIWs, audioBuffer, state.assemblyAIState || undefined, state, isSpeechFrame);
+                  const sent = sendAudioToAssemblyAI(state.assemblyAIWs, audioBuffer, state.assemblyAIState || undefined, state);
                   if (sent && (state.audioFrameCount <= 2 || state.audioFrameCount % 100 === 0)) {
                     console.log('[Custom Voice] ✅ Audio forwarded to AssemblyAI');
                   }
@@ -7538,9 +6237,6 @@ HONESTY INSTRUCTIONS:
           case "text_message":
             // Handle text message from chat input
             console.log(`[Custom Voice] 📝 Text message from ${state.studentName}: ${message.message}`);
-            
-            // WATCHDOG: Text input is valid progress — prevent watchdog from killing text-mode sessions
-            markProgress(state);
             
             // INACTIVITY: Reset activity timer - User is typing!
             state.lastActivityTime = Date.now();
@@ -7798,9 +6494,6 @@ HONESTY INSTRUCTIONS:
               
               console.log(JSON.stringify({ event: 'tutor_reply_started', session_id: state.sessionId, gen_id: state.playbackGenId, input: 'text' }));
               
-              // WATCHDOG: Text mode LLM response is valid progress
-              markProgress(state);
-              
               // Track streaming metrics
               let textSentenceCount = 0;
               let textTotalAudioBytes = 0;
@@ -7811,20 +6504,6 @@ HONESTY INSTRUCTIONS:
                 const textCallbacks: StreamingCallbacks = {
                   onSentence: async (sentence: string) => {
                     textSentenceCount++;
-                    
-                    // WATCHDOG: Each sentence in text mode is progress
-                    markProgress(state);
-                    
-                    // ── VISUAL TAG PARSER (text mode) ────────────────────────
-                    const textVisualMatch = sentence.match(/\[VISUAL:\s*([a-z0-9_]+)\]/i);
-                    if (textVisualMatch) {
-                      const visualTag = textVisualMatch[1].toLowerCase();
-                      sentence = sentence.replace(textVisualMatch[0], '').trim();
-                      console.log(`[Visual] 📊 Triggering visual (text mode): ${visualTag} session=${state.sessionId?.substring(0,8)}`);
-                      ws.send(JSON.stringify({ type: 'show_visual', visualTag }));
-                    }
-                    // ── END VISUAL TAG PARSER ────────────────────────────────
-                    
                     console.log(`[Custom Voice] 📤 Text sentence ${textSentenceCount}: "${sentence.substring(0, 50)}..."`);
                     
                     if (textSentenceCount === 1) {
@@ -7883,14 +6562,9 @@ HONESTY INSTRUCTIONS:
                   onComplete: (fullText: string) => {
                     const textStreamMs = Date.now() - textStreamStart;
                     state.isTutorThinking = false;
-                    
-                    // WATCHDOG: Text mode response complete is progress
-                    markProgress(state);
-                    
                     console.log(`[Custom Voice] ⏱️ Text streaming complete: ${textStreamMs}ms, ${textSentenceCount} sentences`);
                     
-                    // ── STRIP VISUAL TAGS from full text before saving to history/transcript ──
-                    const normalizedTextContent = (fullText ?? "").trim().replace(/\[VISUAL:\s*[a-z0-9_]+\]/gi, '').replace(/\s{2,}/g, ' ').trim();
+                    const normalizedTextContent = (fullText ?? "").trim();
                     const textWasAborted = textLlmAc.signal.aborted || textTtsAc.signal.aborted;
                     if (normalizedTextContent.length === 0 || textWasAborted || textSentenceCount === 0) {
                       console.warn(`[LLM] Aborted/empty assistant response (text mode) — not saving to history reason=${textWasAborted ? 'aborted' : 'empty'} sentences=${textSentenceCount}`);
@@ -7952,15 +6626,8 @@ HONESTY INSTRUCTIONS:
                   "text",
                   textResponseLanguage,
                   state.ageGroup,
-                  textLlmAc.signal,
-                  state.useFallbackLLM
-                ).then(() => {
-                  // Check if fallback was triggered during this call
-                  if ((textCallbacks as any)._fallbackUsed && !state.useFallbackLLM) {
-                    state.useFallbackLLM = true;
-                    console.log(`[LLM Fallback] 🔄 Switching to OpenAI for rest of session ${state.sessionId}`);
-                  }
-                }).catch(textReject);
+                  textLlmAc.signal
+                ).catch(textReject);
               });
               
               console.log(`[Custom Voice] 🔊 Sent streamed tutor voice response (${textSentenceCount} chunks)`);
