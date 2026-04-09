@@ -90,7 +90,7 @@ export async function sendAdminSafetyAlert(data: SafetyAlertData): Promise<boole
     return false;
   }
 
-  const subject = `[State University AI Tutor ALERT] ${data.flagType} - Session ${data.sessionId.slice(0, 8)}`;
+  const subject = `[University of Wisconsin AI Tutor ALERT] ${data.flagType} - Session ${data.sessionId.slice(0, 8)}`;
   
   const body = `
 SAFETY ALERT - Immediate Review Required
@@ -120,7 +120,7 @@ ${data.actionTaken}
 ---
 Review full transcript in admin dashboard.
 
-This is an automated alert from State University AI Tutor Safety System.
+This is an automated alert from University of Wisconsin AI Tutor Safety System.
   `.trim();
 
   // Log the incident first
@@ -161,7 +161,7 @@ export async function sendParentAlert(data: SafetyAlertData): Promise<boolean> {
     return false;
   }
 
-  const subject = `[State University AI Tutor] Tutoring Session Alert - ${data.studentName || 'Your Child'}`;
+  const subject = `[University of Wisconsin AI Tutor] Tutoring Session Alert - ${data.studentName || 'Your Child'}`;
   
   const body = `
 Dear Parent/Guardian,
@@ -175,12 +175,12 @@ ${getParentFriendlyDescription(data.flagType)}
 
 Session ID: ${data.sessionId.slice(0, 8)}...
 
-You can review the full transcript by logging into your State University AI Tutor account.
+You can review the full transcript by logging into your University of Wisconsin AI Tutor account.
 
 If you have concerns, please contact us at support@stateuniversity-tutor.ai.
 
 Best regards,
-State University AI Tutor Team
+University of Wisconsin AI Tutor Team
   `.trim();
 
   try {
@@ -271,8 +271,8 @@ export async function sendJIESupportNotification(data: SafetyIncidentNotificatio
   const isCritical = ['self_harm', 'violent_threat', 'harm_to_others'].includes(data.incidentType);
   
   const subject = isCritical 
-    ? `[State University AI Tutor CRITICAL] ${incidentLabel} - Immediate Review Required`
-    : `[State University AI Tutor SAFETY] ${incidentLabel} - Session ${data.sessionId.slice(0, 8)}`;
+    ? `[University of Wisconsin AI Tutor CRITICAL] ${incidentLabel} - Immediate Review Required`
+    : `[University of Wisconsin AI Tutor SAFETY] ${incidentLabel} - Session ${data.sessionId.slice(0, 8)}`;
   
   const timestamp = data.timestamp.toLocaleString('en-US', { 
     timeZone: 'America/Chicago',
@@ -282,7 +282,7 @@ export async function sendJIESupportNotification(data: SafetyIncidentNotificatio
   
   const body = `
 ${'='.repeat(60)}
-STATE UNIVERSITY AI TUTOR SAFETY INCIDENT REPORT
+UNIVERSITY OF WISCONSIN AI TUTOR SAFETY INCIDENT REPORT
 ${'='.repeat(60)}
 
 INCIDENT TYPE: ${incidentLabel}
@@ -315,7 +315,7 @@ NEXT STEPS
 3. Document any additional actions taken
 
 ${'='.repeat(60)}
-This is an automated alert from State University AI Tutor Safety System.
+This is an automated alert from University of Wisconsin AI Tutor Safety System.
 Generated at: ${new Date().toISOString()}
 ${'='.repeat(60)}
   `.trim();

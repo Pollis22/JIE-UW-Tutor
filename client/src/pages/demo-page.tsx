@@ -13,8 +13,8 @@ export default function DemoPage() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setLocation("/auth")}>
-              <img src={suLogo} alt="State University AI Tutor" className="h-10 w-auto" />
-              <span className="text-xl font-bold text-foreground">State University AI Tutor Tutor</span>
+              <img src={suLogo} alt="University of Wisconsin AI Tutor" className="h-10 w-auto" />
+              <span className="text-xl font-bold text-foreground">University of Wisconsin AI Tutor</span>
             </div>
             {/* Desktop navigation - hidden on mobile */}
             <div className="hidden md:flex items-center space-x-4">
@@ -23,7 +23,7 @@ export default function DemoPage() {
                 onClick={() => setLocation("/benefits")} 
                 data-testid="button-nav-benefits"
               >
-                Why State University AI Tutor AI Tutors
+                Why University of Wisconsin AI Tutors
               </Button>
               <Button 
                 variant="ghost" 
@@ -92,7 +92,7 @@ export default function DemoPage() {
               </span>
             </div>
             <p className="text-xl text-muted-foreground">
-              See State University AI Tutor AI Tutor in action
+              See University of Wisconsin AI Tutor in action
             </p>
           </div>
 
@@ -102,7 +102,7 @@ export default function DemoPage() {
               <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
                 <iframe 
                   src="https://www.youtube.com/embed/eZoNpF0F8AI" 
-                  title="State University AI Tutor AI Tutor Demo" 
+                  title="University of Wisconsin AI Tutor Demo" 
                   frameBorder="0" 
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
                   referrerPolicy="strict-origin-when-cross-origin" 

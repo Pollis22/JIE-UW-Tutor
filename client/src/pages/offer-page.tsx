@@ -39,9 +39,9 @@ export default function OfferPage() {
     const elementsToCleanup: Element[] = [];
     
     if (isHomepage) {
-      document.title = "State University AI Tutor - AI Homework Help That Teaches Kids to Think | Online Tutor for K-12";
+      document.title = "University of Wisconsin AI Tutor - AI Homework Help That Teaches Kids to Think | Online Tutor for K-12";
     } else {
-      document.title = "Free Trial + 50% Off | State University AI Tutor AI Tutor";
+      document.title = "Free Trial + 50% Off | University of Wisconsin AI Tutor";
       
       const meta = document.createElement('meta');
       meta.name = 'robots';
@@ -104,7 +104,7 @@ export default function OfferPage() {
 {/* LCP element: Logo in navbar (optimized 2KB) */}
               <img 
                 src={suLogo} 
-                alt="State University AI Tutor" 
+                alt="University of Wisconsin AI Tutor" 
                 className="h-10 w-auto"
                 width={40}
                 height={40}
@@ -113,7 +113,7 @@ export default function OfferPage() {
                 fetchpriority="high"
                 decoding="async"
               />
-              <span className="text-xl font-bold text-foreground">State University AI Tutor</span>
+              <span className="text-xl font-bold text-foreground">University of Wisconsin AI Tutor</span>
             </div>
             
             <div className="hidden md:flex items-center space-x-6">
@@ -302,9 +302,9 @@ export default function OfferPage() {
               {[
                 { q: "Is there a free trial?", a: "Yes! You get 30 minutes of free AI tutoring in the real app—no credit card required. Just create an account to start." },
                 { q: "What does the family plan include?", a: "All plans include unlimited student profiles. One subscription covers your whole family—perfect for homeschool tutoring or after-school help." },
-                { q: "Does it give answers or teach?", a: "State University AI Tutor uses the Socratic method to guide students through problems step-by-step. It's real homework help for students—teaching thinking, not just answers." },
+                { q: "Does it give answers or teach?", a: "University of Wisconsin AI Tutor uses the Socratic method to guide students through problems step-by-step. It's real homework help for students—teaching thinking, not just answers." },
                 { q: "What subjects are included?", a: "Math, English, Science, and Spanish are all included. Our AI tutor for students supports K-12 and college-level content." },
-                { q: "Is this good for homeschool families?", a: "Absolutely! State University AI Tutor works as an AI tutor for homeschool students, providing on-demand online homeschool tutoring that adapts to any curriculum." }
+                { q: "Is this good for homeschool families?", a: "Absolutely! University of Wisconsin AI Tutor works as an AI tutor for homeschool students, providing on-demand online homeschool tutoring that adapts to any curriculum." }
               ].map((item, idx) => (
                 <AccordionItem key={idx} value={`faq-${idx}`} className="border rounded-lg px-4" data-testid={`faq-item-${idx}`}>
                   <AccordionTrigger className="text-left font-semibold hover:no-underline">
@@ -322,7 +322,7 @@ export default function OfferPage() {
 
       <section className="py-16 bg-gradient-to-b from-muted/30 to-background">
         <div className="container mx-auto px-4 text-center space-y-6">
-          <h2 className="text-2xl md:text-3xl font-bold">Try State University AI Tutor AI Tutor Risk-Free</h2>
+          <h2 className="text-2xl md:text-3xl font-bold">Try University of Wisconsin AI Tutor Risk-Free</h2>
           <StartTrialButton size="lg" className="text-lg h-14 px-8" showSubtext />
           <p className="text-muted-foreground">
             Code: <span className="font-bold text-primary">WELCOME50</span> (50% off first month)
@@ -336,14 +336,14 @@ export default function OfferPage() {
 {/* Below-fold image: lazy load with explicit dimensions */}
             <img 
               src={suLogo} 
-              alt="State University AI Tutor" 
+              alt="University of Wisconsin AI Tutor" 
               className="h-5 w-auto grayscale opacity-50"
               width={20}
               height={20}
               loading="lazy"
               decoding="async"
             />
-            <span>&copy; 2026 State University AI Tutor AI Tutor</span>
+            <span>&copy; 2026 University of Wisconsin AI Tutor</span>
           </div>
           <div className="flex justify-center space-x-6">
             <a onClick={() => navigateTo("/terms")} className="hover:text-primary cursor-pointer transition-colors">Terms</a>

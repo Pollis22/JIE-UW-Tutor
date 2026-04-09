@@ -532,7 +532,7 @@ export function StudentProfilePanel({
                         data-testid="input-student-grade"
                       />
                     </FormControl>
-                    <FormDescription>State University Tutor is configured for college-level instruction</FormDescription>
+                    <FormDescription>University of Wisconsin Tutor is configured for college-level instruction</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

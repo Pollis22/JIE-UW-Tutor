@@ -79,7 +79,7 @@ export function SessionFeedback({ sessionId, show }: Props) {
                     Thank you! 🦡
                   </p>
                   <p className="text-xs text-gray-500">
-                    Your feedback helps us improve the State University AI Tutor experience.
+                    Your feedback helps us improve the University of Wisconsin AI Tutor experience.
                   </p>
                 </motion.div>
               ) : (

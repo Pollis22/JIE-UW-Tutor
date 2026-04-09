@@ -1,5 +1,5 @@
 /**
- * State University AI Tutor Platform
+ * University of Wisconsin AI Tutor Platform
  * Copyright (c) 2025 JIE Mastery AI, Inc.
  * All Rights Reserved.
  * 
@@ -181,7 +181,7 @@ export default function AccountSettings() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `jie-mastery-data-${Date.now()}.json`;
+      a.download = `uw-tutor-data-${Date.now()}.json`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

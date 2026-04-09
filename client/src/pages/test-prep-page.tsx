@@ -131,8 +131,8 @@ export default function TestPrepPage() {
               className="flex items-center space-x-3 cursor-pointer"
               onClick={() => setLocation("/")}
             >
-              <img src={suLogo} alt="State University" className="h-12 w-auto" />
-              <span className="text-xl font-bold text-foreground">State University AI Tutor</span>
+              <img src={suLogo} alt="University of Wisconsin" className="h-12 w-auto" />
+              <span className="text-xl font-bold text-foreground">University of Wisconsin AI Tutor</span>
             </div>
             <div className="hidden md:flex items-center space-x-6">
               {[
@@ -229,7 +229,7 @@ export default function TestPrepPage() {
                 </ul>
                 <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
                   <p className="text-xs text-amber-700 dark:text-amber-300">
-                    <strong>Our recommendation:</strong> Use State University AI Tutor as a supplement to your primary study plan. 
+                    <strong>Our recommendation:</strong> Use University of Wisconsin AI Tutor as a supplement to your primary study plan. 
                     It is most effective for concept review, strategy coaching, and practice drilling — especially 
                     when you are stuck on a specific topic or want extra reps before test day.
                   </p>
@@ -414,7 +414,7 @@ export default function TestPrepPage() {
             Start Preparing Today
           </h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
-            Your exam is not going to wait. Start preparing with your State University AI Tutor today.
+            Your exam is not going to wait. Start preparing with your University of Wisconsin AI Tutor today.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" onClick={() => setLocation("/")} className="text-lg h-14 px-8">Start a Test Prep Session</Button>
@@ -429,8 +429,8 @@ export default function TestPrepPage() {
       <footer className="border-t border-border py-8 px-4">
         <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center space-x-2">
-            <img src={suLogo} alt="State University" className="h-10 w-auto" />
-            <span className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} State University · AI Tutor Program</span>
+            <img src={suLogo} alt="University of Wisconsin" className="h-10 w-auto" />
+            <span className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} University of Wisconsin · AI Tutor Program</span>
           </div>
           <div className="flex space-x-6">
             <a onClick={() => setLocation("/terms")} className="hover:text-primary cursor-pointer transition-colors text-sm text-muted-foreground">Terms</a>

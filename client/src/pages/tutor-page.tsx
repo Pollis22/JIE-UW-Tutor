@@ -720,7 +720,7 @@ export default function TutorPage() {
               <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors">
                 <h3 className="font-bold text-blue-900 dark:text-blue-100 flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-blue-600" />
-                  How to Use State University AI Tutor
+                  How to Use University of Wisconsin AI Tutor
                 </h3>
                 <ChevronDown className="h-5 w-5 text-blue-600 transition-transform duration-200 group-data-[state=open]:rotate-180" />
               </div>

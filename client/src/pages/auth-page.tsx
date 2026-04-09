@@ -61,7 +61,7 @@ function PhotoCollage() {
         {/* Bascom Hall — spans 2 cols on mobile, 2 on desktop */}
         <div className="col-span-2 rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.01]"
           style={{ border: "3px solid white", boxShadow: "0 12px 40px rgba(0,0,0,0.12)", transform: "rotate(-1deg)" }}>
-          <img src={bascomHall} alt="State University campus" className="w-full h-48 md:h-64 object-cover" />
+          <img src={bascomHall} alt="University of Wisconsin campus" className="w-full h-48 md:h-64 object-cover" />
           <div style={{ height: 4, background: "#C5050C" }} />
         </div>
 
@@ -210,7 +210,7 @@ export default function AuthPage() {
         }}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2 md:gap-4 min-w-0">
-            <img src={suLogo} alt="State University" className="h-12 md:h-20 object-contain flex-shrink-0" />
+            <img src={suLogo} alt="University of Wisconsin" className="h-12 md:h-20 object-contain flex-shrink-0" />
             <div className="hidden sm:block" style={{ borderLeft: "1px solid #DAD7CB", paddingLeft: 12 }}>
               <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontWeight: 700, fontSize: 16, color: "#282728", lineHeight: 1.1 }}>AI Tutor</div>
               <div style={{ fontSize: 10, color: "#646569", fontWeight: 500, letterSpacing: 1, textTransform: "uppercase" }}>Powered by JIE Mastery</div>
@@ -344,7 +344,7 @@ export default function AuthPage() {
             <div style={{ animation: "fadeInUp 0.8s ease" }}>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-6" style={{ background: "rgba(197,5,12,0.08)", border: "1px solid rgba(197,5,12,0.15)" }}>
                 <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#28A745" }} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#C5050C" }}>Available 24/7 for State University Students</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#C5050C" }}>Available 24/7 for University of Wisconsin Students</span>
               </div>
               <h1 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: "clamp(32px, 5vw, 56px)", fontWeight: 800, lineHeight: 1.08, color: "#282728", marginBottom: 20, letterSpacing: -1.5 }}>
                 Your Personal<br /><span style={{ color: "#C5050C" }}>AI Tutor</span>
@@ -483,7 +483,7 @@ export default function AuthPage() {
             Not ChatGPT. Not a Traditional Tutor.
           </h2>
           <p style={{ fontSize: 16, color: "#646569", maxWidth: 560, margin: "0 auto", lineHeight: 1.6 }}>
-            State University AI Tutor combines the best of both — and adds intelligence that neither can offer.
+            University of Wisconsin AI Tutor combines the best of both — and adds intelligence that neither can offer.
           </p>
         </div>
 
@@ -493,7 +493,7 @@ export default function AuthPage() {
             <div className="p-3 md:p-4" style={{ background: "#F8F8F8" }}></div>
             <div className="p-3 md:p-4" style={{ background: "#F8F8F8", fontSize: 13, color: "#646569" }}>Traditional Tutoring</div>
             <div className="p-3 md:p-4" style={{ background: "#F8F8F8", fontSize: 13, color: "#646569" }}>ChatGPT</div>
-            <div className="p-3 md:p-4" style={{ background: "rgba(197,5,12,0.06)", fontSize: 13, color: "#C5050C", fontWeight: 700 }}>State University AI Tutor</div>
+            <div className="p-3 md:p-4" style={{ background: "rgba(197,5,12,0.06)", fontSize: 13, color: "#C5050C", fontWeight: 700 }}>University of Wisconsin AI Tutor</div>
           </div>
           
           {[
@@ -547,7 +547,7 @@ export default function AuthPage() {
               It Gets <span style={{ color: "#C5050C" }}>Smarter</span> Every Session
             </h2>
             <p style={{ fontSize: 16, color: "#646569", maxWidth: 600, margin: "0 auto", lineHeight: 1.6 }}>
-              ChatGPT forgets everything when you close the window. Your State University AI Tutor builds a permanent learning profile that compounds over time.
+              ChatGPT forgets everything when you close the window. Your University of Wisconsin AI Tutor builds a permanent learning profile that compounds over time.
             </p>
           </div>
 
@@ -591,7 +591,7 @@ export default function AuthPage() {
                   <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-white" style={{ background: "#C5050C" }}>20</div>
                   <div>
                     <p style={{ fontWeight: 700, color: "#282728", fontSize: 15 }}>Session 20</p>
-                    <p style={{ fontSize: 12, fontWeight: 600, color: "#C5050C" }}>Only State University AI Tutor can do this</p>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: "#C5050C" }}>Only University of Wisconsin AI Tutor can do this</p>
                   </div>
                 </div>
                 <div className="space-y-2.5">
@@ -612,7 +612,7 @@ export default function AuthPage() {
           </div>
 
           <p className="text-center mt-6" style={{ fontSize: 14, color: "#646569" }}>
-            ChatGPT starts cold every conversation. Your State University AI Tutor has 20 sessions of intelligence about how you learn.
+            ChatGPT starts cold every conversation. Your University of Wisconsin AI Tutor has 20 sessions of intelligence about how you learn.
             <br /><strong style={{ color: "#282728" }}>That gap grows every single session.</strong>
           </p>
         </div>
@@ -689,7 +689,7 @@ export default function AuthPage() {
           <div className="relative p-8 md:p-16 flex flex-col justify-center" style={{ background: "#C5050C" }}>
             <div className="absolute inset-0 opacity-[0.06] pointer-events-none" style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 40px, white 40px, white 41px)" }} />
             <div className="relative z-10">
-              <div className="mb-6 md:mb-10" style={{ fontFamily: "'Red Hat Display', sans-serif", fontWeight: 800, fontSize: 20, color: "white", letterSpacing: 1 }}>STATE UNIVERSITY</div>
+              <div className="mb-6 md:mb-10" style={{ fontFamily: "'Red Hat Display', sans-serif", fontWeight: 800, fontSize: 20, color: "white", letterSpacing: 1 }}>UNIVERSITY OF WISCONSIN</div>
               <h2 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 700, color: "white", lineHeight: 1.15, marginBottom: 16 }}>Welcome.</h2>
               <p style={{ fontSize: 16, color: "rgba(255,255,255,0.7)", lineHeight: 1.6, maxWidth: 360 }}>Your AI tutor is ready. Sign in to start a voice session, review past conversations, or track your learning progress.</p>
             </div>
@@ -808,8 +808,8 @@ export default function AuthPage() {
       {/* Footer */}
       <footer className="py-8 md:py-10 px-4 md:px-12 max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4" style={{ borderTop: "1px solid #E8E8E8", background: "#FFFFFF" }}>
         <div className="flex items-center gap-3">
-          <img src={suLogo} alt="State University" className="h-8 object-contain" />
-          <span style={{ fontSize: 12, color: "#646569" }}>State University · AI Tutor Program</span>
+          <img src={suLogo} alt="University of Wisconsin" className="h-8 object-contain" />
+          <span style={{ fontSize: 12, color: "#646569" }}>University of Wisconsin · AI Tutor Program</span>
         </div>
         <span style={{ fontSize: 11, color: "#DAD7CB" }}>Powered by JIE Mastery</span>
       </footer>

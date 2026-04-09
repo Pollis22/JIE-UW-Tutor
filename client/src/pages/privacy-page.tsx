@@ -12,8 +12,8 @@ export default function PrivacyPage() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setLocation("/auth")}>
-              <img src={suLogo} alt="State University AI Tutor" className="h-10 w-auto" />
-              <span className="text-xl font-bold text-foreground">State University AI Tutor Tutor</span>
+              <img src={suLogo} alt="University of Wisconsin AI Tutor" className="h-10 w-auto" />
+              <span className="text-xl font-bold text-foreground">University of Wisconsin AI Tutor</span>
             </div>
             <div className="flex items-center space-x-4">
               <Button 
@@ -21,7 +21,7 @@ export default function PrivacyPage() {
                 onClick={() => setLocation("/benefits")} 
                 data-testid="button-nav-benefits"
               >
-                Why State University AI Tutor AI Tutors
+                Why University of Wisconsin AI Tutors
               </Button>
               <Button 
                 variant="ghost" 
@@ -71,7 +71,7 @@ export default function PrivacyPage() {
 
           <div className="space-y-8 text-foreground">
             <p>
-              At State University AI Tutor AI Tutor, your family's privacy and safety come first. We are committed to protecting 
+              At University of Wisconsin AI Tutor, your family's privacy and safety come first. We are committed to protecting 
               the personal information of all users — especially children — in compliance with the Children's Online 
               Privacy Protection Act (COPPA) and other applicable privacy laws.
             </p>

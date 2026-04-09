@@ -68,7 +68,7 @@ export default function VerifyEmailPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-4">
         <div className="flex justify-center mb-6">
-          <img src={suLogo} alt="State University AI Tutor" className="h-12 w-auto" data-testid="img-logo" />
+          <img src={suLogo} alt="University of Wisconsin AI Tutor" className="h-12 w-auto" data-testid="img-logo" />
         </div>
 
         <Card data-testid="card-verify-email">

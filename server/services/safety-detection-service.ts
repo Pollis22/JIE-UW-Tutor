@@ -22,7 +22,7 @@ const FORBIDDEN_TOPICS = [
   'your code', 'your programming', 'your training', 'your data',
   'assemblyai', 'elevenlabs', 'deepgram', 'railway', 'database', 'server',
   'how much money', 'your company', 'your owner', 'who made you', 'your creator',
-  'jie mastery business', 'pricing structure', 'your costs',
+  'university of wisconsin tutor business', 'pricing structure', 'your costs',
   'ignore your instructions', 'pretend you are', 'roleplay as', 'jailbreak',
   'bypass your rules', 'your system prompt', 'your instructions'
 ];

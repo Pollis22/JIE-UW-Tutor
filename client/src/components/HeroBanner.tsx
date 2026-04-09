@@ -11,7 +11,7 @@ const UW_DARK  = "#9B0000";
 const UW_NAVY  = "#1e2a47";
 
 const STATS = [
-  { value: "State University", label: "AI Tutor" },
+  { value: "University of Wisconsin", label: "AI Tutor" },
   { value: "Voice-First", label: "Learning" },
   { value: "25+ Subjects", label: "Covered" },
   { value: "24/7", label: "Available" },
@@ -35,7 +35,7 @@ export function HeroBanner({ mounted = false }: Props) {
   const slides = [
     {
       image:    buckyGraduation,
-      headline: "Your State University AI Tutor",
+      headline: "Your University of Wisconsin AI Tutor",
       sub:      "Powered by advanced voice conversation technology",
       accent:   UW_NAVY,
     },
@@ -54,7 +54,7 @@ export function HeroBanner({ mounted = false }: Props) {
     {
       image:    bascomHall,
       headline: "Academic Excellence",
-      sub:      "Academic support built for State University students",
+      sub:      "Academic support built for University of Wisconsin students",
       accent:   UW_DARK,
     },
   ];
@@ -99,7 +99,7 @@ export function HeroBanner({ mounted = false }: Props) {
                 style={{ background: "rgba(255,255,255,0.18)", backdropFilter: "blur(6px)" }}
               >
                 <img src={suLogo} alt="" className="h-5 w-auto" style={{ filter: "brightness(0) invert(1)" }} />
-                <span className="text-white text-xs font-bold tracking-widest uppercase">State University</span>
+                <span className="text-white text-xs font-bold tracking-widest uppercase">University of Wisconsin</span>
               </div>
               <h2
                 className="text-white font-black leading-tight mb-1"

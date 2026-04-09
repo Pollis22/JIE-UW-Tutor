@@ -42,8 +42,8 @@ export default function SchoolsPage() {
               className="flex items-center space-x-3 cursor-pointer" 
               onClick={() => setLocation("/")}
             >
-              <img src={suLogo} alt="State University AI Tutor" className="h-10 w-auto" />
-              <span className="text-xl font-bold text-foreground">State University AI Tutor Tutor</span>
+              <img src={suLogo} alt="University of Wisconsin AI Tutor" className="h-10 w-auto" />
+              <span className="text-xl font-bold text-foreground">University of Wisconsin AI Tutor</span>
             </div>
             <div className="hidden md:flex items-center space-x-2">
               <Button 
@@ -106,7 +106,7 @@ export default function SchoolsPage() {
               </div>
               
               <h1 className="text-4xl md:text-5xl lg:text-5xl font-bold text-foreground leading-tight">
-                State University AI Tutor™ — AI Tutoring for Schools
+                University of Wisconsin AI Tutor™ — AI Tutoring for Schools
               </h1>
               
               <p className="text-xl text-primary font-semibold">
@@ -464,7 +464,7 @@ export default function SchoolsPage() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground pb-4">
-                  State University AI Tutor uses a Socratic method — the tutor asks guiding questions to help students 
+                  University of Wisconsin AI Tutor uses a Socratic method — the tutor asks guiding questions to help students 
                   think through problems, but never provides direct answers. The system is designed to 
                   support homework completion through genuine understanding, not answer delivery. All 
                   sessions are logged so educators can verify the learning process.
@@ -511,7 +511,7 @@ export default function SchoolsPage() {
               Ready to Partner?
             </h2>
             <p className="text-lg text-muted-foreground">
-              Learn how State University AI Tutor can support student success in your district.
+              Learn how University of Wisconsin AI Tutor can support student success in your district.
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">

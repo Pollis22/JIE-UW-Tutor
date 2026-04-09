@@ -60,7 +60,7 @@ export default function DashboardPage() {
     console.log('[Dashboard] activeTab state is now:', activeTab);
   }, [activeTab]);
 
-  // Tracking disabled for State University deployment
+  // Tracking disabled for University of Wisconsin deployment
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get('session_id');

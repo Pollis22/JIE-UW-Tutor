@@ -1259,18 +1259,18 @@ router.post("/admin/nudge", requireAdmin, async (req, res) => {
     const emailService = new EmailService();
     await emailService.sendEmail({
       to: studentEmail,
-      subject: subject || "A message from your academic advisor — State University AI Tutor",
+      subject: subject || "A message from your academic advisor — University of Wisconsin AI Tutor",
       html: `
         <div style="font-family: 'Segoe UI', system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
           <div style="background: #282728; padding: 20px; border-radius: 8px 8px 0 0; border-bottom: 4px solid #C5050C;">
-            <h1 style="color: white; margin: 0; font-size: 20px;">State University AI Tutor — Academic Support</h1>
+            <h1 style="color: white; margin: 0; font-size: 20px;">University of Wisconsin AI Tutor — Academic Support</h1>
           </div>
           <div style="background: #f8f9fa; padding: 24px; border-radius: 0 0 8px 8px;">
             <p style="font-size: 16px; line-height: 1.6; color: #333;">${message.replace(/\n/g, '<br>')}</p>
             <div style="margin-top: 24px; text-align: center;">
               <a href="${process.env.APP_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost:5000'}`}/tutor"
                  style="display: inline-block; background: #C5050C; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-                Study with State University AI Tutor
+                Study with University of Wisconsin AI Tutor
               </a>
             </div>
           </div>
@@ -1450,7 +1450,7 @@ router.post("/send-reminder", async (req, res) => {
       html: `
         <div style="font-family: 'Segoe UI', system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
           <div style="background: #282728; padding: 20px; border-radius: 8px 8px 0 0; border-bottom: 4px solid #C5050C;">
-            <h1 style="color: white; margin: 0; font-size: 20px;">State University AI Tutor — Reminder</h1>
+            <h1 style="color: white; margin: 0; font-size: 20px;">University of Wisconsin AI Tutor — Reminder</h1>
           </div>
           <div style="background: #f8f9fa; padding: 24px; border-radius: 0 0 8px 8px;">
             <p style="font-size: 18px; font-weight: 600; color: #333;">${reminder.message}</p>
@@ -1458,7 +1458,7 @@ router.post("/send-reminder", async (req, res) => {
             <div style="margin-top: 24px; text-align: center;">
               <a href="${appUrl}/tutor"
                  style="display: inline-block; background: #C5050C; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-                Study with State University AI Tutor
+                Study with University of Wisconsin AI Tutor
               </a>
             </div>
           </div>
@@ -1520,11 +1520,11 @@ router.post("/send-parent-digest", async (req, res) => {
 
       await emailService.sendEmail({
         to: share.parentEmail,
-        subject: `${studentName}'s Weekly Academic Summary — State University AI Tutor`,
+        subject: `${studentName}'s Weekly Academic Summary — University of Wisconsin AI Tutor`,
         html: `
           <div style="font-family: 'Segoe UI', system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
             <div style="background: #282728; padding: 20px; border-radius: 8px 8px 0 0; border-bottom: 4px solid #C5050C;">
-              <h1 style="color: white; margin: 0; font-size: 20px;">State University AI Tutor — Weekly Digest</h1>
+              <h1 style="color: white; margin: 0; font-size: 20px;">University of Wisconsin AI Tutor — Weekly Digest</h1>
             </div>
             <div style="background: #f8f9fa; padding: 24px; border-radius: 0 0 8px 8px;">
               <h2 style="color: #333;">${studentName}'s Academic Summary</h2>
@@ -1553,7 +1553,7 @@ router.post("/send-parent-digest", async (req, res) => {
               </div>` : ''}
 
               <p style="text-align: center; color: #999; font-size: 12px; margin-top: 24px;">
-                This summary was shared by ${studentName} via <a href="${appUrl}">State University AI Tutor</a>
+                This summary was shared by ${studentName} via <a href="${appUrl}">University of Wisconsin AI Tutor</a>
               </p>
             </div>
           </div>

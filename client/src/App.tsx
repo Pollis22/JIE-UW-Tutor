@@ -1,5 +1,5 @@
 /**
- * State University AI Tutor
+ * University of Wisconsin AI Tutor
  * Powered by JIE Mastery AI, Inc.
  */
 

@@ -15,12 +15,12 @@ export function LiveChatWidget() {
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // State University AI Tutor Support Agent ID
+  // University of Wisconsin AI Tutor Support Agent ID
   const agentId = 'agent_7601k9nzfad9e3c88n3hhdc2p80d';
 
   const conversation = useConversation({
     onConnect: () => {
-      console.log('[LiveChat] Connected to State University AI Tutor Support');
+      console.log('[LiveChat] Connected to University of Wisconsin AI Tutor Support');
       setError(null);
       // First message comes from ElevenLabs agent configuration - don't add duplicate
     },
@@ -113,7 +113,7 @@ export function LiveChatWidget() {
                 <Phone className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold" style={{ fontFamily: "'Red Hat Display', sans-serif" }}>State University AI Tutor Support</h3>
+                <h3 className="font-semibold" style={{ fontFamily: "'Red Hat Display', sans-serif" }}>University of Wisconsin AI Tutor Support</h3>
                 <p className="text-xs" style={{ color: 'rgba(255,255,255,0.9)' }}>
                   {conversation.status === 'connected' ? '● Live' : 'Connecting...'}
                 </p>

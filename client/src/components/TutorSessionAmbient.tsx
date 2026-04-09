@@ -18,7 +18,7 @@ const TIPS = [
 ];
 
 const GALLERY = [
-  { src: buckyClassroom, caption: "Learning at State University" },
+  { src: buckyClassroom, caption: "Learning at University of Wisconsin" },
   { src: buckyLecture, caption: "Expert instruction, your schedule" },
   { src: studentLibrary, caption: "Study smarter, not harder" },
   { src: bascomHall, caption: "Campus pride, academic excellence" },
@@ -114,7 +114,7 @@ export function TutorSessionAmbient({ isSpeaking = false, isConnected = false, h
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
           <img
             src={suLogo}
-            alt="State University"
+            alt="University of Wisconsin"
             style={{
               width: 140,
               height: "auto",
@@ -134,7 +134,7 @@ export function TutorSessionAmbient({ isSpeaking = false, isConnected = false, h
               opacity: 0.9,
             }}
           >
-            State University
+            University of Wisconsin
           </span>
         </div>
       </div>
@@ -168,7 +168,7 @@ export function TutorSessionAmbient({ isSpeaking = false, isConnected = false, h
               border: `2px solid rgba(197,5,12,0.2)`,
             }}
           >
-            <img src={suLogo} alt="State University" style={{ width: 44, height: "auto", objectFit: "contain" }} />
+            <img src={suLogo} alt="University of Wisconsin" style={{ width: 44, height: "auto", objectFit: "contain" }} />
           </div>
         </div>
 

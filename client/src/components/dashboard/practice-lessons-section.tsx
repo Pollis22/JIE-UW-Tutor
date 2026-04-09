@@ -238,7 +238,7 @@ export function PracticeLessonsSection() {
         doc.setPage(i);
         doc.setFontSize(9);
         doc.setTextColor(150);
-        doc.text(`State University AI Tutor - Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
+        doc.text(`University of Wisconsin AI Tutor - Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
       }
 
       // Download

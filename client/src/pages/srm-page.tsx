@@ -222,7 +222,7 @@ export default function SRMPage() {
                 <span style={{ color: "#C5050C" }}>It Knows Your Semester.</span>
               </h3>
               <p style={{ fontSize: 16, color: "#646569", lineHeight: 1.65, marginBottom: 28, maxWidth: 600 }}>
-                Other AI tools answer questions. Your State University AI Tutor opens the conversation with what matters most — because it sees your entire academic picture.
+                Other AI tools answer questions. Your University of Wisconsin AI Tutor opens the conversation with what matters most — because it sees your entire academic picture.
               </p>
 
               <div className="grid md:grid-cols-2 gap-6">
@@ -240,7 +240,7 @@ export default function SRMPage() {
                 <div className="rounded-xl p-5" style={{ background: "rgba(197,5,12,0.03)", border: "2px solid rgba(197,5,12,0.15)" }}>
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#28A745" }} />
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#C5050C" }}>State University AI Tutor + SRM</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#C5050C" }}>University of Wisconsin AI Tutor + SRM</span>
                   </div>
                   <div className="rounded-lg p-4" style={{ background: "rgba(197,5,12,0.04)" }}>
                     <p style={{ fontSize: 14, color: "#282728", fontWeight: 500, fontStyle: "italic" }}>"Welcome back! I see you have an Organic Chemistry midterm in 3 days covering reaction mechanisms and stereochemistry. You've completed 2 of 4 study tasks for it. Want to start with the mechanism review?"</p>
@@ -376,10 +376,10 @@ export default function SRMPage() {
       {/* Footer */}
       <footer className="py-8 md:py-10 px-4 md:px-12 max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4" style={{ borderTop: "1px solid #E8E8E8", background: "#FFFFFF" }}>
         <div className="flex items-center gap-3">
-          <img src={suLogo} alt="State University" className="h-8 object-contain" />
-          <span style={{ fontSize: 12, color: "#646569" }}>State University · AI Tutor Program</span>
+          <img src={suLogo} alt="University of Wisconsin" className="h-8 object-contain" />
+          <span style={{ fontSize: 12, color: "#646569" }}>University of Wisconsin · AI Tutor Program</span>
         </div>
-        <span style={{ fontSize: 11, color: "#DAD7CB" }}>Powered by JIE Mastery</span>
+        <span style={{ fontSize: 11, color: "#DAD7CB" }}>University of Wisconsin · AI Tutor Program</span>
       </footer>
     </div>
   );

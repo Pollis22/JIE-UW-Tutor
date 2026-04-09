@@ -60,7 +60,7 @@ export default function HomePage() {
             <div className="flex items-center gap-4 mb-4">
               <img 
                 src={suLogo} 
-                alt="State University AI Tutor Logo" 
+                alt="University of Wisconsin AI Tutor Logo" 
                 className="h-12 w-auto"
               />
               <div>
@@ -72,7 +72,7 @@ export default function HomePage() {
                     Patent Pending
                   </span>
                 </div>
-                <p className="text-primary-foreground/90 text-lg">Ready to master your subjects with State University AI Tutor Tutor?</p>
+                <p className="text-primary-foreground/90 text-lg">Ready to master your subjects with University of Wisconsin AI Tutor?</p>
               </div>
             </div>
           </div>

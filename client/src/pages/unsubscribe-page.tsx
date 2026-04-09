@@ -38,7 +38,7 @@ export default function UnsubscribePage() {
           <div className="flex items-center justify-center mb-4">
             <img 
               src={suLogo} 
-              alt="State University AI Tutor Logo" 
+              alt="University of Wisconsin AI Tutor Logo" 
               className="h-16 w-auto"
             />
           </div>

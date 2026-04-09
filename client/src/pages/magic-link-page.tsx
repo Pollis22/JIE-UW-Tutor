@@ -70,7 +70,7 @@ export default function MagicLinkPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <img src={suLogo} alt="State University AI Tutor" className="h-16 w-auto" />
+            <img src={suLogo} alt="University of Wisconsin AI Tutor" className="h-16 w-auto" />
           </div>
           <CardTitle className="text-2xl">
             {status === 'validating' && 'Signing you in...'}
@@ -144,7 +144,7 @@ export default function MagicLinkPage() {
                 <AlertCircle className="h-4 w-4 text-amber-600" />
                 <AlertTitle className="text-amber-800">Trial Ended</AlertTitle>
                 <AlertDescription className="text-amber-700">
-                  Your free trial has ended. Sign up now to continue learning with State University AI Tutor!
+                  Your free trial has ended. Sign up now to continue learning with University of Wisconsin AI Tutor!
                 </AlertDescription>
               </Alert>
               <div className="space-y-2">

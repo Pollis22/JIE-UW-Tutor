@@ -27,7 +27,7 @@ export default function TrialEndedPage() {
               Your Free Trial Has Ended
             </CardTitle>
             <CardDescription className="text-lg mt-2">
-              We hope you enjoyed your free trial of State University AI Tutor AI Tutor!
+              We hope you enjoyed your free trial of University of Wisconsin AI Tutor!
             </CardDescription>
           </CardHeader>
           

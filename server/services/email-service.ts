@@ -1,5 +1,5 @@
 /**
- * State University AI Tutor Platform
+ * University of Wisconsin AI Tutor Platform
  * Copyright (c) 2025 JIE Mastery AI, Inc.
  * All Rights Reserved.
  * 
@@ -94,7 +94,7 @@ export class EmailService {
       await resend.emails.send({
         from: fromEmail,
         to: user.email,
-        subject: 'Welcome to State University AI Tutor!',
+        subject: 'Welcome to University of Wisconsin AI Tutor!',
         html: `
           <h1>Welcome, ${user.parentName}!</h1>
           <p>Thank you for creating an account for ${user.studentName}.</p>
@@ -285,7 +285,7 @@ export class EmailService {
           </div>
           
           <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 16px;">
-            State University AI Tutor - Admin Notification System
+            University of Wisconsin AI Tutor - Admin Notification System
           </p>
         </div>
       `;
@@ -345,7 +345,7 @@ export class EmailService {
                   <!-- Header with Logo and Branding -->
                   <tr>
                     <td style="background: linear-gradient(135deg, #C41E3A 0%, #8B0000 100%); padding: 30px; text-align: center;">
-                      <img src="${logoUrl}" alt="State University AI Tutor" width="150" style="max-width: 150px; height: auto;">
+                      <img src="${logoUrl}" alt="University of Wisconsin AI Tutor" width="150" style="max-width: 150px; height: auto;">
                       <h1 style="color: #ffffff; margin: 20px 0 0; font-size: 28px; font-weight: 600;">
                         Subscription Renewed!
                       </h1>
@@ -437,7 +437,7 @@ export class EmailService {
                   <tr>
                     <td style="background-color: #1a1a1a; padding: 25px; text-align: center;">
                       <p style="margin: 0; color: #ffffff; font-size: 14px; font-weight: 600;">
-                        State University AI Tutor
+                        University of Wisconsin AI Tutor
                       </p>
                       <p style="margin: 10px 0 0; color: #999; font-size: 12px;">
                         Admin Notification - ${new Date().getFullYear()}
@@ -454,7 +454,7 @@ export class EmailService {
       `;
       
       const text = `
-STATE UNIVERSITY AI TUTOR - SUBSCRIPTION RENEWED
+UNIVERSITY OF WISCONSIN AI TUTOR - SUBSCRIPTION RENEWED
 
 Recurring Revenue: +$${amountPaid.toFixed(2)}
 Plan: ${planName}
@@ -531,7 +531,7 @@ Customer minutes have been reset for the new billing cycle.
             <div class="content">
               <p>Hi ${user.name}!</p>
               
-              <p>Thank you for signing up for State University AI Tutor! Your payment has been processed successfully.</p>
+              <p>Thank you for signing up for University of Wisconsin AI Tutor! Your payment has been processed successfully.</p>
               
               <p><strong>Please verify your email address</strong> to activate your account and start using the AI tutor.</p>
               
@@ -556,13 +556,13 @@ Customer minutes have been reset for the new billing cycle.
                 ${verificationUrl}
               </div>
               
-              <p>If you didn't create an account with State University AI Tutor, you can safely ignore this email.</p>
+              <p>If you didn't create an account with University of Wisconsin AI Tutor, you can safely ignore this email.</p>
               
-              <p>Welcome to the family!<br><strong>The State University AI Tutor Team</strong></p>
+              <p>Welcome to the family!<br><strong>The University of Wisconsin AI Tutor Team</strong></p>
             </div>
             
             <div class="footer">
-              <p><strong>State University AI Tutor</strong> | Patent Pending System</p>
+              <p><strong>University of Wisconsin AI Tutor</strong> | Patent Pending System</p>
               <p>Questions? Reply to this email for support.</p>
             </div>
           </div>
@@ -572,7 +572,7 @@ Customer minutes have been reset for the new billing cycle.
       
       const text = `Hi ${user.name}!
 
-Thank you for signing up for State University AI Tutor! Your payment has been processed successfully.
+Thank you for signing up for University of Wisconsin AI Tutor! Your payment has been processed successfully.
 
 Please verify your email address to activate your account:
 
@@ -583,12 +583,12 @@ Once verified, you'll have immediate access to voice tutoring, study materials, 
 If you didn't create an account, you can ignore this email.
 
 Welcome to the family!
-The State University AI Tutor Team`;
+The University of Wisconsin AI Tutor Team`;
       
       await resend.emails.send({
         from: fromEmail,
         to: user.email,
-        subject: '✓ Verify Your Email - State University AI Tutor',
+        subject: '✓ Verify Your Email - University of Wisconsin AI Tutor',
         html,
         text
       });
@@ -648,7 +648,7 @@ The State University AI Tutor Team`;
             <div class="content">
               <p>Hi ${params.name}!</p>
               
-              <p>You signed up for State University AI Tutor but haven't started your free trial yet. Your <strong>30 minutes of free AI tutoring</strong> is ready and waiting!</p>
+              <p>You signed up for University of Wisconsin AI Tutor but haven't started your free trial yet. Your <strong>30 minutes of free AI tutoring</strong> is ready and waiting!</p>
               
               <div class="cta-box">
                 <a href="${ctaUrl}" class="cta-button">
@@ -666,13 +666,13 @@ The State University AI Tutor Team`;
                 </ul>
               </div>
               
-              <p style="color: #666; font-size: 14px;">If you didn't sign up for State University AI Tutor, you can safely ignore this email.</p>
+              <p style="color: #666; font-size: 14px;">If you didn't sign up for University of Wisconsin AI Tutor, you can safely ignore this email.</p>
               
-              <p>We'd love to help you learn!<br><strong>The State University AI Tutor Team</strong></p>
+              <p>We'd love to help you learn!<br><strong>The University of Wisconsin AI Tutor Team</strong></p>
             </div>
             
             <div class="footer">
-              <p><strong>State University AI Tutor</strong> | Patent Pending System</p>
+              <p><strong>University of Wisconsin AI Tutor</strong> | Patent Pending System</p>
               <p>Questions? Reply to this email for support.</p>
             </div>
           </div>
@@ -682,7 +682,7 @@ The State University AI Tutor Team`;
       
       const text = `Hi ${params.name}!
 
-You signed up for State University AI Tutor but haven't started your free trial yet. Your 30 minutes of free AI tutoring is ready and waiting!
+You signed up for University of Wisconsin AI Tutor but haven't started your free trial yet. Your 30 minutes of free AI tutoring is ready and waiting!
 
 ${ctaText}: ${ctaUrl}
 
@@ -694,12 +694,12 @@ Here's what you'll get:
 
 If you didn't sign up, you can ignore this email.
 
-The State University AI Tutor Team`;
+The University of Wisconsin AI Tutor Team`;
       
       await resend.emails.send({
         from: fromEmail,
         to: params.email,
-        subject: 'Your State University AI Tutor free trial is waiting',
+        subject: 'Your University of Wisconsin AI Tutor free trial is waiting',
         html,
         text
       });
@@ -742,7 +742,7 @@ The State University AI Tutor Team`;
 <p style="word-break: break-all; color: #666; font-size: 14px;"><a href="${resetUrl}" target="_blank" style="color: #dc2626;">${resetUrl}</a></p>
 <p style="color: #666; font-size: 14px; margin-top: 30px;">This password reset link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.</p>
 <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-<p style="color: #999; font-size: 12px;">State University AI Tutor<br><a href="https://stateuniversity-tutor.ai" target="_blank" style="color: #dc2626;">stateuniversity-tutor.ai</a></p>
+<p style="color: #999; font-size: 12px;">University of Wisconsin AI Tutor<br><a href="https://stateuniversity-tutor.ai" target="_blank" style="color: #dc2626;">stateuniversity-tutor.ai</a></p>
 </body>
 </html>`;
 
@@ -757,14 +757,14 @@ ${resetUrl}
 
 This password reset link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.
 
-State University AI Tutor
+University of Wisconsin AI Tutor
 stateuniversity-tutor.ai
       `;
 
       await resend.emails.send({
         from: fromEmail,
         to: user.email,
-        subject: 'Reset Your Password - State University AI Tutor',
+        subject: 'Reset Your Password - University of Wisconsin AI Tutor',
         html,
         text
       });
@@ -807,7 +807,7 @@ stateuniversity-tutor.ai
       await resend.emails.send({
         from: fromEmail,
         to: contact.email,
-        subject: 'We Received Your Message - State University AI Tutor',
+        subject: 'We Received Your Message - University of Wisconsin AI Tutor',
         html: `
           <h1>Thank You for Contacting Us</h1>
           <p>Hi ${contact.name},</p>
@@ -817,7 +817,7 @@ stateuniversity-tutor.ai
           <hr>
           <p style="white-space: pre-wrap;">${contact.message}</p>
           <hr>
-          <p>Best regards,<br>State University AI Tutor Team</p>
+          <p>Best regards,<br>University of Wisconsin AI Tutor Team</p>
           <p style="margin-top:24px;color:#666;font-size:14px;">
             <a href="${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/unsubscribe?email=${contact.email}">Unsubscribe from marketing emails</a>
           </p>
@@ -906,13 +906,13 @@ stateuniversity-tutor.ai
               
               <p style="color: #666;">We'd love to know why you're leaving so we can improve. Just reply to this email with any feedback - it really helps!</p>
               
-              <p>Thank you for being part of State University AI Tutor. We hope to see you again!</p>
+              <p>Thank you for being part of University of Wisconsin AI Tutor. We hope to see you again!</p>
               
-              <p>Warmly,<br>The State University AI Tutor Team</p>
+              <p>Warmly,<br>The University of Wisconsin AI Tutor Team</p>
             </div>
             
             <div class="footer">
-              <p><strong>State University AI Tutor</strong></p>
+              <p><strong>University of Wisconsin AI Tutor</strong></p>
               <p>Questions? Reply to this email.</p>
             </div>
           </div>
@@ -923,7 +923,7 @@ stateuniversity-tutor.ai
       await resend.emails.send({
         from: fromEmail,
         to: email,
-        subject: 'Your State University AI Tutor Subscription Has Been Canceled',
+        subject: 'Your University of Wisconsin AI Tutor Subscription Has Been Canceled',
         html,
         text: `Hi ${firstName},\n\nYour ${planName} subscription has been canceled.\n\nYour access continues until: ${accessEndDate}\n\nReactivate anytime: ${this.getBaseUrl()}/dashboard?tab=subscription`
       });
@@ -1136,11 +1136,11 @@ stateuniversity-tutor.ai
                 </p>
               </div>
               
-              <p style="margin-top: 20px;">The State University AI Tutor Team</p>
+              <p style="margin-top: 20px;">The University of Wisconsin AI Tutor Team</p>
             </div>
             
             <div class="footer">
-              <p><strong>State University AI Tutor</strong></p>
+              <p><strong>University of Wisconsin AI Tutor</strong></p>
             </div>
           </div>
         </body>
@@ -1323,11 +1323,11 @@ stateuniversity-tutor.ai
               </div>
               
               <p style="margin-top: 20px;">Questions? Just reply to this email.</p>
-              <p>The State University AI Tutor Team</p>
+              <p>The University of Wisconsin AI Tutor Team</p>
             </div>
             
             <div class="footer">
-              <p><strong>State University AI Tutor</strong></p>
+              <p><strong>University of Wisconsin AI Tutor</strong></p>
             </div>
           </div>
         </body>
@@ -1518,11 +1518,11 @@ stateuniversity-tutor.ai
                 </p>
               </div>
               
-              <p style="margin-top: 20px;">The State University AI Tutor Team</p>
+              <p style="margin-top: 20px;">The University of Wisconsin AI Tutor Team</p>
             </div>
             
             <div class="footer">
-              <p><strong>State University AI Tutor</strong></p>
+              <p><strong>University of Wisconsin AI Tutor</strong></p>
             </div>
           </div>
         </body>
@@ -1692,11 +1692,11 @@ stateuniversity-tutor.ai
               
               <p>We're excited to have you back! If you have any questions, just reply to this email.</p>
               
-              <p>Happy learning!<br><strong>The State University AI Tutor Team</strong></p>
+              <p>Happy learning!<br><strong>The University of Wisconsin AI Tutor Team</strong></p>
             </div>
             
             <div class="footer">
-              <p><strong>State University AI Tutor</strong></p>
+              <p><strong>University of Wisconsin AI Tutor</strong></p>
             </div>
           </div>
         </body>
@@ -1706,7 +1706,7 @@ stateuniversity-tutor.ai
       await resend.emails.send({
         from: fromEmail,
         to: email,
-        subject: `🎉 Welcome Back to State University AI Tutor!`,
+        subject: `🎉 Welcome Back to University of Wisconsin AI Tutor!`,
         html,
         text: `Welcome back, ${firstName}!\n\nYour ${planName} subscription is now active with ${minutes} minutes per month.\n\nStart learning: ${this.getBaseUrl()}/tutor`
       });
@@ -1844,7 +1844,7 @@ stateuniversity-tutor.ai
       });
       
       await resend.emails.send({
-        from: `State University AI Tutor <${fromEmail}>`,
+        from: `University of Wisconsin AI Tutor <${fromEmail}>`,
         to: data.parentEmail,
         subject: `${data.studentName}'s Tutoring Session Summary - ${data.subject}`,
         html: `
@@ -1918,7 +1918,7 @@ stateuniversity-tutor.ai
               </div>
               
               <div class="footer">
-                <p style="margin: 0;">State University AI Tutor</p>
+                <p style="margin: 0;">University of Wisconsin AI Tutor</p>
                 <p style="margin: 8px 0 0;">You're receiving this because ${data.studentName} completed a tutoring session.</p>
                 <p style="margin: 8px 0 0;"><a href="${this.getBaseUrl()}/settings" style="color: #6b7280;">Manage email preferences</a></p>
               </div>
@@ -1945,7 +1945,7 @@ Keep up the great work!
 View full transcript: ${this.getBaseUrl()}/dashboard
 
 --
-State University AI Tutor`
+University of Wisconsin AI Tutor`
       });
       
       console.log('[EmailService] ✅ Session summary email sent to:', data.parentEmail);
@@ -2179,7 +2179,7 @@ Summary for parent:`
             </div>
 
             <div class="footer">
-              <p>State University AI Tutor</p>
+              <p>University of Wisconsin AI Tutor</p>
               <p>You received this because your family had tutoring sessions ${timePeriod}.</p>
               <p><a href="${this.getBaseUrl()}/dashboard/preferences" style="color: #6b7280;">Manage email preferences</a></p>
             </div>
@@ -2358,9 +2358,9 @@ Summary for parent:`
             </div>
 
             <div class="footer">
-              <p>State University AI Tutor &bull; Personalized Learning for Every Student</p>
+              <p>University of Wisconsin AI Tutor &bull; Personalized Learning for Every Student</p>
               <p style="font-size:10px; color:#9ca3af; margin-top:8px;">
-                This report is auto-generated by State University AI Tutor and has not been reviewed by a licensed educator, 
+                This report is auto-generated by University of Wisconsin AI Tutor and has not been reviewed by a licensed educator, 
                 psychologist, or medical professional. Performance metrics reflect in-session interactions only and 
                 should not be interpreted as formal academic assessments. For concerns about your child's learning 
                 or development, consult a qualified professional.
@@ -2375,7 +2375,7 @@ Summary for parent:`
       `;
 
       await resend.emails.send({
-        from: `State University AI Tutor <${fromEmail}>`,
+        from: `University of Wisconsin AI Tutor <${fromEmail}>`,
         to: data.parentEmail,
         subject: `${data.studentName}'s Session Report - ${data.subject} - ${formattedDate}`,
         html

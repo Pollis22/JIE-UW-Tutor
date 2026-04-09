@@ -19,10 +19,10 @@ export function Footer() {
         </div>
         <div className="flex flex-col md:flex-row justify-between items-center gap-3 pt-4" style={{ borderTop: "1px solid #E8E8E8" }}>
           <div className="flex items-center gap-3">
-            <img src={suLogo} alt="State University" style={{ height: 32 }} />
-            <span style={{ fontSize: 13, color: "#646569" }}>State University · AI Tutor Program</span>
+            <img src={suLogo} alt="University of Wisconsin" style={{ height: 32 }} />
+            <span style={{ fontSize: 13, color: "#646569" }}>University of Wisconsin · AI Tutor Program</span>
           </div>
-          <span style={{ fontSize: 12, color: "#DAD7CB" }}>Powered by JIE Mastery</span>
+          <span style={{ fontSize: 12, color: "#DAD7CB" }}>University of Wisconsin · AI Tutor Program</span>
         </div>
       </div>
     </footer>

@@ -1,5 +1,5 @@
 /**
- * State University AI Tutor Platform
+ * University of Wisconsin AI Tutor Platform
  * Copyright (c) 2025 JIE Mastery AI, Inc.
  * All Rights Reserved.
  * 
@@ -155,7 +155,7 @@ export default function SupportCenter() {
     <Card>
       <CardHeader>
         <CardTitle>Support & Help</CardTitle>
-        <CardDescription>Get help with State University AI Tutor</CardDescription>
+        <CardDescription>Get help with University of Wisconsin AI Tutor</CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="faq" className="space-y-4">
