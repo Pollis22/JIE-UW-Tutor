@@ -153,7 +153,11 @@ export default function AuthPage() {
   });
 
   useEffect(() => {
-    if (user) setLocation(user.isAdmin ? "/admin" : "/tutor");
+    if (user) {
+      const savedRedirect = sessionStorage.getItem("jie_redirect_after_login");
+      sessionStorage.removeItem("jie_redirect_after_login");
+      setLocation(user.isAdmin ? "/admin" : savedRedirect || "/tutor");
+    }
   }, [user, setLocation]);
 
   const loginForm = useForm<LoginForm>({
