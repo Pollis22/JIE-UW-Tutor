@@ -67,7 +67,11 @@ export function setupAuth(app: Express) {
   const cookieSecure = process.env.SESSION_COOKIE_SECURE 
     ? process.env.SESSION_COOKIE_SECURE === 'true' 
     : isProduction;
-  const cookieSameSite = (process.env.SESSION_COOKIE_SAMESITE || 'lax') as 'lax' | 'none' | 'strict';
+  // SameSite=none required for cross-origin requests from the JIE Mobile App
+  // Must be 'none' in production so the mobile app (different origin) can send cookies
+  const cookieSameSite = isProduction
+    ? 'none'
+    : ((process.env.SESSION_COOKIE_SAMESITE || 'lax') as 'lax' | 'none' | 'strict');
   
   // Cookie domain configuration:
   // - Default: host-only cookies (no domain) - works for Railway and custom domains
