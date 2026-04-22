@@ -16,12 +16,11 @@ import uwLogo from "@/assets/uw-madison-logo.png";
 // Campus photos — UW Madison branding
 import buckyGraduation from "@/assets/campus/bucky-graduation.png";
 import bascomHall from "@/assets/campus/bascom-hall.png";
-import buckyTeaching from "@/assets/campus/bucky-teaching.png";
 import buckyBasketball from "@/assets/campus/bucky-basketball.png";
 import buckyLecture from "@/assets/campus/bucky-lecture.png";
 import buckyFootball from "@/assets/campus/bucky-football.png";
 import buckyClassroom from "@/assets/campus/bucky-classroom.png";
-import buckyWrestling from "@/assets/campus/bucky-wrestling.png";
+import studentLibrary from "@/assets/campus/student-library.png";
 import memorialUnion from "@/assets/campus/memorial-union.png";
 
 const loginSchema = z.object({
@@ -69,25 +68,25 @@ function PhotoCollage() {
         {/* Bucky in lecture */}
         <div className="rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.03]"
           style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(2deg)" }}>
-          <img src={buckyLecture} alt="Bucky Badger in an Econ 101 lecture" className="w-full h-48 md:h-64 object-cover" />
+          <img src={buckyLecture} alt="Bucky Badger in an Econ 101 lecture" className="w-full h-48 md:h-64 object-cover" style={{ objectPosition: "center 35%" }} />
         </div>
 
         {/* Basketball dunk */}
         <div className="rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.03]"
           style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(-1.5deg)" }}>
-          <img src={buckyBasketball} alt="Bucky dunking at the Kohl Center" className="w-full h-36 md:h-48 object-cover" />
+          <img src={buckyBasketball} alt="Bucky dunking at the Kohl Center" className="w-full h-36 md:h-48 object-cover" style={{ objectPosition: "center 20%" }} />
         </div>
 
         {/* Football TD */}
         <div className="rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.03]"
           style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(1.5deg)" }}>
-          <img src={buckyFootball} alt="Bucky scoring a touchdown at Camp Randall" className="w-full h-36 md:h-48 object-cover" />
+          <img src={buckyFootball} alt="Bucky scoring a touchdown at Camp Randall" className="w-full h-36 md:h-48 object-cover" style={{ objectPosition: "center 25%" }} />
         </div>
 
-        {/* Wrestling */}
+        {/* Student in library — UW Athletics gear */}
         <div className="rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.03]"
           style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(-2deg)" }}>
-          <img src={buckyWrestling} alt="Bucky on the mat at a UW wrestling match" className="w-full h-36 md:h-48 object-cover" />
+          <img src={studentLibrary} alt="UW–Madison student studying in the library" className="w-full h-36 md:h-48 object-cover" style={{ objectPosition: "center 30%" }} />
         </div>
       </div>
 
@@ -696,10 +695,15 @@ export default function AuthPage() {
       <section className="py-12 md:py-20 px-4 md:px-12 max-w-7xl mx-auto" style={{ background: "#FFFFFF" }}>
         <div className="max-w-4xl mx-auto">
           <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #E8E8E8", boxShadow: "0 4px 20px rgba(0,0,0,0.06)" }}>
-            {/* Football banner image */}
-            <div className="relative overflow-hidden" style={{ height: 180 }}>
-              <img src={buckyFootball} alt="Bucky scoring a touchdown at Camp Randall Stadium" className="w-full h-full object-cover" />
-              <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(197,5,12,0) 0%, rgba(197,5,12,0.65) 100%)" }} />
+            {/* Football banner image — full-height, crop-positioned to show Bucky's face */}
+            <div className="relative overflow-hidden" style={{ minHeight: 220, height: "clamp(220px, 32vw, 320px)" }}>
+              <img
+                src={buckyFootball}
+                alt="Bucky scoring a touchdown at Camp Randall Stadium"
+                className="w-full h-full object-cover"
+                style={{ objectPosition: "center 22%" }}
+              />
+              <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(197,5,12,0) 45%, rgba(197,5,12,0.78) 100%)" }} />
               <div className="absolute bottom-4 left-6 right-6">
                 <p className="text-white font-bold" style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 14, letterSpacing: 1, textTransform: "uppercase" }}>For Student Athletes</p>
               </div>

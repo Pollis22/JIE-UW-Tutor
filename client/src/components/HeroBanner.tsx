@@ -37,55 +37,65 @@ export function HeroBanner({ mounted = false }: Props) {
   const [activeSlide, setActiveSlide] = useState(0);
   const [tick, setTick]               = useState(0);
 
-  // SRM-first messaging — 8 rotating slides, UW Badger imagery throughout
+  // SRM-first messaging — 8 rotating slides, UW Badger imagery throughout.
+  // Each slide carries its own objectPosition so faces/heads stay in frame
+  // when the image is cropped into the wide slideshow container.
   const slides = [
     {
       image:    studentLibrary,
       headline: "Your Academic Command Center",
       sub:      "Student Relationship Manager + AI Tutor, built for Badgers",
       accent:   UW_INK,
+      position: "center 25%",
     },
     {
       image:    bascomHall,
       headline: "One System. Every Course. Every Deadline.",
       sub:      "Syllabus → calendar → study tasks → tutor — automatically",
       accent:   UW_NAVY,
+      position: "center 55%",
     },
     {
       image:    buckyGraduation,
       headline: "Stay Ahead, All the Way to the Podium",
       sub:      "Engagement scoring and early alerts keep you on track",
       accent:   UW_DARK,
+      position: "center 30%",
     },
     {
       image:    buckyClassroom,
       headline: "A Tutor That Knows Your Semester",
       sub:      "Every session opens already knowing what's due next",
       accent:   UW_DARK,
+      position: "center 35%",
     },
     {
       image:    buckyLecture,
       headline: "Learn at Your Own Pace",
       sub:      "Adaptive instruction across every course and subject",
       accent:   UW_INK,
+      position: "center 35%",
     },
     {
       image:    memorialUnion,
       headline: "From Bascom to the Terrace",
       sub:      "Study anywhere — voice, text, any device",
       accent:   UW_NAVY,
+      position: "center center",
     },
     {
       image:    buckyBasketball,
       headline: "Built for Student-Athletes",
       sub:      "Travel-ready tutoring with eligibility-protecting alerts",
       accent:   UW_DARK,
+      position: "center 25%",
     },
     {
       image:    buckyFootball,
       headline: "On Wisconsin.",
       sub:      "Academic support built for University of Wisconsin students",
       accent:   UW_RED,
+      position: "center 25%",
     },
   ];
 
@@ -107,7 +117,15 @@ export function HeroBanner({ mounted = false }: Props) {
     <div className="w-full rounded-2xl overflow-hidden mb-2" style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
 
       {/* ── Hero Slideshow ─────────────────────────────────── */}
-      <div className="relative w-full overflow-hidden" style={{ height: 180, borderRadius: "16px 16px 0 0" }}>
+      <div
+        className="relative w-full overflow-hidden"
+        style={{
+          // Taller than the old 180px so faces/heads don't get cropped.
+          // Scales with viewport: min 220px on phones, up to 340px on wide desktops.
+          height: "clamp(220px, 26vw, 340px)",
+          borderRadius: "16px 16px 0 0",
+        }}
+      >
         {slides.map((slide, i) => (
           <div
             key={i}
@@ -117,7 +135,12 @@ export function HeroBanner({ mounted = false }: Props) {
               transform: activeSlide === i ? "scale(1)" : "scale(1.03)",
             }}
           >
-            <img src={slide.image} alt="" className="absolute inset-0 w-full h-full object-cover object-center" />
+            <img
+              src={slide.image}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ objectPosition: slide.position }}
+            />
             <div
               className="absolute inset-0"
               style={{ background: `linear-gradient(105deg, ${slide.accent}ee 0%, ${slide.accent}99 38%, transparent 68%)` }}
