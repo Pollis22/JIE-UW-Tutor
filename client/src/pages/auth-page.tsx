@@ -277,10 +277,10 @@ export default function AuthPage() {
 
           <div className="flex items-center gap-2 md:gap-3">
             <Button
-              onClick={() => { setActiveTab("register"); document.getElementById("auth-section")?.scrollIntoView({ behavior: "smooth" }); }}
+              onClick={() => { setActiveTab("login"); document.getElementById("auth-section")?.scrollIntoView({ behavior: "smooth" }); }}
               className="text-white font-semibold px-4 md:px-5 py-2 rounded-lg text-xs md:text-sm"
               style={{ background: "#C5050C" }}>
-              Get Started
+              Sign In
             </Button>
             <button className="lg:hidden p-2 rounded-md" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Menu">
               <Menu className="w-5 h-5" style={{ color: "#282728" }} />
