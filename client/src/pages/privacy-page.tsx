@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import suLogo from '@/assets/state-university-logo.png';
+import suLogo from '@/assets/uw-madison-logo.png';
 
 export default function PrivacyPage() {
   const [, setLocation] = useLocation();

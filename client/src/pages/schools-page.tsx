@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useLocation } from "wouter";
 import { Footer } from "@/components/footer";
 import { PublicMobileMenu } from "@/components/PublicMobileMenu";
-import suLogo from '@/assets/state-university-logo.png';
+import suLogo from '@/assets/uw-madison-logo.png';
 import schoolClassroom from "@/assets/school-classroom.png";
 import familyHomework from "@/assets/family-homework.png";
 import { 

@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
-import suLogo from '@/assets/state-university-logo.png';
+import suLogo from '@/assets/uw-madison-logo.png';
 
 export default function TermsPage() {
   const [, setLocation] = useLocation();

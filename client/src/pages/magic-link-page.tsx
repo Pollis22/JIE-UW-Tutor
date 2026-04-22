@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, CheckCircle, AlertCircle, ArrowRight, Play } from "lucide-react";
-import suLogo from '@/assets/state-university-logo.png';
+import suLogo from '@/assets/uw-madison-logo.png';
 
 export default function MagicLinkPage() {
   const [, setLocation] = useLocation();

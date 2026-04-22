@@ -1,18 +1,23 @@
 import { useState, useEffect } from "react";
-import suLogo from "@/assets/state-university-logo.png";
+import uwLogo from "@/assets/uw-madison-logo.png";
 import buckyClassroom from "@/assets/campus/bucky-classroom.png";
 import buckyLecture from "@/assets/campus/bucky-lecture.png";
 import buckyGraduation from "@/assets/campus/bucky-graduation.png";
 import bascomHall from "@/assets/campus/bascom-hall.png";
+import buckyBasketball from "@/assets/campus/bucky-basketball.png";
+import buckyFootball from "@/assets/campus/bucky-football.png";
+import studentLibrary from "@/assets/campus/student-library.png";
+import memorialUnion from "@/assets/campus/memorial-union.png";
 
 // Brand colors
 const UW_RED   = "#C5050C";
 const UW_DARK  = "#9B0000";
 const UW_NAVY  = "#1e2a47";
+const UW_INK   = "#0a2240";
 
 const STATS = [
-  { value: "University of Wisconsin", label: "AI Tutor" },
-  { value: "Voice-First", label: "Learning" },
+  { value: "Academic SRM", label: "+ AI Tutor" },
+  { value: "Syllabus-Aware", label: "Every Session" },
   { value: "25+ Subjects", label: "Covered" },
   { value: "24/7", label: "Available" },
 ];
@@ -32,37 +37,62 @@ export function HeroBanner({ mounted = false }: Props) {
   const [activeSlide, setActiveSlide] = useState(0);
   const [tick, setTick]               = useState(0);
 
+  // SRM-first messaging — 8 rotating slides, UW Badger imagery throughout
   const slides = [
     {
-      image:    buckyGraduation,
-      headline: "Your University of Wisconsin AI Tutor",
-      sub:      "Powered by advanced voice conversation technology",
+      image:    studentLibrary,
+      headline: "Your Academic Command Center",
+      sub:      "Student Relationship Manager + AI Tutor, built for Badgers",
+      accent:   UW_INK,
+    },
+    {
+      image:    bascomHall,
+      headline: "One System. Every Course. Every Deadline.",
+      sub:      "Syllabus → calendar → study tasks → tutor — automatically",
       accent:   UW_NAVY,
     },
     {
+      image:    buckyGraduation,
+      headline: "Stay Ahead, All the Way to the Podium",
+      sub:      "Engagement scoring and early alerts keep you on track",
+      accent:   UW_DARK,
+    },
+    {
       image:    buckyClassroom,
-      headline: "Learn at Your Own Pace",
-      sub:      "Adaptive instruction across every course and subject",
+      headline: "A Tutor That Knows Your Semester",
+      sub:      "Every session opens already knowing what's due next",
       accent:   UW_DARK,
     },
     {
       image:    buckyLecture,
-      headline: "AI That Understands You",
-      sub:      "Real-time voice conversation with session memory",
-      accent:   "#0a2240",
+      headline: "Learn at Your Own Pace",
+      sub:      "Adaptive instruction across every course and subject",
+      accent:   UW_INK,
     },
     {
-      image:    bascomHall,
-      headline: "Academic Excellence",
-      sub:      "Academic support built for University of Wisconsin students",
+      image:    memorialUnion,
+      headline: "From Bascom to the Terrace",
+      sub:      "Study anywhere — voice, text, any device",
+      accent:   UW_NAVY,
+    },
+    {
+      image:    buckyBasketball,
+      headline: "Built for Student-Athletes",
+      sub:      "Travel-ready tutoring with eligibility-protecting alerts",
       accent:   UW_DARK,
+    },
+    {
+      image:    buckyFootball,
+      headline: "On Wisconsin.",
+      sub:      "Academic support built for University of Wisconsin students",
+      accent:   UW_RED,
     },
   ];
 
   useEffect(() => {
     const t = setInterval(() => setActiveSlide(p => (p + 1) % slides.length), 5000);
     return () => clearInterval(t);
-  }, []);
+  }, [slides.length]);
 
   useEffect(() => {
     const t = setInterval(() => setTick(p => p + 1), 80);
@@ -98,7 +128,7 @@ export function HeroBanner({ mounted = false }: Props) {
                 className="inline-flex items-center gap-2 mb-2 px-2 py-0.5 rounded-full w-fit"
                 style={{ background: "rgba(255,255,255,0.18)", backdropFilter: "blur(6px)" }}
               >
-                <img src={suLogo} alt="" className="h-5 w-auto" style={{ filter: "brightness(0) invert(1)" }} />
+                <img src={uwLogo} alt="" className="h-5 w-auto" style={{ filter: "brightness(0) invert(1)" }} />
                 <span className="text-white text-xs font-bold tracking-widest uppercase">University of Wisconsin</span>
               </div>
               <h2

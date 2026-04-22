@@ -21,7 +21,7 @@ import { SUPPORTED_LANGUAGES } from "@shared/languages";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import suLogo from '@/assets/state-university-logo.png';
+import suLogo from '@/assets/uw-madison-logo.png';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { HeroBanner } from '@/components/HeroBanner';
 import { SessionFeedback } from '@/components/SessionFeedback';

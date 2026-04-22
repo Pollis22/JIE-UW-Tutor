@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { PublicMobileMenu } from "@/components/PublicMobileMenu";
-import suLogo from '@/assets/state-university-logo.png';
+import suLogo from '@/assets/uw-madison-logo.png';
 
 export default function DemoPage() {
   const [, setLocation] = useLocation();

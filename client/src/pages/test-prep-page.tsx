@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocation } from "wouter";
 import { PublicMobileMenu } from "@/components/PublicMobileMenu";
-import suLogo from "@/assets/state-university-logo.png";
+import suLogo from "@/assets/uw-madison-logo.png";
 import {
   GraduationCap,
   BookOpen,

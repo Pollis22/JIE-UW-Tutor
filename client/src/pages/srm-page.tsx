@@ -7,7 +7,7 @@ import {
   Users, BarChart3, Mail, ArrowRight, Sparkles, Clock, Shield,
   GraduationCap, Target, AlertTriangle, FileText, Mic, ChevronRight
 } from "lucide-react";
-import suLogo from "@/assets/state-university-logo.png";
+import suLogo from "@/assets/uw-madison-logo.png";
 
 function SRMStep({ number, title, desc, icon }: { number: number; title: string; desc: string; icon: React.ReactNode }) {
   return (

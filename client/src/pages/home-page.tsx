@@ -5,7 +5,7 @@ import { ProgressRing } from "@/components/progress-ring";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocation } from "wouter";
-import suLogo from '@/assets/state-university-logo.png';
+import suLogo from '@/assets/uw-madison-logo.png';
 
 export default function HomePage() {
   const { user } = useAuth();

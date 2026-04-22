@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import suLogo from "@/assets/state-university-logo.png";
+import suLogo from "@/assets/uw-madison-logo.png";
 import buckyClassroom from "@/assets/campus/bucky-classroom.png";
 import buckyLecture from "@/assets/campus/bucky-lecture.png";
 import studentLibrary from "@/assets/campus/student-library.png";

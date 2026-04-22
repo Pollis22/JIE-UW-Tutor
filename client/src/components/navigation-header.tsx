@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { UserAvatar } from "@/components/UserAvatar";
 import { Menu, X } from "lucide-react";
-import suLogo from "@/assets/state-university-logo.png";
+import suLogo from "@/assets/uw-madison-logo.png";
 
 export function NavigationHeader() {
   const { user, logoutMutation } = useAuth();

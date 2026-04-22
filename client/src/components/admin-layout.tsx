@@ -14,7 +14,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { useState } from "react";
-import suLogo from "@/assets/state-university-logo.png";
+import suLogo from "@/assets/uw-madison-logo.png";
 
 interface AdminLayoutProps {
   children: React.ReactNode;

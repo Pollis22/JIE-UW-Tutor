@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { PublicMobileMenu } from "@/components/PublicMobileMenu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, HelpCircle, Mail, MessageCircle } from "lucide-react";
-import suLogo from '@/assets/state-university-logo.png';
+import suLogo from '@/assets/uw-madison-logo.png';
 import { LiveChatWidget } from "@/components/LiveChatWidget";
 
 export default function SupportPage() {
