@@ -14,7 +14,6 @@ import { useToast } from "@/hooks/use-toast";
 import uwLogo from "@/assets/uw-madison-logo.png";
 
 // Campus photos — UW Madison branding
-import studentLibrary from "@/assets/campus/student-library.png";
 import buckyGraduation from "@/assets/campus/bucky-graduation.png";
 import bascomHall from "@/assets/campus/bascom-hall.png";
 import buckyTeaching from "@/assets/campus/bucky-teaching.png";
@@ -156,9 +155,21 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (user) {
+      // Post-login routing:
+      //   - Admins → /admin
+      //   - Students → /tutor ALWAYS, except when they intentionally deep-linked
+      //     to a whitelisted destination before logging in.
+      const WHITELIST = ["/tutor", "/academic-dashboard", "/settings"];
       const savedRedirect = sessionStorage.getItem("jie_redirect_after_login");
       sessionStorage.removeItem("jie_redirect_after_login");
-      setLocation(user.isAdmin ? "/admin" : savedRedirect || "/tutor");
+
+      if ((user as any).isAdmin) {
+        setLocation("/admin");
+      } else if (savedRedirect && WHITELIST.includes(savedRedirect)) {
+        setLocation(savedRedirect);
+      } else {
+        setLocation("/tutor");
+      }
     }
   }, [user, setLocation]);
 
@@ -365,17 +376,12 @@ export default function AuthPage() {
               </div>
             </div>
 
-            {/* Hero image stack — student in library + graduation accent */}
+            {/* Hero image — Bucky celebrating with graduates at Bascom Hall */}
             <div className="flex justify-center items-center">
               <div className="relative w-full max-w-md">
                 <div className="rounded-2xl overflow-hidden shadow-2xl"
                   style={{ transform: "rotate(1.5deg)", border: "4px solid white", boxShadow: "0 20px 50px rgba(0,0,0,0.18)" }}>
-                  <img src={studentLibrary} alt="UW–Madison student studying in the library" className="w-full h-auto" />
-                </div>
-                {/* Accent — Bucky graduation */}
-                <div className="absolute rounded-lg overflow-hidden shadow-xl hidden md:block"
-                  style={{ width: 160, bottom: -20, left: -28, transform: "rotate(-5deg)", border: "3px solid white", boxShadow: "0 10px 25px rgba(0,0,0,0.18)" }}>
-                  <img src={buckyGraduation} alt="Bucky with UW graduates at Bascom Hall" className="w-full h-auto" />
+                  <img src={buckyGraduation} alt="Bucky celebrating commencement with UW graduates at Bascom Hall" className="w-full h-auto" />
                 </div>
               </div>
             </div>

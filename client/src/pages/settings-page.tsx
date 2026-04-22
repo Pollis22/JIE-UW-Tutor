@@ -18,8 +18,6 @@ import { AudioSettings } from "@/components/AudioSettings";
 import { SecuritySettings } from "@/components/SecuritySettings";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { getPlanDetails } from "@shared/plan-config";
 import { Mail, Mic, Headphones, Type, Zap, Settings, Palette } from "lucide-react";
 import ThemeToggle from "@/components/dashboard/theme-toggle";
 
@@ -137,29 +135,8 @@ export default function SettingsPage() {
     },
   });
 
-  const createPortalSessionMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/customer-portal");
-      return await response.json();
-    },
-    onSuccess: (data) => {
-      window.location.href = data.url;
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error accessing customer portal",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
   const handleSaveSettings = (data: SettingsForm) => {
     updateSettingsMutation.mutate(data);
-  };
-
-  const handleManageAccount = () => {
-    createPortalSessionMutation.mutate();
   };
 
   const handleResetSettings = () => {
@@ -268,7 +245,6 @@ export default function SettingsPage() {
     }
   };
 
-  const planDetails = getPlanDetails(user?.subscriptionPlan);
   const displayName = dashboard?.user?.name || 
     `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 
     user?.username || 
@@ -285,7 +261,7 @@ export default function SettingsPage() {
             <h1 className="text-3xl font-bold text-foreground mb-2" data-testid="text-settings-title">
               Settings
             </h1>
-            <p className="text-muted-foreground">Manage your account, subscription, and preferences</p>
+            <p className="text-muted-foreground">Manage your account and preferences</p>
           </div>
 
           <Form {...form}>
@@ -363,97 +339,6 @@ export default function SettingsPage() {
                       </FormItem>
                     )}
                   />
-                </CardContent>
-              </Card>
-
-              {/* Account Settings */}
-              <Card className="shadow-sm">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Account</CardTitle>
-                    {isDashboardLoading ? (
-                      <Skeleton className="h-6 w-24" />
-                    ) : (
-                      <Badge variant="secondary" className="bg-secondary/10 text-secondary" data-testid="badge-subscription-plan">
-                        {dashboard?.user?.plan || planDetails.name}
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center py-3 border-b border-border">
-                    <div>
-                      <p className="font-medium text-foreground">Current Plan</p>
-                      {isDashboardLoading ? (
-                        <Skeleton className="h-4 w-32 mt-1" />
-                      ) : (
-                        <p className="text-sm text-muted-foreground" data-testid="text-plan-minutes">
-                          {planDetails.minutes.toLocaleString()} minutes per month
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      {isDashboardLoading ? (
-                        <>
-                          <Skeleton className="h-5 w-20" />
-                          <Skeleton className="h-4 w-12 mt-1" />
-                        </>
-                      ) : (
-                        <>
-                          <p className="font-semibold text-foreground" data-testid="text-plan-price">
-                            ${planDetails.price}/month
-                          </p>
-                          <p className="text-sm text-muted-foreground" data-testid="text-subscription-status">
-                            {user?.subscriptionStatus === 'active' ? 'Active' : 
-                             user?.subscriptionStatus === 'canceled' ? 'Canceled' : 
-                             user?.subscriptionStatus === 'paused' ? 'Paused' : 'Active'}
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Usage Display */}
-                  <div className="py-3 border-b border-border">
-                    <div className="flex justify-between items-center mb-2">
-                      <p className="font-medium text-foreground">Usage This Month</p>
-                      {isDashboardLoading ? (
-                        <Skeleton className="h-4 w-24" />
-                      ) : (
-                        <p className="text-sm text-muted-foreground" data-testid="text-usage-display">
-                          {dashboard?.usage?.voiceMinutes || '0 / 60 min'}
-                        </p>
-                      )}
-                    </div>
-                    {!isDashboardLoading && dashboard?.usage?.percentage !== undefined && (
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div 
-                          className="bg-primary h-2 rounded-full transition-all" 
-                          style={{ width: `${Math.min(dashboard.usage.percentage, 100)}%` }}
-                          data-testid="progress-usage"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex space-x-3">
-                    <Button 
-                      type="button"
-                      onClick={handleManageAccount}
-                      disabled={createPortalSessionMutation.isPending}
-                      data-testid="button-manage-subscription"
-                    >
-                      {createPortalSessionMutation.isPending ? "Opening..." : "Manage Account"}
-                    </Button>
-                    <Button 
-                      type="button"
-                      variant="outline"
-                      onClick={() => window.location.href = '/subscribe'}
-                      data-testid="button-change-plan"
-                    >
-                      Change Plan
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
 
