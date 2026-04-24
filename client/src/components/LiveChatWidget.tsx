@@ -87,6 +87,18 @@ export function LiveChatWidget() {
     setIsMuted(prev => !prev);
   }, []);
 
+  // Allow any page-level button to open this widget via a custom window event.
+  // Dispatch with: window.dispatchEvent(new CustomEvent('open-live-chat'))
+  useEffect(() => {
+    const openHandler = () => {
+      if (!isOpen) {
+        void handleStart();
+      }
+    };
+    window.addEventListener('open-live-chat', openHandler);
+    return () => window.removeEventListener('open-live-chat', openHandler);
+  }, [handleStart, isOpen]);
+
   if (!agentId) {
     return null;
   }
