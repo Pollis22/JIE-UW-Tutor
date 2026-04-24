@@ -19,6 +19,7 @@ import bascomHall from "@/assets/campus/bascom-hall.png";
 import buckyBasketball from "@/assets/campus/bucky-basketball.png";
 import buckyLecture from "@/assets/campus/bucky-lecture.png";
 import buckyFootball from "@/assets/campus/bucky-football.png";
+import buckyHockey from "@/assets/campus/bucky-hockey.png";
 import buckyClassroom from "@/assets/campus/bucky-classroom.png";
 import studentLibrary from "@/assets/campus/student-library.png";
 import memorialUnion from "@/assets/campus/memorial-union.png";
@@ -57,36 +58,45 @@ function PhotoCollage() {
         </p>
       </div>
 
-      <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-        {/* Bascom Hall — hero tile, 2 cols */}
-        <div className="col-span-2 rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.01]"
-          style={{ border: "3px solid white", boxShadow: "0 12px 40px rgba(0,0,0,0.12)", transform: "rotate(-1deg)" }}>
-          <img src={bascomHall} alt="Bascom Hall at the University of Wisconsin–Madison" className="w-full h-48 md:h-64 object-cover" />
+      {/* Hero tile — Bascom Hall spans full width on its own row */}
+      <div className="max-w-5xl mx-auto mb-3 md:mb-4">
+        <div className="rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.01]"
+          style={{ border: "3px solid white", boxShadow: "0 12px 40px rgba(0,0,0,0.12)", transform: "rotate(-0.5deg)" }}>
+          <img src={bascomHall} alt="Bascom Hall at the University of Wisconsin–Madison" className="w-full h-48 md:h-72 object-cover" style={{ objectPosition: "center 40%" }} />
           <div style={{ height: 4, background: "#C5050C" }} />
         </div>
+      </div>
 
+      {/* Action-shot row — 5 tiles: lecture, basketball, football, hockey, library */}
+      <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
         {/* Bucky in lecture */}
         <div className="rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.03]"
           style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(2deg)" }}>
-          <img src={buckyLecture} alt="Bucky Badger in an Econ 101 lecture" className="w-full h-48 md:h-64 object-cover" style={{ objectPosition: "center 35%" }} />
+          <img src={buckyLecture} alt="Bucky Badger in an Econ 101 lecture" className="w-full h-36 md:h-44 object-cover" style={{ objectPosition: "center 35%" }} />
         </div>
 
         {/* Basketball dunk */}
         <div className="rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.03]"
           style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(-1.5deg)" }}>
-          <img src={buckyBasketball} alt="Bucky dunking at the Kohl Center" className="w-full h-36 md:h-48 object-cover" style={{ objectPosition: "center 20%" }} />
+          <img src={buckyBasketball} alt="Bucky dunking at the Kohl Center" className="w-full h-36 md:h-44 object-cover" style={{ objectPosition: "center 20%" }} />
         </div>
 
         {/* Football TD */}
         <div className="rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.03]"
           style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(1.5deg)" }}>
-          <img src={buckyFootball} alt="Bucky scoring a touchdown at Camp Randall" className="w-full h-36 md:h-48 object-cover" style={{ objectPosition: "center 25%" }} />
+          <img src={buckyFootball} alt="Bucky scoring a touchdown at Camp Randall" className="w-full h-36 md:h-44 object-cover" style={{ objectPosition: "center 25%" }} />
+        </div>
+
+        {/* Hockey goal — Kohl Center */}
+        <div className="rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.03]"
+          style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(-1.5deg)" }}>
+          <img src={buckyHockey} alt="Bucky scoring a hockey goal at the Kohl Center" className="w-full h-36 md:h-44 object-cover" style={{ objectPosition: "center 25%" }} />
         </div>
 
         {/* Student in library — UW Athletics gear */}
-        <div className="rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.03]"
+        <div className="rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.03] col-span-2 md:col-span-1"
           style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(-2deg)" }}>
-          <img src={studentLibrary} alt="UW–Madison student studying in the library" className="w-full h-36 md:h-48 object-cover" style={{ objectPosition: "center 30%" }} />
+          <img src={studentLibrary} alt="UW–Madison student studying in the library" className="w-full h-36 md:h-44 object-cover" style={{ objectPosition: "center 30%" }} />
         </div>
       </div>
 
