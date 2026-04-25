@@ -43,6 +43,7 @@ const AcademicDashboard = lazy(() => import("@/pages/academic-dashboard"));
 const StudentNotificationSettingsPage = lazy(() => import("@/pages/student-notification-settings"));
 const AdminAcademicTracker = lazy(() => import("@/pages/admin/admin-academic-tracker"));
 const SRMPage = lazy(() => import("@/pages/srm-page"));
+const AboutLSISPage = lazy(() => import("@/pages/about-lsis"));
 
 function Router() {
   return (
@@ -66,6 +67,7 @@ function Router() {
         <ProtectedRoute path="/admin/academic-tracker" component={AdminAcademicTracker} />
         <ProtectedRoute path="/academic-dashboard" component={AcademicDashboard} />
         <ProtectedRoute path="/academic-dashboard/notifications" component={StudentNotificationSettingsPage} />
+        <ProtectedRoute path="/about-lsis" component={AboutLSISPage} />
         <LazyRoute path="/auth/registration-success" component={RegistrationSuccessPage} />
         <LazyRoute path="/forgot-password" component={ForgotPasswordPage} />
         <LazyRoute path="/reset-password" component={ResetPasswordPage} />
