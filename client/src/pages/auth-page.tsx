@@ -250,6 +250,7 @@ export default function AuthPage() {
             {[
               { label: "Features", path: "/features" },
               { label: "Academic SRM", path: "/srm" },
+              { label: "What is LSIS?", path: "/about-lsis" },
               { label: "College Test Prep", path: "/features#test-prep" },
               { label: "Best Practices", path: "/best-practices" },
               { label: "Support", path: "/support" },
@@ -307,6 +308,7 @@ export default function AuthPage() {
             {[
               { label: "Features", path: "/features" },
               { label: "Academic SRM", path: "/srm" },
+              { label: "What is LSIS?", path: "/about-lsis" },
               { label: "College Test Prep", path: "/features#test-prep" },
               { label: "Best Practices", path: "/best-practices" },
               { label: "Support", path: "/support" },
