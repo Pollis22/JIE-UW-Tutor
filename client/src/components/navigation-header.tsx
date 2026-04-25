@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { UserAvatar } from "@/components/UserAvatar";
 import { Menu, X } from "lucide-react";
-import suLogo from "@/assets/uw-madison-logo.png";
+import suLogo from "@/assets/state-university-logo.png";
 
 export function NavigationHeader() {
   const { user, logoutMutation } = useAuth();
@@ -81,10 +81,10 @@ export function NavigationHeader() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => setLocation("/tutor")}>
-            <img src={suLogo} alt="University of Wisconsin" style={{ height: 48 }} />
+            <img src={suLogo} alt="State University" style={{ height: 48 }} />
             <div style={{ borderLeft: "1px solid #DAD7CB", paddingLeft: 12 }}>
               <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontWeight: 700, fontSize: 16, color: "#282728", lineHeight: 1.1 }}>AI Tutor</div>
-              <div style={{ fontSize: 10, color: "#646569", fontWeight: 500, letterSpacing: 1, textTransform: "uppercase" }}>University of Wisconsin</div>
+              <div style={{ fontSize: 10, color: "#646569", fontWeight: 500, letterSpacing: 1, textTransform: "uppercase" }}>State University</div>
             </div>
           </div>
 
