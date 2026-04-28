@@ -16,7 +16,7 @@ export function LiveChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // University of Wisconsin AI Tutor Support Agent ID
-  const agentId = 'agent_7601k9nzfad9e3c88n3hhdc2p80d';
+  const agentId = import.meta.env.VITE_ELEVENLABS_SUPPORT_AGENT_ID as string | undefined;
 
   const conversation = useConversation({
     onConnect: () => {
