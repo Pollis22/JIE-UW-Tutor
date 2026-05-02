@@ -13,7 +13,7 @@ interface Node {
 
 // Academic symbols mixed with subtle campus phrases
 const SYMBOLS = ['∑', '∫', 'π', 'Δ', '∞', '≈', '√', 'α', 'β', 'θ', 'λ', '∂', 'φ', '∇', '≡'];
-const CAMPUS_PHRASES = ['Go State', 'Go State', 'SU', 'SU'];
+const CAMPUS_PHRASES = ['Go Badgers', 'On Wisconsin', 'W', 'W'];
 
 export function AmbientBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
