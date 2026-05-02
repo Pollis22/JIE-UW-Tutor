@@ -61,7 +61,7 @@ function PhotoCollage() {
       {/* Hero tile — Bascom Hall spans full width on its own row */}
       <div className="max-w-5xl mx-auto mb-3 md:mb-4">
         <div className="rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.01]"
-          style={{ border: "3px solid white", boxShadow: "0 12px 40px rgba(0,0,0,0.12)", transform: "rotate(-0.5deg)" }}>
+          style={{ border: "3px solid white", boxShadow: "0 12px 40px rgba(0,0,0,0.12)" }}>
           <img src={bascomHall} alt="Bascom Hall at the University of Wisconsin–Madison" className="w-full h-48 md:h-72 object-cover" style={{ objectPosition: "center 40%" }} />
           <div style={{ height: 4, background: "#C5050C" }} />
         </div>
@@ -71,31 +71,31 @@ function PhotoCollage() {
       <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
         {/* Bucky in lecture */}
         <div className="rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.03]"
-          style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(2deg)" }}>
+          style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(-2deg)" }}>
           <img src={buckyLecture} alt="Bucky Badger in an Econ 101 lecture" className="w-full h-36 md:h-44 object-cover" style={{ objectPosition: "center 35%" }} />
         </div>
 
         {/* Basketball dunk */}
         <div className="rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.03]"
-          style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(-1.5deg)" }}>
+          style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(-1deg)" }}>
           <img src={buckyBasketball} alt="Bucky dunking at the Kohl Center" className="w-full h-36 md:h-44 object-cover" style={{ objectPosition: "center 20%" }} />
         </div>
 
         {/* Football TD */}
         <div className="rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.03]"
-          style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(1.5deg)" }}>
+          style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)" }}>
           <img src={buckyFootball} alt="Bucky scoring a touchdown at Camp Randall" className="w-full h-36 md:h-44 object-cover" style={{ objectPosition: "center 25%" }} />
         </div>
 
         {/* Hockey goal — Kohl Center */}
         <div className="rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.03]"
-          style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(-1.5deg)" }}>
+          style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(1deg)" }}>
           <img src={buckyHockey} alt="Bucky scoring a hockey goal at the Kohl Center" className="w-full h-36 md:h-44 object-cover" style={{ objectPosition: "center 25%" }} />
         </div>
 
         {/* Student in library — UW Athletics gear */}
         <div className="rounded-xl overflow-hidden shadow-lg transition-transform duration-300 hover:scale-[1.03] col-span-2 md:col-span-1"
-          style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(-2deg)" }}>
+          style={{ border: "3px solid white", boxShadow: "0 8px 25px rgba(0,0,0,0.1)", transform: "rotate(2deg)" }}>
           <img src={studentLibrary} alt="UW–Madison student studying in the library" className="w-full h-36 md:h-44 object-cover" style={{ objectPosition: "center 30%" }} />
         </div>
       </div>
@@ -103,7 +103,7 @@ function PhotoCollage() {
       {/* Floating quote */}
       <div className="max-w-4xl mx-auto mt-6 md:mt-8">
         <div className="mx-auto px-5 py-3.5 rounded-xl shadow-md inline-block"
-          style={{ background: "rgba(255,255,255,0.95)", border: "1px solid rgba(197,5,12,0.12)", transform: "rotate(-0.5deg)", borderLeft: "3px solid #C5050C" }}>
+          style={{ background: "rgba(255,255,255,0.95)", border: "1px solid rgba(197,5,12,0.12)", borderLeft: "3px solid #C5050C" }}>
           <p style={{ fontFamily: "'Red Hat Text', sans-serif", fontSize: 14, fontStyle: "italic", color: "#282728", lineHeight: 1.5, fontWeight: 500 }}>
             "It's not just a tutor — it knows my whole semester. Every deadline, every exam, every gap. Game changer."
           </p>
@@ -394,7 +394,7 @@ export default function AuthPage() {
             <div className="flex justify-center items-center">
               <div className="relative w-full max-w-md">
                 <div className="rounded-2xl overflow-hidden shadow-2xl"
-                  style={{ transform: "rotate(1.5deg)", border: "4px solid white", boxShadow: "0 20px 50px rgba(0,0,0,0.18)" }}>
+                  style={{ border: "4px solid white", boxShadow: "0 20px 50px rgba(0,0,0,0.18)" }}>
                   <img src={buckyGraduation} alt="Bucky celebrating commencement with UW graduates at Bascom Hall" className="w-full h-auto" />
                 </div>
               </div>
@@ -475,7 +475,7 @@ export default function AuthPage() {
             <div className="flex justify-center items-center">
               <div className="relative w-full max-w-lg">
                 <div className="rounded-2xl overflow-hidden shadow-2xl"
-                  style={{ transform: "rotate(-1deg)", border: "4px solid white", boxShadow: "0 20px 50px rgba(0,0,0,0.14)" }}>
+                  style={{ border: "4px solid white", boxShadow: "0 20px 50px rgba(0,0,0,0.14)" }}>
                   <img src={memorialUnion} alt="UW Memorial Union and campus scenery" className="w-full h-auto" />
                 </div>
               </div>
