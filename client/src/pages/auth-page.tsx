@@ -19,6 +19,7 @@ import bascomHall from "@/assets/campus/bascom-hall.png";
 import buckyBasketball from "@/assets/campus/bucky-basketball.png";
 import buckyLecture from "@/assets/campus/bucky-lecture.png";
 import buckyFootball from "@/assets/campus/bucky-football.png";
+import busyStudents from "@/assets/campus/uw-busy-students.png";
 import buckyHockey from "@/assets/campus/bucky-hockey.png";
 import buckyClassroom from "@/assets/campus/bucky-classroom.png";
 import studentLibrary from "@/assets/campus/student-library.png";
@@ -713,10 +714,10 @@ export default function AuthPage() {
             {/* Banner image */}
             <div className="relative overflow-hidden" style={{ minHeight: 220, height: "clamp(220px, 32vw, 320px)" }}>
               <img
-                src={buckyFootball}
-                alt="UW–Madison campus and student life"
+                src={busyStudents}
+                alt="Wisconsin students, faculty, athletes, and Bucky Badger holding books in front of Bascom Hall"
                 className="w-full h-full object-cover"
-                style={{ objectPosition: "center 22%" }}
+                style={{ objectPosition: "center 35%" }}
               />
               <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(197,5,12,0) 45%, rgba(197,5,12,0.78) 100%)" }} />
               <div className="absolute bottom-4 left-6 right-6">
