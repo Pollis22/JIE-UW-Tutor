@@ -12,20 +12,13 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatChicagoDate } from "@/lib/date-utils";
 import { useState, useEffect } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { User, Mail, Calendar, Shield, CreditCard, Clock } from "lucide-react";
-import { getPlanDetails } from "@shared/plan-config";
+import { User, Mail, Calendar, Shield } from "lucide-react";
 
 interface DashboardData {
   user?: {
     name?: string;
     firstName?: string;
     initials?: string;
-    plan?: string;
-  };
-  usage?: {
-    voiceMinutes?: string;
-    percentage?: number;
   };
 }
 
@@ -50,7 +43,7 @@ export default function ProfilePage() {
   const [lastName, setLastName] = useState("");
   const [isEditing, setIsEditing] = useState(false);
 
-  const { data: dashboard, isLoading: isDashboardLoading } = useQuery<DashboardData>({
+  const { data: dashboard } = useQuery<DashboardData>({
     queryKey: ["/api/dashboard"],
     enabled: !!user,
   });
@@ -85,23 +78,6 @@ export default function ProfilePage() {
     },
   });
 
-  const createPortalSessionMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/customer-portal");
-      return await response.json();
-    },
-    onSuccess: (data) => {
-      window.location.href = data.url;
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error accessing customer portal",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
   const handleSaveProfile = () => {
     updateProfileMutation.mutate({ firstName, lastName });
   };
@@ -112,7 +88,6 @@ export default function ProfilePage() {
     setIsEditing(false);
   };
 
-  const planDetails = getPlanDetails(user?.subscriptionPlan);
   const displayName = dashboard?.user?.name || 
     `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 
     user?.username || 
@@ -131,7 +106,7 @@ export default function ProfilePage() {
             <h1 className="text-3xl font-bold text-foreground mb-2" data-testid="text-profile-title">
               Profile
             </h1>
-            <p className="text-muted-foreground">Manage your account information and subscription</p>
+            <p className="text-muted-foreground">Manage your account information</p>
           </div>
 
           {/* Profile Card */}
@@ -265,117 +240,6 @@ export default function ProfilePage() {
                     {user?.isAdmin ? "Administrator" : "Member"}
                   </Badge>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Subscription Card */}
-          <Card className="shadow-sm">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Subscription</CardTitle>
-                  <CardDescription>Manage your subscription and billing</CardDescription>
-                </div>
-                {isDashboardLoading ? (
-                  <Skeleton className="h-6 w-24" />
-                ) : (
-                  <Badge 
-                    variant="secondary" 
-                    className={`${planDetails.color} text-white`}
-                    data-testid="badge-profile-plan"
-                  >
-                    {dashboard?.user?.plan || planDetails.name}
-                  </Badge>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <CreditCard className="h-4 w-4" />
-                    <span className="text-sm font-medium">Monthly Price</span>
-                  </div>
-                  {isDashboardLoading ? (
-                    <Skeleton className="h-6 w-20" />
-                  ) : (
-                    <p className="text-xl font-semibold text-foreground" data-testid="text-profile-price">
-                      ${planDetails.price}/mo
-                    </p>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    <span className="text-sm font-medium">Minutes Included</span>
-                  </div>
-                  {isDashboardLoading ? (
-                    <Skeleton className="h-6 w-20" />
-                  ) : (
-                    <p className="text-xl font-semibold text-foreground" data-testid="text-profile-minutes">
-                      {planDetails.minutes.toLocaleString()}/mo
-                    </p>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    <span className="text-sm font-medium">Usage This Month</span>
-                  </div>
-                  {isDashboardLoading ? (
-                    <Skeleton className="h-6 w-24" />
-                  ) : (
-                    <p className="text-xl font-semibold text-foreground" data-testid="text-profile-usage">
-                      {dashboard?.usage?.voiceMinutes || '0 / 60 min'}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Usage Progress */}
-              {!isDashboardLoading && dashboard?.usage?.percentage !== undefined && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Minutes Used</span>
-                    <span className="text-foreground font-medium">{dashboard.usage.percentage}%</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div 
-                      className="bg-primary h-2 rounded-full transition-all" 
-                      style={{ width: `${Math.min(dashboard.usage.percentage, 100)}%` }}
-                      data-testid="progress-profile-usage"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <Separator />
-
-              <div className="flex flex-wrap gap-3">
-                <Button 
-                  onClick={() => createPortalSessionMutation.mutate()}
-                  disabled={createPortalSessionMutation.isPending}
-                  data-testid="button-manage-billing"
-                >
-                  {createPortalSessionMutation.isPending ? "Opening..." : "Manage Billing"}
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => window.location.href = '/subscribe'}
-                  data-testid="button-change-plan"
-                >
-                  Change Plan
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => window.location.href = '/settings'}
-                  data-testid="button-go-to-settings"
-                >
-                  Account Settings
-                </Button>
               </div>
             </CardContent>
           </Card>
