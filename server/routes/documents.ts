@@ -1,5 +1,5 @@
 /**
- * University of Wisconsin AI Tutor Platform
+ * University of Notre Dame AI Tutor Platform
  * Copyright (c) 2025 JIE Mastery AI, Inc.
  * All Rights Reserved.
  * 
@@ -16,7 +16,9 @@ import crypto from 'crypto';
 import { z } from 'zod';
 import { storage } from '../storage';
 import { db } from '../db';
-import { documentChunks } from '@shared/schema';
+import { documentChunks, userDocuments, studentCourses } from '@shared/schema';
+import { eq } from 'drizzle-orm';
+import { processSyllabusForCourse } from './academic';
 import { DocumentProcessor } from '../services/document-processor';
 import { PdfJsTextExtractor } from '../services/pdf-extractor';
 import Anthropic from '@anthropic-ai/sdk';
@@ -371,45 +373,61 @@ async function extractTextFromPowerPoint(filePath: string): Promise<string> {
 
 // Chunk text into manageable pieces
 function chunkText(text: string, maxChunkSize: number = 1000): string[] {
+  // Bulletproof chunker (May 6 2026): the previous version used a sentence-end
+  // regex /[^.!?]+[.!?]+/g that silently dropped content not ending in
+  // punctuation — fatal for syllabi, bullet-point lists, table-style content,
+  // or anything without formal sentences. This version preserves ALL text by
+  // preferring semantic boundaries when possible and falling back to hard
+  // character cuts as a last resort.
+  if (!text || !text.trim()) return [];
+  let remaining = text.trim();
+  if (remaining.length <= maxChunkSize) return [remaining];
+
   const chunks: string[] = [];
-  const paragraphs = text.split(/\n\n+/);
-  
-  let currentChunk = '';
-  
-  for (const paragraph of paragraphs) {
-    const trimmed = paragraph.trim();
-    if (!trimmed) continue;
-    
-    if (currentChunk.length + trimmed.length > maxChunkSize) {
-      if (currentChunk) {
-        chunks.push(currentChunk.trim());
-        currentChunk = '';
-      }
-      
-      // If single paragraph is too long, split by sentences
-      if (trimmed.length > maxChunkSize) {
-        const sentences = trimmed.match(/[^.!?]+[.!?]+/g) || [trimmed];
-        for (const sentence of sentences) {
-          if (currentChunk.length + sentence.length > maxChunkSize) {
-            if (currentChunk) chunks.push(currentChunk.trim());
-            currentChunk = sentence;
-          } else {
-            currentChunk += ' ' + sentence;
-          }
-        }
-      } else {
-        currentChunk = trimmed;
-      }
-    } else {
-      currentChunk += (currentChunk ? '\n\n' : '') + trimmed;
+  while (remaining.length > maxChunkSize) {
+    // Look for a break point in the upper portion of the chunk window
+    // (don't break too early; prefer cuts near maxChunkSize)
+    const minBreak = Math.floor(maxChunkSize * 0.6);
+    const window = remaining.slice(0, maxChunkSize);
+
+    // Try break points in order of preference
+    let breakAt = -1;
+
+    // 1. Paragraph break (\n\n) in upper window
+    const paraIdx = window.lastIndexOf('\n\n');
+    if (paraIdx >= minBreak) breakAt = paraIdx + 2;
+
+    // 2. Line break (\n) in upper window
+    if (breakAt < 0) {
+      const lineIdx = window.lastIndexOf('\n');
+      if (lineIdx >= minBreak) breakAt = lineIdx + 1;
     }
+
+    // 3. Sentence end (. ! ?) followed by space, in upper window
+    if (breakAt < 0) {
+      const sentIdx = Math.max(
+        window.lastIndexOf('. '),
+        window.lastIndexOf('! '),
+        window.lastIndexOf('? ')
+      );
+      if (sentIdx >= minBreak) breakAt = sentIdx + 2;
+    }
+
+    // 4. Any whitespace in upper window
+    if (breakAt < 0) {
+      const spaceIdx = window.lastIndexOf(' ');
+      if (spaceIdx >= minBreak) breakAt = spaceIdx + 1;
+    }
+
+    // 5. Hard cut at maxChunkSize as absolute fallback (preserves content)
+    if (breakAt < 0) breakAt = maxChunkSize;
+
+    chunks.push(remaining.slice(0, breakAt).trim());
+    remaining = remaining.slice(breakAt).trim();
   }
-  
-  if (currentChunk.trim()) {
-    chunks.push(currentChunk.trim());
-  }
-  
-  return chunks.filter(chunk => chunk.length > 0);
+
+  if (remaining) chunks.push(remaining);
+  return chunks.filter(c => c.length > 0);
 }
 
 // Estimate token count
@@ -663,6 +681,90 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     console.log(`[Upload] - Chunks: ${chunks.length}`);
     console.log(`[Upload] - Characters: ${extractedText.length}`);
     
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 6. SYLLABUS AUTO-PIPELINE (added May 6 2026)
+    //    If the uploaded doc looks like a syllabus, auto-create a
+    //    student_courses row and chain into processSyllabusForCourse
+    //    so the SRM calendar populates immediately. Bi-directional
+    //    sync: tutor-side upload → SRM courses/events/tasks/reminders.
+    //
+    //    Trigger gate is filename-based to keep latency + Claude cost
+    //    off normal (non-syllabus) uploads. Falls through silently on
+    //    any error so a parser failure never breaks the upload.
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    let syllabusResult: {
+      autoCreated: boolean;
+      courseId?: string;
+      courseName?: string;
+      eventsCreated?: number;
+      tasksCreated?: number;
+    } = { autoCreated: false };
+
+    const filenameLower = (req.file.originalname || '').toLowerCase();
+    // Substring matches (not \b boundaries) — JS regex treats _ as a word char,
+    // so \b doesn't break across underscores. JIE_Biology_Summer_Syllabus.pdf
+    // would never match \bsyllabus\b. This same bug pattern bit the chunker.
+    const looksLikeSyllabus =
+      filenameLower.includes('syllabus') ||
+      /course[\s_\-]*outline/.test(filenameLower) ||
+      /course[\s_\-]*schedule/.test(filenameLower);
+
+    // SRM-side flow already creates a course manually and calls the syllabus
+    // parser explicitly. It passes ?skipAutoSyllabus=true so this hook doesn't
+    // double-process. Tutor-side uploads omit the param, so the auto-pipeline
+    // fires and creates the course + calendar events automatically.
+    const skipAutoSyllabus =
+      req.query.skipAutoSyllabus === 'true' ||
+      req.query.skipAutoSyllabus === '1' ||
+      (req.body && (req.body.skipAutoSyllabus === true || req.body.skipAutoSyllabus === 'true'));
+
+    if (looksLikeSyllabus && extractedText.length > 200 && !skipAutoSyllabus) {
+      console.log(`[Upload][Syllabus] 📚 Detected syllabus by filename: "${req.file.originalname}"`);
+      try {
+        // Create a placeholder course shell. processSyllabusForCourse will
+        // fill in courseName/courseCode/instructor from Claude extraction.
+        const placeholderName = (metadata.title || req.file.originalname)
+          .replace(/\.[^.]+$/, '')        // strip extension
+          .replace(/[_\-]+/g, ' ')         // underscores/dashes → spaces
+          .replace(/\s+/g, ' ')
+          .trim() || 'Untitled Course';
+
+        const [course] = await db.insert(studentCourses).values({
+          userId,
+          courseName: placeholderName,
+          isActive: true,
+        }).returning();
+
+        console.log(`[Upload][Syllabus] 📚 Created placeholder course ${course.id} ("${placeholderName}")`);
+
+        // Run the parser (creates calendar events + tasks + reminders)
+        const parsed = await processSyllabusForCourse(userId, course.id, extractedText);
+
+        // Link the document back to the course
+        await db.update(userDocuments)
+          .set({ autoCourseId: course.id, updatedAt: new Date() })
+          .where(eq(userDocuments.id, documentId));
+
+        // Re-read course to get the (possibly Claude-corrected) name
+        const [updatedCourse] = await db.select().from(studentCourses)
+          .where(eq(studentCourses.id, course.id));
+
+        syllabusResult = {
+          autoCreated: true,
+          courseId: course.id,
+          courseName: updatedCourse?.courseName || placeholderName,
+          eventsCreated: parsed.eventsCreated,
+          tasksCreated: parsed.tasksCreated,
+        };
+
+        console.log(`[Upload][Syllabus] ✅ Auto-pipeline complete: ${parsed.eventsCreated} events, ${parsed.tasksCreated} tasks for course "${syllabusResult.courseName}"`);
+      } catch (syllabusErr: any) {
+        // Non-blocking: upload still succeeds even if parsing fails.
+        // User can manually trigger from SRM later.
+        console.warn('[Upload][Syllabus] ⚠️ Auto-pipeline failed (non-blocking):', syllabusErr?.message || syllabusErr);
+      }
+    }
+
     res.json({
       id: document.id,
       title: document.title,
@@ -672,7 +774,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       processingStatus: 'ready', // ← Return ready status
       createdAt: document.createdAt,
       chunks: chunks.length,
-      characters: extractedText.length
+      characters: extractedText.length,
+      syllabus: syllabusResult, // ← New: lets the client show "we found N assignments"
     });
 
   } catch (error: any) {

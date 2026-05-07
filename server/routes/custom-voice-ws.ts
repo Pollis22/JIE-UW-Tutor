@@ -1438,6 +1438,11 @@ interface SessionState {
   conversationHistory: Array<{ role: "user" | "assistant"; content: string }>;
   transcript: TranscriptEntry[];
   uploadedDocuments: string[];
+  // Per-doc metadata for the greeting acknowledgment filter (May 6 2026).
+  // Only populated when docs are loaded from the DB by ID (not for pre-formatted
+  // client-injected content). The greeting only verbally acknowledges docs whose
+  // `acknowledgedAt` is null; after greeting, those docs are marked acknowledged.
+  activeDocs?: Array<{ id: string; title: string; acknowledgedAt: Date | null }>;
   deepgramConnection: DeepgramConnection | null;
   assemblyAIWs: WebSocket | null; // AssemblyAI WebSocket connection
   assemblyAIState: AssemblyAIState | null; // AssemblyAI merge guard state
@@ -5107,6 +5112,12 @@ export function setupCustomVoiceWebSocket(server: Server) {
                     }
                     
                     state.uploadedDocuments = documentContents;
+                    // Track per-doc IDs + acknowledgment state for the greeting filter
+                    state.activeDocs = documents.map((d: any) => ({
+                      id: d.id,
+                      title: d.originalName || d.title || 'unknown',
+                      acknowledgedAt: d.acknowledgedAt || null,
+                    }));
                     console.log(`[Custom Voice] 📚 Document context prepared: ${documentContents.length} documents, total length: ${documentContents.join('').length} chars`);
                   }
                 }
@@ -5435,6 +5446,16 @@ RULES:
 ✅ Only use ONE visual per response
 ❌ Never mention the tag or the visual system to the student — just let it appear
 ❌ Never invent tag names — only use the exact tags listed above
+
+🚫 MODALITY GROUNDING — CRITICAL (read carefully):
+This is a VOICE-FIRST tutor. The student hears your words and ONLY sees a visual when you emit an exact [VISUAL: tag] from the list above. There is NO other way to show anything on their screen — you cannot generate, draw, attach, paste, render, or describe-into-existence any image, chart, diagram, graph, illustration, picture, photo, sketch, table, or screen content. The system has no such capability outside the [VISUAL: tag] mechanism.
+
+Therefore:
+❌ NEVER say "take a look at this/that diagram", "see this chart", "here's a graph", "look at the picture", "as you can see in the image", "I'll show you", "let me pull that up", "let me display", "I just sent you a diagram", or any phrasing that implies a visual is on the student's screen — UNLESS your same response also contains a matching [VISUAL: tag] from the list above.
+❌ NEVER reference a visual in past tense ("the diagram I showed you", "that chart we just looked at") unless you actually emitted that exact [VISUAL: tag] earlier in this same conversation.
+❌ If the topic seems to call for a visual but no matching tag exists in the list above, DO NOT pretend a visual exists — describe it in words instead. Saying "imagine a graph where…" is FINE. Saying "look at this graph" without a tag is a hallucination and is FORBIDDEN.
+❌ If the student says "I don't see anything" or "I can't see the diagram", DO NOT promise to "pull it up", "show it again", or "let me display it now" unless you immediately emit a valid [VISUAL: tag] in the same response. If no matching tag exists, apologize briefly, acknowledge that no visual is available, and continue with a verbal description.
+✅ When in doubt, teach with words. Verbal description always works; a fake visual reference always confuses.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
             // STT_ARTIFACT_HARDENING is defined at module level (see top of file)
@@ -5497,6 +5518,68 @@ RULES:
             } catch (lsisError) {
               console.warn('[LSIS] ⚠️ Profile injection failed (non-blocking):', lsisError);
             }
+
+            // Academic events: pull upcoming assignments/exams/quizzes from the
+            // SRM so the tutor can answer "what do I have coming up?" with real
+            // structured data, not just whatever the syllabus RAG happens to surface.
+            // Window: today through +30 days. Failure is non-blocking.
+            let academicEventsBlock = '';
+            try {
+              const { db: dbConn } = await import('../db');
+              const { studentCalendarEvents, studentCourses } = await import('@shared/schema');
+              const { and: andOp, eq: eqOp, gte: gteOp, lte: lteOp } = await import('drizzle-orm');
+              const today = new Date();
+              const todayStr = today.toISOString().slice(0, 10); // YYYY-MM-DD
+              const horizon = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+              const horizonStr = horizon.toISOString().slice(0, 10);
+
+              const upcomingEvents = await dbConn
+                .select({
+                  id: studentCalendarEvents.id,
+                  title: studentCalendarEvents.title,
+                  eventType: studentCalendarEvents.eventType,
+                  startDate: studentCalendarEvents.startDate,
+                  priority: studentCalendarEvents.priority,
+                  description: studentCalendarEvents.description,
+                  courseName: studentCourses.courseName,
+                  courseCode: studentCourses.courseCode,
+                })
+                .from(studentCalendarEvents)
+                .leftJoin(studentCourses, eqOp(studentCalendarEvents.courseId, studentCourses.id))
+                .where(andOp(
+                  eqOp(studentCalendarEvents.userId, authenticatedUserId),
+                  gteOp(studentCalendarEvents.startDate, todayStr),
+                  lteOp(studentCalendarEvents.startDate, horizonStr)
+                ))
+                .orderBy(studentCalendarEvents.startDate);
+
+              if (upcomingEvents.length > 0) {
+                const lines = upcomingEvents.map((e: any) => {
+                  const courseLabel = e.courseCode || e.courseName || 'Course';
+                  const priorityTag = e.priority === 'high' ? ' [HIGH PRIORITY]' : '';
+                  return `- ${e.startDate}: ${e.title} (${e.eventType}, ${courseLabel})${priorityTag}`;
+                }).join('\n');
+                academicEventsBlock = `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 STUDENT'S UPCOMING ACADEMIC EVENTS (next 30 days):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${lines}
+
+USE THIS DATA WHEN:
+- Student asks "what do I have coming up?" / "what's due this week?" / "when is my next exam?"
+- Student asks for help studying — proactively note what's relevant ("Your Week 2 Exam is on June 14, want to review?")
+- Student mentions a topic — connect it to upcoming events when relevant ("Cellular respiration is on the Week 2 Exam — let's drill that")
+
+Do NOT recite the full list unprompted in greetings. Reference items naturally as they become relevant in the conversation.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+                console.log(`[AcademicEvents] 📅 Injected ${upcomingEvents.length} upcoming events into system prompt`);
+              } else {
+                console.log(`[AcademicEvents] ℹ️ No upcoming events for user in next 30 days`);
+              }
+            } catch (eventsErr) {
+              console.warn('[AcademicEvents] ⚠️ Events injection failed (non-blocking):', eventsErr);
+            }
             
             // Build system instruction with personality and document context
             // NO-GHOSTING FIX: Calculate actual content length before claiming doc access
@@ -5517,7 +5600,7 @@ RULES:
               });
               
               // Create enhanced system instruction - NO-GHOSTING: Only claim access when content exists
-              state.systemInstruction = `${personality.systemPrompt}${VOICE_CONVERSATION_CONSTRAINTS}${VISUAL_SYSTEM_INSTRUCTION}${K2_CONSTRAINTS}${SPECIALIZATION_BLOCK}${PRACTICE_MODE_BLOCK}${continuityBlock}${lsisProfileBlock}
+              state.systemInstruction = `${personality.systemPrompt}${VOICE_CONVERSATION_CONSTRAINTS}${VISUAL_SYSTEM_INSTRUCTION}${K2_CONSTRAINTS}${SPECIALIZATION_BLOCK}${PRACTICE_MODE_BLOCK}${continuityBlock}${lsisProfileBlock}${academicEventsBlock}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📚 DOCUMENTS LOADED FOR THIS SESSION (${ragChars} chars):
@@ -5551,7 +5634,7 @@ DOCUMENT ACKNOWLEDGMENT RULE:
                 return titleMatch ? titleMatch[1] : `file ${i + 1}`;
               });
               
-              state.systemInstruction = `${personality.systemPrompt}${VOICE_CONVERSATION_CONSTRAINTS}${VISUAL_SYSTEM_INSTRUCTION}${K2_CONSTRAINTS}${SPECIALIZATION_BLOCK}${PRACTICE_MODE_BLOCK}${continuityBlock}${lsisProfileBlock}
+              state.systemInstruction = `${personality.systemPrompt}${VOICE_CONVERSATION_CONSTRAINTS}${VISUAL_SYSTEM_INSTRUCTION}${K2_CONSTRAINTS}${SPECIALIZATION_BLOCK}${PRACTICE_MODE_BLOCK}${continuityBlock}${lsisProfileBlock}${academicEventsBlock}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚠️ DOCUMENT UPLOAD ISSUE:
@@ -5573,19 +5656,10 @@ HONESTY INSTRUCTIONS:
               console.log(`[Custom Voice] No documents uploaded - using standard prompt`);
             }
             
-            // Family Academic Context injection (non-blocking)
-            try {
-              if (state.userId && state.studentId) {
-                const { getFamilyAcademicContextForVoice } = await import('./family-academic');
-                const familyContext = await getFamilyAcademicContextForVoice(state.userId, state.studentId);
-                if (familyContext) {
-                  state.systemInstruction += familyContext;
-                  console.log(`[Family Academic] Injected voice context for child ${state.studentId} (${familyContext.length} chars)`);
-                }
-              }
-            } catch (familyErr) {
-              console.warn('[Family Academic] Voice context injection failed (non-blocking):', familyErr);
-            }
+            // Family Academic Context injection: REMOVED — Notre Dame is College/Adult only.
+            // The Family Academic Tracker is a K-12 parent-managing-children feature and is
+            // not used on college-only sites. Removing the dynamic import eliminates the
+            // ERR_MODULE_NOT_FOUND warning that would otherwise log on every session start.
 
             // Generate enhanced personalized greeting with LANGUAGE SUPPORT
             let greeting: string = '';
@@ -5603,14 +5677,32 @@ HONESTY INSTRUCTIONS:
             // Extract document titles from Active documents only (checkbox-checked)
             // NO-GHOSTING: Use hasActualDocContent calculated above
             // CAP: Show at most 3 filenames in greeting to avoid rambling
+            // FIRST-TIME-ACK (May 6 2026): Only verbally acknowledge docs whose
+            //   acknowledgedAt is null. Doc content is still injected for RAG every
+            //   session — only the spoken greeting goes silent on subsequent sessions.
+            //   When activeDocs metadata is unavailable (e.g. pre-formatted client
+            //   docs without IDs), fall back to legacy behavior of acknowledging.
             const greetingDocTitles: string[] = [];
+            const docsToMarkAcknowledged: string[] = []; // doc IDs to UPDATE acknowledged_at after greeting commits
             if (!shouldSkipGreeting && hasActualDocContent && state.uploadedDocuments && state.uploadedDocuments.length > 0) {
-              state.uploadedDocuments.forEach((doc) => {
-                const titleMatch = doc.match(/^\[Document: ([^\]]+)\]/);
-                if (titleMatch && greetingDocTitles.length < 3) {
-                  greetingDocTitles.push(titleMatch[1]);
+              if (state.activeDocs && state.activeDocs.length > 0) {
+                // DB-tracked path: filter by acknowledgedAt
+                const unacknowledged = state.activeDocs.filter(d => !d.acknowledgedAt);
+                console.log(`[Custom Voice][DocAck] activeDocs=${state.activeDocs.length}, unacknowledged=${unacknowledged.length}`);
+                for (const d of unacknowledged) {
+                  if (greetingDocTitles.length >= 3) break;
+                  greetingDocTitles.push(d.title);
+                  docsToMarkAcknowledged.push(d.id);
                 }
-              });
+              } else {
+                // Legacy path: pre-formatted client docs without IDs — always acknowledge
+                state.uploadedDocuments.forEach((doc) => {
+                  const titleMatch = doc.match(/^\[Document: ([^\]]+)\]/);
+                  if (titleMatch && greetingDocTitles.length < 3) {
+                    greetingDocTitles.push(titleMatch[1]);
+                  }
+                });
+              }
             }
             // Count of Active docs vs total uploaded (Active + Inactive)
             const activeDocCount = greetingDocTitles.length;
@@ -5937,6 +6029,25 @@ HONESTY INSTRUCTIONS:
               // DOCS: Mark docs as acknowledged so tutor never re-lists them later
               if (greetingDocTitles.length > 0) {
                 state.hasAcknowledgedDocs = true;
+              }
+              // FIRST-TIME-ACK PERSISTENCE (May 6 2026): write acknowledged_at timestamp
+              // to user_documents so the next session's greeting filter knows to skip
+              // these docs. Non-blocking — a write failure here doesn't break the session.
+              if (docsToMarkAcknowledged.length > 0) {
+                (async () => {
+                  try {
+                    const { db } = await import('../db');
+                    const { userDocuments } = await import('@shared/schema');
+                    const { inArray } = await import('drizzle-orm');
+                    const result = await db.update(userDocuments)
+                      .set({ acknowledgedAt: new Date(), updatedAt: new Date() })
+                      .where(inArray(userDocuments.id, docsToMarkAcknowledged))
+                      .returning({ id: userDocuments.id });
+                    console.log(`[Custom Voice][DocAck] ✅ Marked ${result.length} docs as acknowledged: ${docsToMarkAcknowledged.join(', ')}`);
+                  } catch (ackErr) {
+                    console.warn('[Custom Voice][DocAck] ⚠️ Failed to persist acknowledgment (non-blocking):', ackErr);
+                  }
+                })();
               }
             }
 

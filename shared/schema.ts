@@ -453,12 +453,23 @@ export const userDocuments = pgTable("user_documents", {
   nextRetryAt: timestamp("next_retry_at"),
   parsedTextPath: text("parsed_text_path"), // path to extracted plain text file
   expiresAt: timestamp("expires_at"), // auto-delete after 6 months
+  // ─── Voice greeting acknowledgment ──────────────────────────────────────
+  // Set the first time the tutor verbally acknowledges this doc in a greeting.
+  // Subsequent sessions filter on `acknowledgedAt IS NULL` so the tutor only
+  // says "I see you uploaded X" once. Doc content is still injected for RAG
+  // every session — only the verbal greeting goes silent after first ack.
+  acknowledgedAt: timestamp("acknowledged_at"),
+  // ─── Syllabus auto-pipeline link ────────────────────────────────────────
+  // If this upload was detected as a syllabus, links to the auto-created
+  // student_courses row so the SRM and tutor see the same source of truth.
+  autoCourseId: varchar("auto_course_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("idx_user_docs_status").on(table.processingStatus),
   index("idx_user_docs_retry").on(table.nextRetryAt),
   index("idx_user_docs_expires").on(table.expiresAt), // for cleanup queries
+  index("idx_user_docs_ack").on(table.acknowledgedAt), // greeting filter
 ]);
 
 export const documentChunks = pgTable("document_chunks", {

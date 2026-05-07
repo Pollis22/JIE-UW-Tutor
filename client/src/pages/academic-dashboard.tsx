@@ -112,7 +112,7 @@ interface DashboardSummary {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const COURSE_COLORS = [
-  "#C5050C", "#2563eb", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#be185d", "#854d0e"
+  "#0C2340", "#2563eb", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#be185d", "#854d0e"
 ];
 
 function getStatusColor(status: string | null, dueDate: string | null) {
@@ -174,7 +174,7 @@ export default function AcademicDashboard() {
       formData.append("file", file);
       formData.append("title", `Syllabus: ${file.name}`);
       formData.append("subject", "syllabus");
-      const uploadRes = await fetch("/api/documents/upload", { method: "POST", body: formData, credentials: "include" });
+      const uploadRes = await fetch("/api/documents/upload?skipAutoSyllabus=true", { method: "POST", body: formData, credentials: "include" });
       if (!uploadRes.ok) throw new Error("File upload failed");
       const uploadData = await uploadRes.json();
 
@@ -424,7 +424,7 @@ export default function AcademicDashboard() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
-              <GraduationCap className="h-8 w-8" style={{ color: "#C5050C" }} />
+              <GraduationCap className="h-8 w-8" style={{ color: "#0C2340" }} />
               Student Relationship Management
             </h1>
             <p className="text-muted-foreground mt-1">Manage your courses, calendar, and study plan</p>
@@ -465,7 +465,7 @@ export default function AcademicDashboard() {
               <div className="text-2xl font-bold flex items-center gap-2">
                 {summaryLoading ? <Skeleton className="h-8 w-12" /> : (
                   <>
-                    <span style={{ color: (summary?.engagementScore || 0) >= 70 ? "#16a34a" : (summary?.engagementScore || 0) >= 50 ? "#ca8a04" : "#dc2626" }}>
+                    <span style={{ color: (summary?.engagementScore || 0) >= 70 ? "#16a34a" : (summary?.engagementScore || 0) >= 50 ? "#ca8a04" : "#0C2340" }}>
                       {Math.round(summary?.engagementScore || 0)}
                     </span>
                     <span className="text-sm text-muted-foreground">/100</span>
@@ -610,8 +610,8 @@ export default function AcademicDashboard() {
                                 }`}
                                 style={{
                                   background: isOverdue ? "#fecaca" : isDueToday ? "#fef3c7" : `${color}20`,
-                                  color: isOverdue ? "#dc2626" : isDueToday ? "#92400e" : color,
-                                  borderLeft: `3px solid ${isOverdue ? "#dc2626" : isDueToday ? "#d97706" : color}`,
+                                  color: isOverdue ? "#0C2340" : isDueToday ? "#92400e" : color,
+                                  borderLeft: `3px solid ${isOverdue ? "#0C2340" : isDueToday ? "#d97706" : color}`,
                                 }}
                                 onClick={() => setShowEventDetail(evt)}
                               >
@@ -744,7 +744,7 @@ export default function AcademicDashboard() {
                 <CardContent className="pt-6 text-center">
                   <div className="text-sm text-muted-foreground mb-2">This Week's Score</div>
                   <div className="text-5xl font-bold" style={{
-                    color: (engagement?.engagementScore || 0) >= 70 ? "#16a34a" : (engagement?.engagementScore || 0) >= 50 ? "#ca8a04" : "#dc2626"
+                    color: (engagement?.engagementScore || 0) >= 70 ? "#16a34a" : (engagement?.engagementScore || 0) >= 50 ? "#ca8a04" : "#0C2340"
                   }}>
                     {Math.round(engagement?.engagementScore || 0)}
                   </div>
@@ -815,7 +815,7 @@ export default function AcademicDashboard() {
                             className="w-full rounded-t"
                             style={{
                               height: `${height}%`,
-                              background: score >= 70 ? "#16a34a" : score >= 50 ? "#ca8a04" : score >= 30 ? "#ea580c" : "#dc2626",
+                              background: score >= 70 ? "#16a34a" : score >= 50 ? "#ca8a04" : score >= 30 ? "#ea580c" : "#0C2340",
                             }}
                           />
                           <span className="text-xs text-muted-foreground">{entry.weekStart?.slice(5)}</span>

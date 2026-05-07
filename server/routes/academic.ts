@@ -29,6 +29,246 @@ function requireAuth(req: any, res: any): string | null {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Reusable: Process syllabus text → extract events → create
+// calendar entries + study tasks + reminders.
+//
+// Used by:
+//   1. POST /api/academic/courses/:id/syllabus  (SRM-side, manual)
+//   2. POST /api/documents/upload               (tutor-side, auto-detect)
+//
+// Returns a result object the caller can serialize to the client.
+// Throws on Claude API or parse errors — callers should try/catch.
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+export async function processSyllabusForCourse(
+  userId: string,
+  courseId: string,
+  syllabusText: string
+): Promise<{
+  extracted: any;
+  eventsCreated: number;
+  tasksCreated: number;
+  events: any[];
+}> {
+  // Save syllabus text on the course
+  await db.update(studentCourses)
+    .set({ syllabusText, syllabusUploadedAt: new Date(), updatedAt: new Date() })
+    .where(eq(studentCourses.id, courseId));
+
+  // Read current course to know what fields we should fill in
+  const [course] = await db.select().from(studentCourses)
+    .where(and(eq(studentCourses.id, courseId), eq(studentCourses.userId, userId)));
+  if (!course) {
+    throw new Error(`Course ${courseId} not found for user ${userId}`);
+  }
+
+  // Call Claude to extract structured data using TOOL CALLING (more reliable
+  // than asking for JSON-as-text — the API enforces the schema).
+  // Using claude-opus-4-7 for parsing — Sonnet 4.6 was selectively skipping
+  // weekly dated events as some kind of "course overview" pattern, even with
+  // tool calling and worked examples. Opus is more exhaustive.
+  console.log(`[Academic][Syllabus] 🔍 Parsing syllabus for course ${courseId}: textLen=${syllabusText.length}, first200chars=${JSON.stringify(syllabusText.slice(0, 200))}`);
+
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const response = await anthropic.messages.create({
+    model: "claude-opus-4-7",
+    max_tokens: 8192,
+    tools: [{
+      name: "record_syllabus_events",
+      description: "Record EVERY dated event extracted from a course syllabus. Include all quizzes, exams, homework deadlines, assignment due dates, projects, presentations, and labs that have a specific calendar date. Be exhaustive — missing events breaks the downstream calendar and study plan.",
+      input_schema: {
+        type: "object",
+        properties: {
+          courseName: { type: "string", description: "The course name as it appears in the syllabus" },
+          courseCode: { type: ["string", "null"], description: "Course code if stated (e.g. BIO 101), else null" },
+          instructor: { type: ["string", "null"], description: "Instructor name if stated, else null" },
+          events: {
+            type: "array",
+            description: "Every event with a specific calendar date. EVERY ONE.",
+            items: {
+              type: "object",
+              properties: {
+                title: { type: "string", description: "Descriptive title like 'Week 3 Quiz' or 'Cell Diagram Assignment Due' or 'Midterm Exam'" },
+                eventType: { type: "string", enum: ["exam", "assignment", "quiz", "project", "lab", "presentation", "office_hours"] },
+                startDate: { type: "string", description: "YYYY-MM-DD format. Assume year 2026 if not stated." },
+                endDate: { type: ["string", "null"] },
+                startTime: { type: ["string", "null"], description: "HH:MM format if stated" },
+                endTime: { type: ["string", "null"] },
+                description: { type: ["string", "null"] },
+                priority: { type: "string", enum: ["high", "medium", "low"], description: "exam/midterm/final = high; quiz/assignment/homework/project = medium" },
+                location: { type: ["string", "null"] }
+              },
+              required: ["title", "eventType", "startDate", "priority"]
+            }
+          }
+        },
+        required: ["courseName", "events"]
+      }
+    }],
+    tool_choice: { type: "tool", name: "record_syllabus_events" },
+    system: "You are an academic syllabus parser. Your job is to extract EVERY single dated event from a syllabus into the record_syllabus_events tool. Course syllabi often list a quiz and an exam each week across many weeks — every one of those is a separate event. A 6-week course with weekly quizzes and exams plus a final has 18+ events. Producing fewer than that is a failure of the task.",
+    messages: [{
+      role: "user",
+      content: `Extract every dated event from this course syllabus using the record_syllabus_events tool.
+
+WHAT COUNTS AS A DATED EVENT:
+Anything with a specific calendar date in the syllabus body. Each occurrence on a different date is a separate event.
+
+Examples of single-date events:
+  • "Quiz: June 4" → ONE quiz event on 2026-06-04
+  • "Final Exam: July 15" → ONE exam event on 2026-07-15
+  • "Midterm: October 12" → ONE exam event on 2026-10-12
+
+Examples of MULTIPLE events on a single line (this is critical — the pipe character separates events):
+  • "Quiz: June 4 | Exam: June 7" → TWO events (one quiz on 2026-06-04, one exam on 2026-06-07)
+  • "Lab: Sep 3, Quiz: Sep 5" → TWO events
+
+WHAT TO SKIP:
+  • "Class meets MWF at 10am" — no specific date
+  • "Office hours every Tuesday" — no specific date
+  • "Topics: Cell biology, genetics" — topic list, not an event
+
+HOMEWORK WITHOUT EXPLICIT DATE:
+If homework is listed under a section heading with a date range, use the LAST day of that range as the due date.
+Example: "Week 3 (June 15-June 21) ... Homework: Enzyme worksheet" → ONE event "Enzyme Worksheet Due" on 2026-06-21.
+
+==================================================================
+WORKED EXAMPLE — read this carefully. This is the exact format of
+the syllabus you'll be parsing.
+==================================================================
+
+INPUT EXCERPT (3 weeks):
+"""
+Week 1 (June 1–June 7)
+Topics: Introduction to Biology, Scientific Method
+Quiz: June 4 | Exam: June 7
+Homework: Cell diagram assignment
+
+Week 2 (June 8–June 14)
+Topics: Cell Membrane, Transport
+Quiz: June 11 | Exam: June 14
+Homework: Diffusion lab write-up
+
+Week 3 (June 15–June 21)
+Topics: Photosynthesis, Enzymes
+Quiz: June 18 | Exam: June 21
+Homework: Enzyme worksheet
+"""
+
+EXPECTED EVENTS FROM THIS 3-WEEK EXCERPT — there are NINE events. Count them:
+  1. {title: "Week 1 Quiz",   eventType: "quiz",       startDate: "2026-06-04", priority: "medium"}
+  2. {title: "Week 1 Exam",   eventType: "exam",       startDate: "2026-06-07", priority: "high"}
+  3. {title: "Cell Diagram Assignment Due", eventType: "assignment", startDate: "2026-06-07", priority: "medium"}
+  4. {title: "Week 2 Quiz",   eventType: "quiz",       startDate: "2026-06-11", priority: "medium"}
+  5. {title: "Week 2 Exam",   eventType: "exam",       startDate: "2026-06-14", priority: "high"}
+  6. {title: "Diffusion Lab Write-Up Due", eventType: "assignment", startDate: "2026-06-14", priority: "medium"}
+  7. {title: "Week 3 Quiz",   eventType: "quiz",       startDate: "2026-06-18", priority: "medium"}
+  8. {title: "Week 3 Exam",   eventType: "exam",       startDate: "2026-06-21", priority: "high"}
+  9. {title: "Enzyme Worksheet Due", eventType: "assignment", startDate: "2026-06-21", priority: "medium"}
+
+The "Quiz: June 4 | Exam: June 7" line is TWO events, not one. Same for every other "Quiz: X | Exam: Y" line.
+
+==================================================================
+CALIBRATION RULE
+==================================================================
+A typical 6-week syllabus following the pattern above has:
+  - 6 quizzes (one per week) = 6 events
+  - 6 exams (one per week)   = 6 events
+  - 6 homework deadlines (one per week, due last day of week) = 6 events
+  - 1 final exam = 1 event
+  - 1 final-week homework = 1 event
+TOTAL: at least 20 events.
+
+If you produce fewer than 12 events from a 6-week syllabus, you have made an error. Re-scan and find the events you missed before calling the tool.
+
+Default year is 2026 if not stated. Now extract EVERY event from the syllabus below:
+
+${syllabusText}`
+    }],
+  });
+
+  // Tool calling: response.content has a tool_use block with structured input
+  const toolUseBlock = response.content.find((b: any) => b.type === "tool_use");
+  if (!toolUseBlock || toolUseBlock.type !== "tool_use") {
+    // Diagnostic: dump whatever Claude actually returned
+    const textBlock = response.content.find((b: any) => b.type === "text");
+    console.error(`[Academic][Syllabus] ❌ No tool_use block returned. stop_reason=${(response as any)?.stop_reason}. content blocks: ${response.content.map((b:any) => b.type).join(',')}. text (first 500 chars): ${textBlock?.text?.slice(0, 500) || '(none)'}`);
+    throw new Error("Claude did not call record_syllabus_events tool");
+  }
+
+  const parsed: any = (toolUseBlock as any).input;
+
+  // Diagnostic log so we can see the count vs. what's in the syllabus.
+  // Dump the full extracted input when count is suspiciously low (<5),
+  // so if it still fails we can see exactly what Claude decided to extract.
+  const eventCount = (parsed?.events || []).length;
+  console.log(`[Academic][Syllabus] 📊 Parsed for course ${courseId}: courseName="${parsed?.courseName || ''}", events=${eventCount}, stopReason=${(response as any)?.stop_reason}`);
+  if (eventCount < 5) {
+    console.warn(`[Academic][Syllabus] ⚠️ Suspiciously few events (${eventCount}). Full extracted payload: ${JSON.stringify(parsed).slice(0, 2000)}`);
+  }
+  if ((response as any)?.stop_reason === 'max_tokens') {
+    console.warn(`[Academic][Syllabus] ⚠️ Response hit max_tokens — output may be truncated. Consider increasing max_tokens above 8192.`);
+  }
+
+  // Update course with extracted info (only fill fields that aren't already set)
+  if (parsed.courseName || parsed.courseCode || parsed.instructor) {
+    await db.update(studentCourses).set({
+      ...(parsed.courseName && !course.courseName && { courseName: parsed.courseName }),
+      ...(parsed.courseCode && !course.courseCode && { courseCode: parsed.courseCode }),
+      ...(parsed.instructor && !course.instructor && { instructor: parsed.instructor }),
+      updatedAt: new Date(),
+    }).where(eq(studentCourses.id, courseId));
+  }
+
+  // Create calendar events + tasks + reminders
+  const createdEvents: any[] = [];
+  const createdTasks: any[] = [];
+
+  if (parsed.events && Array.isArray(parsed.events)) {
+    for (const evt of parsed.events) {
+      if (!evt.title || !evt.startDate) continue;
+      const [calEvent] = await db.insert(studentCalendarEvents).values({
+        userId,
+        courseId,
+        title: evt.title,
+        eventType: evt.eventType || "custom",
+        description: evt.description || null,
+        startDate: evt.startDate,
+        endDate: evt.endDate || null,
+        startTime: evt.startTime || null,
+        endTime: evt.endTime || null,
+        location: evt.location || null,
+        isFromSyllabus: true,
+        priority: evt.priority || "medium",
+        status: "upcoming",
+      }).returning();
+      createdEvents.push(calEvent);
+
+      const tasks = await generateStudyTasks(userId, courseId, {
+        id: calEvent.id,
+        title: calEvent.title,
+        eventType: calEvent.eventType,
+        startDate: calEvent.startDate,
+      });
+      createdTasks.push(...tasks);
+
+      await generateReminders(userId, {
+        id: calEvent.id,
+        title: calEvent.title,
+        eventType: calEvent.eventType,
+        startDate: calEvent.startDate,
+      });
+    }
+  }
+
+  return {
+    extracted: parsed,
+    eventsCreated: createdEvents.length,
+    tasksCreated: createdTasks.length,
+    events: createdEvents,
+  };
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Helper: Generate study tasks for a calendar event
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 async function generateStudyTasks(
@@ -264,129 +504,9 @@ router.post("/courses/:id/syllabus", async (req, res) => {
       .where(and(eq(studentCourses.id, id), eq(studentCourses.userId, userId)));
     if (!course) return res.status(404).json({ error: "Course not found" });
 
-    // Save syllabus text
-    await db.update(studentCourses)
-      .set({ syllabusText, syllabusUploadedAt: new Date(), updatedAt: new Date() })
-      .where(eq(studentCourses.id, id));
-
-    // Call Claude to extract structured data
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4096,
-      system: "You are an academic syllabus parser. Extract structured information from course syllabi. Return ONLY valid JSON, no markdown or explanation.",
-      messages: [{
-        role: "user",
-        content: `Extract the following from this syllabus and return as JSON:
-{
-  "courseName": "string or null",
-  "courseCode": "string or null",
-  "instructor": "string or null",
-  "events": [
-    {
-      "title": "string - descriptive name like 'Midterm Exam' or 'Problem Set 3 Due'",
-      "eventType": "exam|assignment|quiz|project|lab|presentation|office_hours",
-      "startDate": "YYYY-MM-DD",
-      "endDate": "YYYY-MM-DD or null",
-      "startTime": "HH:MM or null",
-      "endTime": "HH:MM or null",
-      "description": "string or null",
-      "priority": "high|medium|low",
-      "location": "string or null"
-    }
-  ]
-}
-
-Rules:
-- Exams and midterms are priority "high"
-- Assignments and projects are priority "medium"
-- If year is not specified, assume 2026
-- Include ALL dated events: exams, quizzes, homework, projects, presentations, labs
-- Do NOT include weekly recurring events like lectures (only one-off events)
-- For office hours, include the first occurrence only
-
-Syllabus text:
-${syllabusText}`
-      }],
-    });
-
-    // Parse Claude response
-    const textBlock = response.content.find((b: any) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      return res.status(500).json({ error: "Failed to parse syllabus" });
-    }
-
-    let parsed: any;
-    try {
-      // Clean up potential markdown code blocks
-      let jsonText = textBlock.text.trim();
-      if (jsonText.startsWith("```")) {
-        jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-      }
-      parsed = JSON.parse(jsonText);
-    } catch {
-      return res.status(500).json({ error: "Failed to parse AI response as JSON" });
-    }
-
-    // Update course with extracted info
-    if (parsed.courseName || parsed.courseCode || parsed.instructor) {
-      await db.update(studentCourses).set({
-        ...(parsed.courseName && !course.courseName && { courseName: parsed.courseName }),
-        ...(parsed.courseCode && !course.courseCode && { courseCode: parsed.courseCode }),
-        ...(parsed.instructor && !course.instructor && { instructor: parsed.instructor }),
-        updatedAt: new Date(),
-      }).where(eq(studentCourses.id, id));
-    }
-
-    // Create calendar events and study tasks
-    const createdEvents: any[] = [];
-    const createdTasks: any[] = [];
-
-    if (parsed.events && Array.isArray(parsed.events)) {
-      for (const evt of parsed.events) {
-        if (!evt.title || !evt.startDate) continue;
-        const [calEvent] = await db.insert(studentCalendarEvents).values({
-          userId,
-          courseId: id,
-          title: evt.title,
-          eventType: evt.eventType || "custom",
-          description: evt.description || null,
-          startDate: evt.startDate,
-          endDate: evt.endDate || null,
-          startTime: evt.startTime || null,
-          endTime: evt.endTime || null,
-          location: evt.location || null,
-          isFromSyllabus: true,
-          priority: evt.priority || "medium",
-          status: "upcoming",
-        }).returning();
-        createdEvents.push(calEvent);
-
-        // Auto-generate study tasks
-        const tasks = await generateStudyTasks(userId, id, {
-          id: calEvent.id,
-          title: calEvent.title,
-          eventType: calEvent.eventType,
-          startDate: calEvent.startDate,
-        });
-        createdTasks.push(...tasks);
-
-        // Auto-generate reminders
-        await generateReminders(userId, {
-          id: calEvent.id,
-          title: calEvent.title,
-          eventType: calEvent.eventType,
-          startDate: calEvent.startDate,
-        });
-      }
-    }
-
-    res.json({
-      extracted: parsed,
-      eventsCreated: createdEvents.length,
-      tasksCreated: createdTasks.length,
-      events: createdEvents,
-    });
+    // Delegate to shared helper (also used by tutor-side upload auto-pipeline)
+    const result = await processSyllabusForCourse(userId, id, syllabusText);
+    res.json(result);
   } catch (error: any) {
     console.error("[Academic] Syllabus processing error:", error);
     res.status(500).json({ error: "Failed to process syllabus" });
@@ -1259,18 +1379,18 @@ router.post("/admin/nudge", requireAdmin, async (req, res) => {
     const emailService = new EmailService();
     await emailService.sendEmail({
       to: studentEmail,
-      subject: subject || "A message from your academic advisor — University of Wisconsin AI Tutor",
+      subject: subject || "A message from your academic advisor — University of Notre Dame AI Tutor",
       html: `
         <div style="font-family: 'Segoe UI', system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
-          <div style="background: #282728; padding: 20px; border-radius: 8px 8px 0 0; border-bottom: 4px solid #C5050C;">
-            <h1 style="color: white; margin: 0; font-size: 20px;">University of Wisconsin AI Tutor — Academic Support</h1>
+          <div style="background: #0C2340; padding: 20px; border-radius: 8px 8px 0 0; border-bottom: 4px solid #0C2340;">
+            <h1 style="color: white; margin: 0; font-size: 20px;">University of Notre Dame AI Tutor — Academic Support</h1>
           </div>
           <div style="background: #f8f9fa; padding: 24px; border-radius: 0 0 8px 8px;">
             <p style="font-size: 16px; line-height: 1.6; color: #333;">${message.replace(/\n/g, '<br>')}</p>
             <div style="margin-top: 24px; text-align: center;">
               <a href="${process.env.APP_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost:5000'}`}/tutor"
-                 style="display: inline-block; background: #C5050C; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-                Study with University of Wisconsin AI Tutor
+                 style="display: inline-block; background: #0C2340; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+                Study with University of Notre Dame AI Tutor
               </a>
             </div>
           </div>
@@ -1449,16 +1569,16 @@ router.post("/send-reminder", async (req, res) => {
       subject: `Reminder: ${reminder.message}`,
       html: `
         <div style="font-family: 'Segoe UI', system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
-          <div style="background: #282728; padding: 20px; border-radius: 8px 8px 0 0; border-bottom: 4px solid #C5050C;">
-            <h1 style="color: white; margin: 0; font-size: 20px;">University of Wisconsin AI Tutor — Reminder</h1>
+          <div style="background: #0C2340; padding: 20px; border-radius: 8px 8px 0 0; border-bottom: 4px solid #0C2340;">
+            <h1 style="color: white; margin: 0; font-size: 20px;">University of Notre Dame AI Tutor — Reminder</h1>
           </div>
           <div style="background: #f8f9fa; padding: 24px; border-radius: 0 0 8px 8px;">
             <p style="font-size: 18px; font-weight: 600; color: #333;">${reminder.message}</p>
             <p style="color: #666;">Date: ${reminder.reminderDate}</p>
             <div style="margin-top: 24px; text-align: center;">
               <a href="${appUrl}/tutor"
-                 style="display: inline-block; background: #C5050C; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-                Study with University of Wisconsin AI Tutor
+                 style="display: inline-block; background: #0C2340; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+                Study with University of Notre Dame AI Tutor
               </a>
             </div>
           </div>
@@ -1520,18 +1640,18 @@ router.post("/send-parent-digest", async (req, res) => {
 
       await emailService.sendEmail({
         to: share.parentEmail,
-        subject: `${studentName}'s Weekly Academic Summary — University of Wisconsin AI Tutor`,
+        subject: `${studentName}'s Weekly Academic Summary — University of Notre Dame AI Tutor`,
         html: `
           <div style="font-family: 'Segoe UI', system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
-            <div style="background: #282728; padding: 20px; border-radius: 8px 8px 0 0; border-bottom: 4px solid #C5050C;">
-              <h1 style="color: white; margin: 0; font-size: 20px;">University of Wisconsin AI Tutor — Weekly Digest</h1>
+            <div style="background: #0C2340; padding: 20px; border-radius: 8px 8px 0 0; border-bottom: 4px solid #0C2340;">
+              <h1 style="color: white; margin: 0; font-size: 20px;">University of Notre Dame AI Tutor — Weekly Digest</h1>
             </div>
             <div style="background: #f8f9fa; padding: 24px; border-radius: 0 0 8px 8px;">
               <h2 style="color: #333;">${studentName}'s Academic Summary</h2>
 
               <div style="background: white; padding: 16px; border-radius: 8px; margin: 16px 0;">
                 <h3 style="margin: 0 0 8px; color: #555;">Engagement Score</h3>
-                <p style="font-size: 36px; font-weight: 700; color: ${engagement.engagementScore >= 70 ? '#16a34a' : engagement.engagementScore >= 50 ? '#ca8a04' : '#dc2626'}; margin: 0;">
+                <p style="font-size: 36px; font-weight: 700; color: ${engagement.engagementScore >= 70 ? '#16a34a' : engagement.engagementScore >= 50 ? '#ca8a04' : '#0C2340'}; margin: 0;">
                   ${engagement.engagementScore}/100
                 </p>
               </div>
@@ -1553,7 +1673,7 @@ router.post("/send-parent-digest", async (req, res) => {
               </div>` : ''}
 
               <p style="text-align: center; color: #999; font-size: 12px; margin-top: 24px;">
-                This summary was shared by ${studentName} via <a href="${appUrl}">University of Wisconsin AI Tutor</a>
+                This summary was shared by ${studentName} via <a href="${appUrl}">University of Notre Dame AI Tutor</a>
               </p>
             </div>
           </div>
